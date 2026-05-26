@@ -1,0 +1,25 @@
+# Build output
+BenchmarkApp/**/bin/
+BenchmarkApp/**/obj/
+*.user
+.vs/
+
+# Results - measurements su preveliki za git (500MB+)
+Results/measurements*.csv
+BenchmarkApp/**/Results/measurements*.csv
+
+# Python
+Analysis/__pycache__/
+Analysis/*.pyc
+Analysis/.venv/
+Analysis/venv/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.suo
+.idea/
+*.swp
