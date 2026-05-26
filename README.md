@@ -1,7 +1,7 @@
 # HTAPBenchmark
 ## Evaluacija performansi hibridne transakcijsko-analitičke obrade (HTAP) u Microsoft SQL Serveru
 
-> **Magistarski istraživački projekt** — Komparativna analiza četiri konfiguracijske strategije pohrane nad skupom podataka StackOverflow2010
+> **Projekat iz Optimizacija baza podataka** — Komparativna analiza četiri konfiguracijske strategije pohrane nad skupom podataka StackOverflow2010
 
 ---
 
