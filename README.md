@@ -118,27 +118,24 @@ Preuzimanje gotovog SQL Server backup-a (preporučeno):
 
 ### 4.2 SQL skripte — pokrenuti redom u SSMS
 
-```sql
--- 1. Kreiranje HTAPBenchmark baze
-EXECUTE SQL/00_DatabaseSetup.sql
+Otvoriti svaki fajl u SSMS i pokrenuti redom (`F5`):
 
--- 2. Kreiranje shema (može i paralelno, ali ne mora)
-EXECUTE SQL/01_Schema_Baseline.sql
-EXECUTE SQL/02_Schema_CS.sql
-EXECUTE SQL/03_Schema_IM.sql
-EXECUTE SQL/04_Schema_HTAP.sql
-EXECUTE SQL/04b_Schema_HTAP_Fixed.sql
+```
+1. 00_DatabaseSetup.sql          -- baza, filegroups, sheme
+2. 01_Schema_Baseline.sql        -- disk B-tree tablice
+3. 02_Schema_CS.sql              -- disk + columnstore tablice
+4. 03_Schema_IM.sql              -- memory-optimized tablice (IM)
+5. 04_Schema_HTAP.sql            -- memory-optimized tablice (HTAP/OLTP sloj)
+6. 05_LoadData.sql               -- punjenje podataka (~30–60 min)
+7. 06_StoredProcs_OLTP.sql       -- OLTP stored procedure (sve 4 sheme)
+8. 07_StoredProcs_OLAP.sql       -- OLAP upiti Q1–Q5 (sve sheme)
+9. 07b_StoredProcs_OLAP_HTAP_DualStore.sql  -- OVERRIDE: HTAP OLAP čita iz cs.*
+10. 09_Fix_OLAP_MaxDop.sql       -- dodaje MAXDOP 2 svim OLAP procedurama
+```
 
--- 3. Učitavanje podataka (~30-60 min, ~76.8M redova ukupno)
-EXECUTE SQL/05_LoadData.sql
+> ⚠️ **Važno**: Skript `07b` mora se pokrenuti **nakon** `07` — on prepisuje HTAP OLAP procedure da čitaju iz `cs.*` (columnstore) umjesto iz `htap.*` (memory-optimized). Redoslijed 9 → 10 je obavezan.
 
--- 4. Pohranjene procedure
-EXECUTE SQL/06_StoredProcs_OLTP.sql
-EXECUTE SQL/07_StoredProcs_OLAP.sql
-EXECUTE SQL/07b_StoredProcs_OLAP_HTAP_DualStore.sql
-
--- 5. Optimizacija paralelizma (OBAVEZNO)
-EXECUTE SQL/09_Fix_OLAP_MaxDop.sql
+> ℹ️ **Opcionalno**: `08_ResultsSchema.sql` kreira tablicu za DB-side logging rezultata — benchmark aplikacija ovo ne koristi (rezultati idu u CSV), ali može biti korisno za ručno testiranje.
 ```
 
 **Provjera učitanih podataka:**
