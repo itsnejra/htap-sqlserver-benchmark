@@ -351,6 +351,36 @@ python 03_visualizations.py
 
 ---
 
+## 7b. Skala podataka
+
+### StackOverflow2010 — veličine tablica
+
+| Tablica | Redova | Napomena |
+|---------|--------|---------|
+| `Posts` | ~3.729.195 | Pitanja i odgovori |
+| `Users` | ~299.398 | Korisnički profili |
+| `Votes` | ~10.143.364 | Glasovi (up/down/close...) |
+| `Comments` | ~3.875.183 | Komentari |
+| `Badges` | ~1.102.019 | Badge dodjele |
+| **Ukupno** | **~19.149.159** | **po shemi** |
+
+### Ukupno redova u bazi (sve 4 sheme)
+
+```
+4 sheme × ~19.149.159 redova ≈ 76.600.000 redova ukupno
+```
+
+### Disk i memorija
+
+| Shema | Pohrana | Veličina (approx) |
+|-------|---------|-------------------|
+| baseline | Disk (HDD/SSD) | ~15 GB |
+| cs | Disk (HDD/SSD) | ~17 GB (columnstore je kompresovan) |
+| im | RAM | ~8 GB |
+| htap | RAM | ~8 GB |
+
+---
+
 ## 8. Konfiguracijske strategije
 
 | Konfiguracija | Pohrana | Indeksiranje | OLAP engine | Očekivano |
