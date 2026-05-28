@@ -154,7 +154,21 @@ ORDER BY s.name, t.name;
 -- Comments ≈ 3.875.183 | Badges ≈ 1.102.019
 ```
 
-### 4.3 .NET aplikacija
+### 4.3 Nakon restarta SQL Servera
+
+`im.*` i `htap.*` tablice koriste `DURABILITY = SCHEMA_ONLY` — svi podaci se gube kada SQL Server stane. Sheme i indexi ostaju, ali redovi nestaju.
+
+Nakon svakog restarta SQL Servera pokrenuti:
+
+```
+SQL/05b_LoadData_CS_HTAP_Only.sql
+```
+
+Ovaj skript puni samo `im.*` i `htap.*` tablice iz `cs.*` (koja je disk-zasnovana i preživljava restart). Traje ~5–10 minuta (samo 2 sheme umjesto 4).
+
+> `baseline.*` i `cs.*` su disk-zasnovane — NE trebaju ponovnog punjenja.
+
+### 4.4 .NET aplikacija
 
 ```bash
 cd HTAPBenchmark
@@ -165,7 +179,7 @@ dotnet build BenchmarkApp/HTAPBenchmark.sln -c Release
 > **Napomena**: Ako je SQL Server na drugoj adresi, editujte `ConnectionString` u  
 > `BenchmarkApp/HTAPBenchmark.Runner/appsettings.json`
 
-### 4.4 Python okruženje
+### 4.5 Python okruženje
 
 ```bash
 cd HTAPBenchmark/Analysis
