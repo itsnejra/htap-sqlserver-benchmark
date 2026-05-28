@@ -289,6 +289,38 @@ python 03_visualizations.py
 
 ---
 
+## 6b. Rezultati benchmarka (sažetak)
+
+### OLTP propusnost po konfiguraciji (C=32, 80/20 workload)
+
+| Konfiguracija | Median ops/s | Std | vs Baseline |
+|--------------|-------------|-----|-------------|
+| **Baseline** | 2.432 | ±2.375 | — |
+| **CS** | 3.618 | ±2.681 | +49% |
+| **IM** | 28.764 | ±13.260 | +11.8× |
+| **HTAP** | 21.920 | ±17.130 | +9.0× |
+
+### OLAP propusnost po konfiguraciji (C=32)
+
+| Konfiguracija | Median q/s | vs Baseline |
+|--------------|-----------|-------------|
+| **Baseline** | 0.85 | — |
+| **CS** | 6.10 | +7.2× |
+| **IM** | 0.77 | −9% |
+| **HTAP** | 6.84 | +8.0× |
+
+### Zaključci hipoteza
+
+| Hipoteza | Ishod | Cohen's d |
+|---------|-------|-----------|
+| **H1**: CS ≈ HTAP pri niskom C, razlika pri visokom C | ⚠️ DJELIMIČNO POTVRĐENA | d=+1.61 (C=32) |
+| **H2**: CS degradira više od HTAP pri mješovitom opterećenju | ✅ POTVRĐENA | d=2.32 |
+| **H3**: HTAP ≈ IM pri OLTP-intenzivnom opterećenju | ❌ ODBAČENA | d=−4.4 do −11.9 |
+
+> Detalji u `Results/hypothesis_results.txt` i `Paper/rad_nacrt.md`.
+
+---
+
 ## 7. Eksperimentalni dizajn
 
 ### Faktorijalni plan 4 × 3 × 3
