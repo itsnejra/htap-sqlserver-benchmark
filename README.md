@@ -51,9 +51,32 @@ Ovaj projekat eksperimentalno evaluira četiri konfiguracijske strategije pohran
 
 | Komponenta | Minimum | Preporučeno |
 |-----------|---------|-------------|
-| RAM | 16 GB | 32 GB+ (In-Memory tablice koriste ~8 GB) |
-| CPU jezgre | 4 | 8+ |
+| RAM | 16 GB | 32 GB+ (In-Memory tablice koriste ~8–12 GB) |
+| CPU jezgre | 4 | 8+ (benchmark testira do C=32 korisnika) |
 | Slobodan disk | 50 GB | SSD za disk-zasnovane tablice |
+
+### Hardver korišten u istraživanju
+
+Benchmark je pokrenut na slijedećoj konfiguraciji:
+
+| Komponenta | Vrijednost |
+|-----------|-----------|
+| RAM | 32 GB DDR4 |
+| SQL Server | Developer Edition 2022 (16.0.x) |
+| OS | Windows 11 |
+| Disk (cs/baseline) | HDD |
+| Storage (im/htap) | RAM (memory-optimized) |
+
+**Procijenjeno trajanje punog benchmarka (1.080 runova):**
+
+| Faza | Trajanje |
+|------|---------|
+| Inicijalno punjenje podataka (05_LoadData.sql) | ~40–60 min |
+| Benchmark: Baseline + CS (540 runova) | ~7–8 h |
+| Benchmark: IM + HTAP (540 runova) | ~5–7 h |
+| **Ukupno** | **~13–16 h** |
+
+> Trajanje varira ovisno o hardveru. Benchmark podržava nastavak od mjesta prekida (resume) — siguran je restartati.
 
 ---
 
