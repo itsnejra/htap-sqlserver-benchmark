@@ -413,24 +413,63 @@ Success, ErrorMessage
 
 ### OLAP upiti blokirani >60s (CXSYNC_PORT wait)
 **Uzrok**: Prekomjerna paralelizacija (batch-mode columnstore) pri visokoj konkurentnosti.  
-**Rješenje**: Skript `09_Fix_OLAP_MaxDop.sql` dodaje `OPTION(MAXDOP 2)` svim OLAP procedurama.
+**Rješenje**: Skript `09_Fix_OLAP_MaxDop.sql` dodaje `OPTION(MAXDOP 2)` svim OLAP procedurama.  
+**Bitno**: Pokrenuti ovaj skript **obavezno** prije pokretanja benchmarka pri C=32.
 
-### Timeout pri učitavanju konteksta
+---
+
+### Timeout pri učitavanju konteksta (30s)
 **Uzrok**: `SELECT TOP 20000 ORDER BY NEWID()` na 3.7M redova — predugo za default 30s timeout.  
-**Rješenje**: Ispravljeno u kodu — `commandTimeout: 300`.
+**Rješenje**: Ispravljeno u kodu — `commandTimeout: 300` u `WorkloadExecutor.cs`.
 
-### ORDER BY NEWID() deadlock na memory-optimized tablicama
-**Uzrok**: Paralelni plan izvršavanja na Hekaton tablicama uzrokuje CXSYNC_PORT.  
-**Rješenje**: Ispravljeno — dodan `OPTION(MAXDOP 1)` u context-loading upitima.
+---
+
+### ORDER BY NEWID() stall na memory-optimized tablicama
+**Uzrok**: Paralelni plan izvršavanja na Hekaton tablicama uzrokuje `CXSYNC_PORT` wait.  
+**Rješenje**: Dodan `OPTION(MAXDOP 1)` u context-loading upite za `im` i `htap` sheme.
+
+---
+
+### OOM crash / SQL Server gasi se pri C=32 (IM ili HTAP konfiguracija)
+**Uzrok**: MVCC version chain akumulacija — svaki DELETE na memory-optimized tablici kreira "ghost" verzije koje GC mora pročistiti. Brisanje svih 3.7M redova između kombinacija generira ~7.4M GC stavki po tranziciji, što pri C=32 preopterećuje in-memory GC.  
+**Rješenje implementirano u kodu**:
+- `TruncateAndReloadPostsAsync` briše i puni samo 20.000 aktivnih postova (ne sve 3.7M)
+- Poziva se i između kombinacija I između svakog od 30 runova (da GC ne akumulira)
+- Ukupno: 185× manje GC posla po kombinaciji
+
+```
+Simptom: SQL Server se gasi ili app crashi s OutOfMemoryException
+         nakon 2–3 kombinacije pri C=32
+Rješenje: Koristiti trenutnu verziju koda (problem riješen u WorkloadExecutor.cs)
+```
+
+---
+
+### TRUNCATE TABLE nije podržan na memory-optimized tablicama (Error 10794)
+**Uzrok**: SQL Server In-Memory OLTP ne podržava `TRUNCATE TABLE`.  
+**Greška**: `Msg 10794, Level 16: The statement 'TRUNCATE TABLE' is not supported with memory optimized tables.`  
+**Rješenje**: Koristiti `DELETE FROM tablica` ili selektivni delete po ID-u.
+
+---
 
 ### Python ModuleNotFoundError
 ```bash
 cd Analysis && pip install -r requirements.txt
 ```
 
+---
+
 ### SQL Server: memory-optimized tablice se ne mogu kreirati
 **Uzrok**: SQL Server Express ne podržava In-Memory OLTP.  
+**Greška**: `CREATE TABLE ... WITH (MEMORY_OPTIMIZED = ON)` ne uspijeva.  
 **Rješenje**: Koristiti Developer, Standard ili Enterprise Edition.
+
+---
+
+### Benchmark se ne nastavlja (resume) nakon prekida
+**Uzrok**: `ResultsWriter` otvara fajlove za pisanje (truncate mode) prije nego što se provjeri koje kombinacije su već završene.  
+**Rješenje**: Implementirano u `BenchmarkOrchestrator.cs` — `_resumeMap` se čita iz `summary.csv` u konstruktoru, PRIJE otvaranja `ResultsWriter`.  
+Pokretati benchmark normalno — automatski nastavlja od gdje je stao.
 
 ---
 
