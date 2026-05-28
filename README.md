@@ -503,4 +503,45 @@ Pokretati benchmark normalno — automatski nastavlja od gdje je stao.
 
 ---
 
+---
+
+## 12. Poznata ograničenja
+
+### SQL Server 2022 RTM — nema inline columnstore na memory-optimized tablicama
+SQL Server 2022 RTM **ne podržava** `NONCLUSTERED COLUMNSTORE INDEX` direktno na memory-optimized tablicama. Poruka greške:
+
+```
+Msg 12332: Columnstore indexes are not supported for memory optimized tables.
+```
+
+Zbog toga HTAP konfiguracija koristi **dual-store pristup**: `htap.*` za OLTP (in-memory), `cs.*` za OLAP (disk+columnstore). Ovo je namjeran dizajn koji odgovara komercijalnim HTAP implementacijama (TiDB/TiFlash, Oracle Dual-Format).
+
+### SCHEMA_ONLY durability — gubitak podataka pri restartu
+`im.*` i `htap.*` tablice koriste `DURABILITY = SCHEMA_ONLY` radi maksimalnih performansi. Ovo znači da **svi podaci nestaju** kada SQL Server stane. Pogledati sekciju 4.3 za upute o ponovnom punjenju.
+
+### Benchmark trajanje
+Puni benchmark (1.080 runova × 70s po runu) traje ~13–16 sati. Ne može se smanjiti bez kompromisa na statističku valjanost (min. 30 runova/kombinacija za neparametarsku analizu).
+
+### Ograničenost na jedan server
+Benchmark ne testira distribuirane konfiguracije. Sva 4 konfiguracijska pristupa rade na jednoj instanci SQL Servera, što eliminira mrežni utjecaj ali ne odražava produkcijska distribuirana okruženja.
+
+### Workload je sintetički
+OLTP i OLAP operacije su reprezentativne za HTAP scenarije, ali nisu direktno prenosivi na specifičnu domensku aplikaciju. Rezultati su indikativni za klasu opterećenja, ne za konkretan use-case.
+
+---
+
+## 13. Licenca i citat
+
+Projekt je razvijen za akademske istraživačke svrhe.
+
+Ako koristite ovaj benchmark u vlastitom istraživanju, citirajte:
+
+```
+Evaluacija HTAP performansi u Microsoft SQL Serveru 2022:
+Komparativna analiza Baseline, Columnstore, In-Memory i Dual-Store konfiguracija
+Fakultet — Optimizacija baza podataka, 2025.
+```
+
+---
+
 *Projekt razvijen za potrebe magistarskog istraživanja — evaluacija HTAP paradigme u SQL Serveru*
