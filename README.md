@@ -250,6 +250,30 @@ dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release -- --dry-run
 
 **Ctrl+C** → graceful prekid (završava tekući run, potom staje)
 
+### Konfiguracija benchmarka (appsettings.json)
+
+```json
+{
+  "BenchmarkConfig": {
+    "ConnectionString": "Server=.;Database=HTAPBenchmark;Trusted_Connection=True;TrustServerCertificate=True;Max Pool Size=200;",
+    "WarmupSeconds": 10,
+    "MeasurementSeconds": 60,
+    "RunsPerCombination": 30,
+    "ConcurrencyLevels": [ 4, 16, 32 ],
+    "Configurations": [ "Baseline", "CS", "IM", "HTAP" ],
+    "WorkloadRatios": [ "OLTP80_OLAP20", "OLTP50_OLAP50", "OLTP20_OLAP80" ],
+    "ResultsCsvPath": "Results/measurements.csv",
+    "SummaryCsvPath": "Results/summary.csv"
+  }
+}
+```
+
+Ako SQL Server nije na lokalnom hostu, promijeniti `Server=.` u `Server=ImeServera` ili `Server=IP,1433`.
+
+### Resume (nastavak nakon prekida)
+
+Benchmark automatski nastavlja od zadnjeg završenog runa. Čita `Results/summary.csv` pri startu i preskače kombinacije koje su već završene. Bezbijedno je prekinuti (Ctrl+C) i ponovo pokrenuti.
+
 ---
 
 ## 6. Statistička analiza i vizualizacije
