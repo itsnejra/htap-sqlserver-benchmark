@@ -28,14 +28,25 @@ Execute the scripts in the following order against the `HTAPBenchmark` database.
 ## After SQL Server Restart
 
 `htap.*` and `im.*` tables use `DURABILITY = SCHEMA_ONLY` — all data is lost when SQL Server stops.  
-After a restart, reload the data using:
+Table schemas and indexes survive; only rows are lost.
+
+Run `05b_LoadData_CS_HTAP_Only.sql` to restore data without reloading `baseline` and `cs` schemas:
 
 ```sql
--- Reload im.* and htap.* from cs.* (survives restarts as disk-based)
--- See 05b_LoadData_CS_HTAP_Only.sql
+-- Fast reload: only im.* and htap.* from cs.* source (~5-10 min)
+-- cs.* is disk-based and survives restarts - used as the reload source
+USE HTAPBenchmark;
+-- (script truncates and refills im.* and htap.* from cs.* tables)
 ```
 
-Run `05b_LoadData_CS_HTAP_Only.sql` to restore data without reloading baseline and cs schemas.
+**Why cs.* survives**: `cs.*` tables are disk-based (no `MEMORY_OPTIMIZED`) so they persist across restarts. Only `im.*` and `htap.*` are affected by `SCHEMA_ONLY` durability.
+
+| Table | Durability | Survives restart? |
+|-------|-----------|-------------------|
+| baseline.* | SCHEMA_AND_DATA (disk) | ✅ Yes |
+| cs.* | SCHEMA_AND_DATA (disk) | ✅ Yes |
+| im.* | SCHEMA_ONLY (memory) | ❌ No — rows lost |
+| htap.* | SCHEMA_ONLY (memory) | ❌ No — rows lost |
 
 ## Schema Architecture
 
