@@ -1,0 +1,175 @@
+======================================================================
+HTAPBenchmark: Statistički testovi
+Ukupno runova: 1070
+Alpha (razina značajnosti): 0.05
+Korekcija višestrukih usporedbi: Bonferroni
+======================================================================
+
+──────────────────────────────────────────────────────────────────────
+1. KRUSKAL-WALLIS H-TEST (globalne razlike između konfiguracija)
+──────────────────────────────────────────────────────────────────────
+  OLTP Throughput (ops/s)             C= 4:  H=  194.441  p=0.000000  ✓ ZNAČAJNO
+  OLTP Throughput (ops/s)             C=16:  H=   66.794  p=0.000000  ✓ ZNAČAJNO
+  OLTP Throughput (ops/s)             C=32:  H=  158.006  p=0.000000  ✓ ZNAČAJNO
+  OLAP Throughput (q/s)               C= 4:  H=  272.025  p=0.000000  ✓ ZNAČAJNO
+  OLAP Throughput (q/s)               C=16:  H=  303.166  p=0.000000  ✓ ZNAČAJNO
+  OLAP Throughput (q/s)               C=32:  H=  290.164  p=0.000000  ✓ ZNAČAJNO
+  OLTP Latencija P50 (ms)             C= 4:  H=  302.056  p=0.000000  ✓ ZNAČAJNO
+  OLTP Latencija P50 (ms)             C=16:  H=  297.817  p=0.000000  ✓ ZNAČAJNO
+  OLTP Latencija P50 (ms)             C=32:  H=  284.921  p=0.000000  ✓ ZNAČAJNO
+  OLTP Latencija P95 (ms)             C= 4:  H=  200.513  p=0.000000  ✓ ZNAČAJNO
+  OLTP Latencija P95 (ms)             C=16:  H=  138.858  p=0.000000  ✓ ZNAČAJNO
+  OLTP Latencija P95 (ms)             C=32:  H=  244.478  p=0.000000  ✓ ZNAČAJNO
+  OLAP Latencija P50 (ms)             C= 4:  H=  300.907  p=0.000000  ✓ ZNAČAJNO
+  OLAP Latencija P50 (ms)             C=16:  H=  228.866  p=0.000000  ✓ ZNAČAJNO
+  OLAP Latencija P50 (ms)             C=32:  H=  182.545  p=0.000000  ✓ ZNAČAJNO
+  OLAP Latencija P95 (ms)             C= 4:  H=  262.007  p=0.000000  ✓ ZNAČAJNO
+  OLAP Latencija P95 (ms)             C=16:  H=  267.048  p=0.000000  ✓ ZNAČAJNO
+  OLAP Latencija P95 (ms)             C=32:  H=  184.465  p=0.000000  ✓ ZNAČAJNO
+
+──────────────────────────────────────────────────────────────────────
+2. MANN-WHITNEY U TEST + BONFERRONI KOREKCIJA (parne usporedbe)
+──────────────────────────────────────────────────────────────────────
+
+  Metrika: OLTP Throughput (ops/s)
+    C=4: baseline vs cs       | U=       3,999 | p_bonf=1.0000 | d=-0.074 (trivijalan) ✗
+    C=4: baseline vs im       | U=       2,358 | p_bonf=0.0000 | d=-0.789 (srednji) ✓
+    C=4: baseline vs htap     | U=           5 | p_bonf=0.0000 | d=-2.176 (veliki) ✓
+    C=4:       cs vs im       | U=       2,436 | p_bonf=0.0000 | d=-0.757 (srednji) ✓
+    C=4:       cs vs htap     | U=         117 | p_bonf=0.0000 | d=-2.164 (veliki) ✓
+    C=4:       im vs htap     | U=         768 | p_bonf=0.0000 | d=-1.787 (veliki) ✓
+    C=16: baseline vs cs       | U=       4,719 | p_bonf=0.2373 | d=+0.118 (trivijalan) ✗
+    C=16: baseline vs im       | U=       3,715 | p_bonf=1.0000 | d=-0.059 (trivijalan) ✗
+    C=16: baseline vs htap     | U=       1,684 | p_bonf=0.0000 | d=-1.332 (veliki) ✓
+    C=16:       cs vs im       | U=       3,412 | p_bonf=0.6653 | d=-0.196 (trivijalan) ✗
+    C=16:       cs vs htap     | U=       1,690 | p_bonf=0.0000 | d=-1.375 (veliki) ✓
+    C=16:       im vs htap     | U=       1,804 | p_bonf=0.0000 | d=-1.325 (veliki) ✓
+    C=32: baseline vs cs       | U=       3,698 | p_bonf=1.0000 | d=-0.020 (trivijalan) ✗
+    C=32: baseline vs im       | U=       1,941 | p_bonf=0.0000 | d=-0.909 (veliki) ✓
+    C=32: baseline vs htap     | U=         517 | p_bonf=0.0000 | d=-1.598 (veliki) ✓
+    C=32:       cs vs im       | U=       2,106 | p_bonf=0.0000 | d=-0.918 (veliki) ✓
+    C=32:       cs vs htap     | U=         538 | p_bonf=0.0000 | d=-1.601 (veliki) ✓
+    C=32:       im vs htap     | U=       1,203 | p_bonf=0.0000 | d=-1.414 (veliki) ✓
+
+  Metrika: OLAP Throughput (q/s)
+    C=4: baseline vs cs       | U=       1,069 | p_bonf=0.0000 | d=-1.773 (veliki) ✓
+    C=4: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-4.388 (veliki) ✓
+    C=4: baseline vs htap     | U=           1 | p_bonf=0.0000 | d=-2.795 (veliki) ✓
+    C=4:       cs vs im       | U=          26 | p_bonf=0.0000 | d=-3.014 (veliki) ✓
+    C=4:       cs vs htap     | U=         537 | p_bonf=0.0000 | d=-2.093 (veliki) ✓
+    C=4:       im vs htap     | U=       3,638 | p_bonf=1.0000 | d=-0.135 (trivijalan) ✗
+    C=16: baseline vs cs       | U=          14 | p_bonf=0.0000 | d=-3.042 (veliki) ✓
+    C=16: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-5.530 (veliki) ✓
+    C=16: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-3.869 (veliki) ✓
+    C=16:       cs vs im       | U=       1,912 | p_bonf=0.0000 | d=-1.157 (veliki) ✓
+    C=16:       cs vs htap     | U=          11 | p_bonf=0.0000 | d=-2.755 (veliki) ✓
+    C=16:       im vs htap     | U=         286 | p_bonf=0.0000 | d=-2.364 (veliki) ✓
+    C=32: baseline vs cs       | U=           0 | p_bonf=0.0000 | d=-5.860 (veliki) ✓
+    C=32: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-5.528 (veliki) ✓
+    C=32: baseline vs htap     | U=          19 | p_bonf=0.0000 | d=-4.684 (veliki) ✓
+    C=32:       cs vs im       | U=       2,779 | p_bonf=0.0024 | d=-0.672 (srednji) ✓
+    C=32:       cs vs htap     | U=         148 | p_bonf=0.0000 | d=-3.102 (veliki) ✓
+    C=32:       im vs htap     | U=         214 | p_bonf=0.0000 | d=-2.808 (veliki) ✓
+
+  Metrika: OLTP Latencija P50 (ms)
+    C=4: baseline vs cs       | U=       3,644 | p_bonf=1.0000 | d=+0.735 (srednji) ✗
+    C=4: baseline vs im       | U=       8,010 | p_bonf=0.0000 | d=+2.067 (veliki) ✓
+    C=4: baseline vs htap     | U=       8,100 | p_bonf=0.0000 | d=+2.385 (veliki) ✓
+    C=4:       cs vs im       | U=       8,010 | p_bonf=0.0000 | d=+7.517 (veliki) ✓
+    C=4:       cs vs htap     | U=       8,100 | p_bonf=0.0000 | d=+9.993 (veliki) ✓
+    C=4:       im vs htap     | U=       8,006 | p_bonf=0.0000 | d=+4.122 (veliki) ✓
+    C=16: baseline vs cs       | U=       2,368 | p_bonf=0.0000 | d=-0.264 (mali) ✓
+    C=16: baseline vs im       | U=       8,010 | p_bonf=0.0000 | d=+1.051 (veliki) ✓
+    C=16: baseline vs htap     | U=       8,010 | p_bonf=0.0000 | d=+1.107 (veliki) ✓
+    C=16:       cs vs im       | U=       7,921 | p_bonf=0.0000 | d=+1.189 (veliki) ✓
+    C=16:       cs vs htap     | U=       7,921 | p_bonf=0.0000 | d=+1.235 (veliki) ✓
+    C=16:       im vs htap     | U=       7,416 | p_bonf=0.0000 | d=+2.317 (veliki) ✓
+    C=32: baseline vs cs       | U=       4,056 | p_bonf=1.0000 | d=+0.125 (trivijalan) ✗
+    C=32: baseline vs im       | U=       7,869 | p_bonf=0.0000 | d=+1.914 (veliki) ✓
+    C=32: baseline vs htap     | U=       7,656 | p_bonf=0.0000 | d=+1.984 (veliki) ✓
+    C=32:       cs vs im       | U=       7,982 | p_bonf=0.0000 | d=+1.740 (veliki) ✓
+    C=32:       cs vs htap     | U=       7,743 | p_bonf=0.0000 | d=+1.812 (veliki) ✓
+    C=32:       im vs htap     | U=       7,126 | p_bonf=0.0000 | d=+1.125 (veliki) ✓
+
+  Metrika: OLTP Latencija P95 (ms)
+    C=4: baseline vs cs       | U=       4,468 | p_bonf=1.0000 | d=+0.494 (mali) ✗
+    C=4: baseline vs im       | U=       3,888 | p_bonf=1.0000 | d=+0.222 (mali) ✗
+    C=4: baseline vs htap     | U=       8,100 | p_bonf=0.0000 | d=+2.247 (veliki) ✓
+    C=4:       cs vs im       | U=       3,704 | p_bonf=1.0000 | d=-0.288 (mali) ✗
+    C=4:       cs vs htap     | U=       8,100 | p_bonf=0.0000 | d=+3.358 (veliki) ✓
+    C=4:       im vs htap     | U=       7,950 | p_bonf=0.0000 | d=+2.481 (veliki) ✓
+    C=16: baseline vs cs       | U=       3,544 | p_bonf=1.0000 | d=-0.174 (trivijalan) ✗
+    C=16: baseline vs im       | U=       4,523 | p_bonf=0.8127 | d=+0.353 (mali) ✗
+    C=16: baseline vs htap     | U=       7,119 | p_bonf=0.0000 | d=+1.637 (veliki) ✓
+    C=16:       cs vs im       | U=       4,477 | p_bonf=0.7999 | d=+0.520 (srednji) ✗
+    C=16:       cs vs htap     | U=       7,029 | p_bonf=0.0000 | d=+1.630 (veliki) ✓
+    C=16:       im vs htap     | U=       7,682 | p_bonf=0.0000 | d=+2.435 (veliki) ✓
+    C=32: baseline vs cs       | U=       4,014 | p_bonf=1.0000 | d=+0.099 (trivijalan) ✗
+    C=32: baseline vs im       | U=       6,733 | p_bonf=0.0000 | d=+1.483 (veliki) ✓
+    C=32: baseline vs htap     | U=       7,656 | p_bonf=0.0000 | d=+2.662 (veliki) ✓
+    C=32:       cs vs im       | U=       6,835 | p_bonf=0.0000 | d=+1.570 (veliki) ✓
+    C=32:       cs vs htap     | U=       7,743 | p_bonf=0.0000 | d=+2.973 (veliki) ✓
+    C=32:       im vs htap     | U=       7,734 | p_bonf=0.0000 | d=+3.036 (veliki) ✓
+
+  Metrika: OLAP Latencija P50 (ms)
+    C=4: baseline vs cs       | U=       8,012 | p_bonf=0.0000 | d=+1.888 (veliki) ✓
+    C=4: baseline vs im       | U=       7,921 | p_bonf=0.0000 | d=+3.230 (veliki) ✓
+    C=4: baseline vs htap     | U=       8,010 | p_bonf=0.0000 | d=+3.032 (veliki) ✓
+    C=4:       cs vs im       | U=       7,654 | p_bonf=0.0000 | d=+3.641 (veliki) ✓
+    C=4:       cs vs htap     | U=       7,740 | p_bonf=0.0000 | d=+3.093 (veliki) ✓
+    C=4:       im vs htap     | U=         570 | p_bonf=0.0000 | d=-1.927 (veliki) ✓
+    C=16: baseline vs cs       | U=       7,016 | p_bonf=0.0000 | d=+1.567 (veliki) ✓
+    C=16: baseline vs im       | U=       7,869 | p_bonf=0.0000 | d=+2.084 (veliki) ✓
+    C=16: baseline vs htap     | U=       8,010 | p_bonf=0.0000 | d=+2.884 (veliki) ✓
+    C=16:       cs vs im       | U=       5,274 | p_bonf=0.0008 | d=+0.719 (srednji) ✓
+    C=16:       cs vs htap     | U=       7,380 | p_bonf=0.0000 | d=+2.031 (veliki) ✓
+    C=16:       im vs htap     | U=       5,796 | p_bonf=0.0000 | d=+1.338 (veliki) ✓
+    C=32: baseline vs cs       | U=       6,219 | p_bonf=0.0000 | d=+1.254 (veliki) ✓
+    C=32: baseline vs im       | U=       6,775 | p_bonf=0.0000 | d=+1.665 (veliki) ✓
+    C=32: baseline vs htap     | U=       7,620 | p_bonf=0.0000 | d=+2.086 (veliki) ✓
+    C=32:       cs vs im       | U=       5,342 | p_bonf=0.0007 | d=+0.679 (srednji) ✓
+    C=32:       cs vs htap     | U=       6,613 | p_bonf=0.0000 | d=+1.614 (veliki) ✓
+    C=32:       im vs htap     | U=       6,449 | p_bonf=0.0000 | d=+1.564 (veliki) ✓
+
+  Metrika: OLAP Latencija P95 (ms)
+    C=4: baseline vs cs       | U=       7,144 | p_bonf=0.0000 | d=+2.300 (veliki) ✓
+    C=4: baseline vs im       | U=       7,893 | p_bonf=0.0000 | d=+2.962 (veliki) ✓
+    C=4: baseline vs htap     | U=       8,010 | p_bonf=0.0000 | d=+3.095 (veliki) ✓
+    C=4:       cs vs im       | U=       7,546 | p_bonf=0.0000 | d=+2.435 (veliki) ✓
+    C=4:       cs vs htap     | U=       7,740 | p_bonf=0.0000 | d=+3.855 (veliki) ✓
+    C=4:       im vs htap     | U=       5,116 | p_bonf=0.0081 | d=+0.315 (mali) ✓
+    C=16: baseline vs cs       | U=       7,820 | p_bonf=0.0000 | d=+2.122 (veliki) ✓
+    C=16: baseline vs im       | U=       7,747 | p_bonf=0.0000 | d=+2.168 (veliki) ✓
+    C=16: baseline vs htap     | U=       8,010 | p_bonf=0.0000 | d=+3.006 (veliki) ✓
+    C=16:       cs vs im       | U=       4,897 | p_bonf=0.0388 | d=+0.254 (mali) ✓
+    C=16:       cs vs htap     | U=       7,880 | p_bonf=0.0000 | d=+2.305 (veliki) ✓
+    C=16:       im vs htap     | U=       6,834 | p_bonf=0.0000 | d=+1.403 (veliki) ✓
+    C=32: baseline vs cs       | U=       7,193 | p_bonf=0.0000 | d=+1.906 (veliki) ✓
+    C=32: baseline vs im       | U=       6,723 | p_bonf=0.0000 | d=+1.519 (veliki) ✓
+    C=32: baseline vs htap     | U=       7,592 | p_bonf=0.0000 | d=+2.929 (veliki) ✓
+    C=32:       cs vs im       | U=       3,878 | p_bonf=1.0000 | d=-0.200 (trivijalan) ✗
+    C=32:       cs vs htap     | U=       6,363 | p_bonf=0.0000 | d=+1.274 (veliki) ✓
+    C=32:       im vs htap     | U=       6,149 | p_bonf=0.0000 | d=+1.203 (veliki) ✓
+
+══════════════════════════════════════════════════════════════════════
+3. PROVJERA HIPOTEZA
+══════════════════════════════════════════════════════════════════════
+
+  H1: Latencija CS ≈ HTAP pri niskoj konkurentnosti,
+       ali razlika je značajna pri visokoj konkurentnosti.
+    Konkurentnost NISKA (C=4): CS P50=1850.4ms, HTAP P50=825.1ms | p_bonf=0.0000 | d=6.142 (veliki) | POTVRĐENO
+    Konkurentnost VISOKA (C=32): CS P50=3620.0ms, HTAP P50=1813.0ms | p_bonf=0.0000 | d=6.519 (veliki) | POTVRĐENO
+
+  H2: Degradacija OLTP propusnosti pri miješanom opterećenju je veća
+       kod CS nego kod HTAP konfiguracije.
+    CS degradacija:   67.38% ± 2.84%
+    HTAP degradacija: 55.90% ± 6.28%
+    Mann-Whitney (CS > HTAP): p_bonf=0.0000 | d=2.315 | POTVRĐENO
+
+  H3: HTAP ne ostvaruje statistički značajno veću OLTP propusnost
+       od IM konfiguracije pri transakcijskom opterećenju (80/20).
+    C=4: IM=3027.3ops/s, HTAP=10083.3ops/s | p_bonf=0.0000 | d=-4.380 | ODBAČENA
+    C=16: IM=7726.2ops/s, HTAP=35914.4ops/s | p_bonf=0.0000 | d=-8.287 | ODBAČENA
+    C=32: IM=6325.4ops/s, HTAP=43751.3ops/s | p_bonf=0.0000 | d=-11.925 | ODBAČENA
+
+Svi rezultati pohraneni: ..\Results\statistical_tests.csv
