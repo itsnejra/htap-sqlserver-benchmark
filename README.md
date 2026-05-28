@@ -13,11 +13,15 @@
 4. [Postavljanje okruženja](#4-postavljanje-okruženja)
 5. [Pokretanje benchmarka](#5-pokretanje-benchmarka)
 6. [Statistička analiza i vizualizacije](#6-statistička-analiza-i-vizualizacije)
+   - [6b. Rezultati benchmarka](#6b-rezultati-benchmarka-sažetak)
 7. [Eksperimentalni dizajn](#7-eksperimentalni-dizajn)
+   - [7b. Skala podataka](#7b-skala-podataka)
 8. [Konfiguracijske strategije](#8-konfiguracijske-strategije)
 9. [Radna opterećenja](#9-radna-opterećenja)
 10. [Izlazni fajlovi](#10-izlazni-fajlovi)
 11. [Rješavanje problema](#11-rješavanje-problema)
+12. [Poznata ograničenja](#12-poznata-ograničenja)
+13. [Licenca i citat](#13-licenca-i-citat)
 
 ---
 
