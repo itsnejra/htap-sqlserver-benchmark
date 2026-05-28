@@ -48,6 +48,37 @@ USE HTAPBenchmark;
 | im.* | SCHEMA_ONLY (memory) | ❌ No — rows lost |
 | htap.* | SCHEMA_ONLY (memory) | ❌ No — rows lost |
 
+## Verification Query
+
+After running all scripts, verify row counts are consistent across all 4 schemas:
+
+```sql
+USE HTAPBenchmark;
+SELECT
+    s.name        AS Shema,
+    t.name        AS Tablica,
+    SUM(p.rows)   AS Redova
+FROM sys.tables t
+JOIN sys.schemas    s ON t.schema_id = s.schema_id
+JOIN sys.partitions p ON t.object_id = p.object_id
+WHERE s.name IN ('baseline','cs','im','htap')
+  AND p.index_id IN (0, 1)
+GROUP BY s.name, t.name
+ORDER BY s.name, t.name;
+```
+
+Expected results (StackOverflow2010):
+
+| Schema | Table | Expected rows |
+|--------|-------|--------------|
+| baseline/cs/im/htap | Badges | ~1,102,019 |
+| baseline/cs/im/htap | Comments | ~3,875,183 |
+| baseline/cs/im/htap | Posts | ~3,729,195 |
+| baseline/cs/im/htap | Users | ~299,398 |
+| baseline/cs/im/htap | Votes | ~10,143,364 |
+
+> All 4 schemas should show identical row counts. If `im.*` or `htap.*` show 0 rows, SQL Server was restarted — run `05b_LoadData_CS_HTAP_Only.sql`.
+
 ## Schema Architecture
 
 ```
