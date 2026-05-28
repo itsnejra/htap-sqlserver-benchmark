@@ -85,6 +85,7 @@ HTAPBenchmark/
 │
 ├── Analysis/
 │   ├── requirements.txt
+│   ├── 00_merge_results.py       # → Results/summary.csv (spaja sirova mjerenja)
 │   ├── 01_descriptive_stats.py   # → descriptive_summary.csv / .xlsx
 │   ├── 02_statistical_tests.py   # → statistical_tests.csv, hypothesis_results.txt
 │   └── 03_visualizations.py      # → figures/*.png (6 grafova)
@@ -221,13 +222,20 @@ Pokrenuti **redom** iz `Analysis/` direktorija nakon završenog benchmarka:
 ```bash
 cd HTAPBenchmark/Analysis
 
+python 00_merge_results.py
+# Spaja results/measurements.csv u summary.csv (agregira po runu)
+# Izlaz: ../Results/summary.csv
+
 python 01_descriptive_stats.py
+# Deskriptivna statistika: mean, std, P50, P95 po kombinaciji
 # Izlaz: ../Results/descriptive_summary.csv i .xlsx
 
 python 02_statistical_tests.py
-# Izlaz: ../Results/statistical_tests.csv i hypothesis_results.txt
+# Kruskal-Wallis, Mann-Whitney U + Bonferroni, Cohen's d
+# Izlaz: ../Results/statistical_tests.csv, hypothesis_results.txt
 
 python 03_visualizations.py
+# 6 grafova: violin, throughput-latency, degradacija, heatmap
 # Izlaz: ../Results/figures/*.png
 ```
 
