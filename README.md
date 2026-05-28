@@ -66,8 +66,7 @@ HTAPBenchmark/
 │   ├── 01_Schema_Baseline.sql             # Baseline schema (B-tree)
 │   ├── 02_Schema_CS.sql                   # CS schema (columnstore)
 │   ├── 03_Schema_IM.sql                   # IM schema (memory-optimized)
-│   ├── 04_Schema_HTAP.sql                 # HTAP schema (memory-optimized)
-│   ├── 04b_Schema_HTAP_Fixed.sql          # Korekcije HTAP sheme
+│   ├── 04_Schema_HTAP.sql                 # HTAP schema (memory-optimized, dual-store)
 │   ├── 05_LoadData.sql                    # Učitavanje podataka (~30-60 min)
 │   ├── 06_StoredProcs_OLTP.sql            # 6 OLTP procedura × 4 sheme
 │   ├── 07_StoredProcs_OLAP.sql            # 5 OLAP procedura × 3 sheme
