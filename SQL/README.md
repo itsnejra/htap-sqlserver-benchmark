@@ -32,6 +32,8 @@ Table schemas and indexes survive; only rows are lost.
 
 Run `05b_LoadData_CS_HTAP_Only.sql` to restore data without reloading `baseline` and `cs` schemas:
 
+> **Note on data completeness:** `05b` loads only TOP 500,000 rows for `htap.Votes` and `htap.Comments` (instead of the full ~10M and ~3.9M) to prevent MVCC version-chain OOM at high concurrency during reload. **This script was NOT used during the published benchmark** — all measurements were collected from a continuous run following a full initial load (`05_LoadData.sql`), so all four schemas had identical row counts throughout. `05b` is a recovery tool for restart scenarios only.
+
 ```sql
 -- Fast reload: only im.* and htap.* from cs.* source (~5-10 min)
 -- cs.* is disk-based and survives restarts - used as the reload source
