@@ -21,10 +21,7 @@ from pathlib import Path
 # ----------------------------------------------------------------
 # Putanje
 # ----------------------------------------------------------------
-BENCH_RESULTS = Path(
-    r"C:\Users\Korisnik\Downloads\vjezbe\HTAPBenchmark"
-    r"\BenchmarkApp\HTAPBenchmark.Runner\bin\Release\net8.0\Results"
-)
+BENCH_RESULTS = Path(__file__).parent.parent / "BenchmarkApp" / "HTAPBenchmark.Runner" / "bin" / "Release" / "net8.0" / "Results"
 
 OUTPUT_DIR = Path("../Results")
 OUTPUT_CSV = OUTPUT_DIR / "summary.csv"
