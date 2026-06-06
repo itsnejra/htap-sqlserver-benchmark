@@ -213,57 +213,6 @@ public sealed class BenchmarkOrchestrator
     }
 
     /// <summary>
-    /// Restartuje SQL Server servis da potpuno počisti XTP memoriju (version chains).
-    /// Potrebno između kombinacija pri visokim razinama konkurentnosti (C>=16) za IM/HTAP.
-    /// MORA biti pokrenuto kao Administrator!
-    /// </summary>
-    private async Task RestartSqlServerAsync()
-    {
-        const string serviceName = "MSSQLSERVER";
-        const int stopWaitMs    = 25_000;
-        const int startWaitMs   = 40_000;
-
-        try
-        {
-            // Stop
-            var stop = Process.Start(new ProcessStartInfo("sc", $"stop {serviceName}")
-                { RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true });
-            stop?.WaitForExit(stopWaitMs);
-            await Task.Delay(stopWaitMs); // Pričekaj da se service potpuno ugasi
-
-            // Start
-            var start = Process.Start(new ProcessStartInfo("sc", $"start {serviceName}")
-                { RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true });
-            start?.WaitForExit(30_000);
-            await Task.Delay(startWaitMs); // Pričekaj da SQL Server bude spreman za konekcije
-
-            // Provjeri konekciju — pokušaj do 10 puta s 5s pauzama
-            for (int attempt = 1; attempt <= 10; attempt++)
-            {
-                try
-                {
-                    await using var testConn = new SqlConnection(_config.ConnectionString);
-                    await testConn.OpenAsync();
-                    _logger.LogInformation("  SQL Server dostupan (pokušaj {A}/10).", attempt);
-                    return;
-                }
-                catch
-                {
-                    if (attempt < 10)
-                    {
-                        _logger.LogWarning("  Čekam SQL Server... (pokušaj {A}/10)", attempt);
-                        await Task.Delay(5_000);
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "  Restart SQL Servera nije uspio! Nastavljam bez restarta.");
-        }
-    }
-
-    /// <summary>
     /// Čita postojeći summary CSV i vraća mapu (schema, ratio, concurrency) -> broj završenih runova.
     /// Koristi se za resume funkcionalnost — preskačemo kombinacije koje su već završene.
     /// Uzima se MAX(RunNumber) po kombinaciji (a ne COUNT) jer se run brojevi ne mijenjaju pri resume.
