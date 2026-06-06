@@ -32,124 +32,340 @@ Korekcija višestrukih usporedbi: Bonferroni
 ──────────────────────────────────────────────────────────────────────
 
   Metrika: OLTP Throughput (ops/s)
-    C=4: baseline vs cs       | U=       3,999 | p_bonf=1.0000 | d=-0.074 (trivijalan) ✗
-    C=4: baseline vs im       | U=       2,358 | p_bonf=0.0000 | d=-0.789 (srednji) ✓
-    C=4: baseline vs htap     | U=           5 | p_bonf=0.0000 | d=-2.176 (veliki) ✓
-    C=4:       cs vs im       | U=       2,436 | p_bonf=0.0000 | d=-0.757 (srednji) ✓
-    C=4:       cs vs htap     | U=         117 | p_bonf=0.0000 | d=-2.164 (veliki) ✓
-    C=4:       im vs htap     | U=         768 | p_bonf=0.0000 | d=-1.787 (veliki) ✓
-    C=16: baseline vs cs       | U=       4,719 | p_bonf=0.2373 | d=+0.118 (trivijalan) ✗
-    C=16: baseline vs im       | U=       3,715 | p_bonf=1.0000 | d=-0.059 (trivijalan) ✗
-    C=16: baseline vs htap     | U=       1,684 | p_bonf=0.0000 | d=-1.332 (veliki) ✓
-    C=16:       cs vs im       | U=       3,412 | p_bonf=0.6653 | d=-0.196 (trivijalan) ✗
-    C=16:       cs vs htap     | U=       1,690 | p_bonf=0.0000 | d=-1.375 (veliki) ✓
-    C=16:       im vs htap     | U=       1,804 | p_bonf=0.0000 | d=-1.325 (veliki) ✓
-    C=32: baseline vs cs       | U=       3,698 | p_bonf=1.0000 | d=-0.020 (trivijalan) ✗
-    C=32: baseline vs im       | U=       1,941 | p_bonf=0.0000 | d=-0.909 (veliki) ✓
-    C=32: baseline vs htap     | U=         517 | p_bonf=0.0000 | d=-1.598 (veliki) ✓
-    C=32:       cs vs im       | U=       2,106 | p_bonf=0.0000 | d=-0.918 (veliki) ✓
-    C=32:       cs vs htap     | U=         538 | p_bonf=0.0000 | d=-1.601 (veliki) ✓
-    C=32:       im vs htap     | U=       1,203 | p_bonf=0.0000 | d=-1.414 (veliki) ✓
+    20_80 C=4: baseline vs cs       | U=           0 | p_bonf=0.0000 | d=-7.334 (veliki) ✓
+    20_80 C=4: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-2.420 (veliki) ✓
+    20_80 C=4: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-12.168 (veliki) ✓
+    20_80 C=4:       cs vs im       | U=         192 | p_bonf=0.0014 | d=-1.153 (veliki) ✓
+    20_80 C=4:       cs vs htap     | U=           0 | p_bonf=0.0000 | d=-10.796 (veliki) ✓
+    20_80 C=4:       im vs htap     | U=           0 | p_bonf=0.0000 | d=-6.842 (veliki) ✓
+    20_80 C=16: baseline vs cs       | U=         698 | p_bonf=0.0015 | d=+0.909 (veliki) ✓
+    20_80 C=16: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-2.408 (veliki) ✓
+    20_80 C=16: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-7.006 (veliki) ✓
+    20_80 C=16:       cs vs im       | U=           0 | p_bonf=0.0000 | d=-2.601 (veliki) ✓
+    20_80 C=16:       cs vs htap     | U=           0 | p_bonf=0.0000 | d=-7.692 (veliki) ✓
+    20_80 C=16:       im vs htap     | U=         181 | p_bonf=0.0007 | d=-0.740 (srednji) ✓
+    20_80 C=32: baseline vs cs       | U=         387 | p_bonf=1.0000 | d=+0.065 (trivijalan) ✗
+    20_80 C=32: baseline vs im       | U=           1 | p_bonf=0.0000 | d=-2.538 (veliki) ✓
+    20_80 C=32: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-2.168 (veliki) ✓
+    20_80 C=32:       cs vs im       | U=           0 | p_bonf=0.0000 | d=-2.567 (veliki) ✓
+    20_80 C=32:       cs vs htap     | U=           0 | p_bonf=0.0000 | d=-2.173 (veliki) ✓
+    20_80 C=32:       im vs htap     | U=          77 | p_bonf=0.0000 | d=-1.379 (veliki) ✓
+    50_50 C=4: baseline vs cs       | U=         697 | p_bonf=0.0016 | d=+1.038 (veliki) ✓
+    50_50 C=4: baseline vs im       | U=          74 | p_bonf=0.0000 | d=-1.724 (veliki) ✓
+    50_50 C=4: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-12.577 (veliki) ✓
+    50_50 C=4:       cs vs im       | U=          30 | p_bonf=0.0000 | d=-2.355 (veliki) ✓
+    50_50 C=4:       cs vs htap     | U=           0 | p_bonf=0.0000 | d=-12.964 (veliki) ✓
+    50_50 C=4:       im vs htap     | U=           0 | p_bonf=0.0000 | d=-11.001 (veliki) ✓
+    50_50 C=16: baseline vs cs       | U=         504 | p_bonf=1.0000 | d=+0.427 (mali) ✗
+    50_50 C=16: baseline vs im       | U=         475 | p_bonf=1.0000 | d=-0.231 (mali) ✗
+    50_50 C=16: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-12.144 (veliki) ✓
+    50_50 C=16:       cs vs im       | U=         428 | p_bonf=1.0000 | d=-0.451 (mali) ✗
+    50_50 C=16:       cs vs htap     | U=           0 | p_bonf=0.0000 | d=-13.006 (veliki) ✓
+    50_50 C=16:       im vs htap     | U=           0 | p_bonf=0.0000 | d=-9.647 (veliki) ✓
+    50_50 C=32: baseline vs cs       | U=         258 | p_bonf=0.0447 | d=-0.537 (srednji) ✓
+    50_50 C=32: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-2.655 (veliki) ✓
+    50_50 C=32: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-2.597 (veliki) ✓
+    50_50 C=32:       cs vs im       | U=           0 | p_bonf=0.0000 | d=-2.526 (veliki) ✓
+    50_50 C=32:       cs vs htap     | U=           0 | p_bonf=0.0000 | d=-2.542 (veliki) ✓
+    50_50 C=32:       im vs htap     | U=          26 | p_bonf=0.0000 | d=-1.829 (veliki) ✓
+    80_20 C=4: baseline vs cs       | U=         540 | p_bonf=1.0000 | d=-0.020 (trivijalan) ✗
+    80_20 C=4: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-2.273 (veliki) ✓
+    80_20 C=4: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-5.758 (veliki) ✓
+    80_20 C=4:       cs vs im       | U=          25 | p_bonf=0.0000 | d=-2.074 (veliki) ✓
+    80_20 C=4:       cs vs htap     | U=           0 | p_bonf=0.0000 | d=-5.650 (veliki) ✓
+    80_20 C=4:       im vs htap     | U=           5 | p_bonf=0.0000 | d=-4.380 (veliki) ✓
+    80_20 C=16: baseline vs cs       | U=         847 | p_bonf=0.0000 | d=+2.280 (veliki) ✓
+    80_20 C=16: baseline vs im       | U=         717 | p_bonf=0.0005 | d=+1.172 (veliki) ✓
+    80_20 C=16: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-8.171 (veliki) ✓
+    80_20 C=16:       cs vs im       | U=         497 | p_bonf=1.0000 | d=+0.071 (trivijalan) ✗
+    80_20 C=16:       cs vs htap     | U=           0 | p_bonf=0.0000 | d=-8.481 (veliki) ✓
+    80_20 C=16:       im vs htap     | U=           0 | p_bonf=0.0000 | d=-8.287 (veliki) ✓
+    80_20 C=32: baseline vs cs       | U=         501 | p_bonf=1.0000 | d=+0.415 (mali) ✗
+    80_20 C=32: baseline vs im       | U=         334 | p_bonf=1.0000 | d=-0.565 (srednji) ✗
+    80_20 C=32: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-14.024 (veliki) ✓
+    80_20 C=32:       cs vs im       | U=         313 | p_bonf=0.2615 | d=-0.768 (srednji) ✗
+    80_20 C=32:       cs vs htap     | U=           0 | p_bonf=0.0000 | d=-14.672 (veliki) ✓
+    80_20 C=32:       im vs htap     | U=           0 | p_bonf=0.0000 | d=-11.925 (veliki) ✓
 
   Metrika: OLAP Throughput (q/s)
-    C=4: baseline vs cs       | U=       1,069 | p_bonf=0.0000 | d=-1.773 (veliki) ✓
-    C=4: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-4.388 (veliki) ✓
-    C=4: baseline vs htap     | U=           1 | p_bonf=0.0000 | d=-2.795 (veliki) ✓
-    C=4:       cs vs im       | U=          26 | p_bonf=0.0000 | d=-3.014 (veliki) ✓
-    C=4:       cs vs htap     | U=         537 | p_bonf=0.0000 | d=-2.093 (veliki) ✓
-    C=4:       im vs htap     | U=       3,638 | p_bonf=1.0000 | d=-0.135 (trivijalan) ✗
-    C=16: baseline vs cs       | U=          14 | p_bonf=0.0000 | d=-3.042 (veliki) ✓
-    C=16: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-5.530 (veliki) ✓
-    C=16: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-3.869 (veliki) ✓
-    C=16:       cs vs im       | U=       1,912 | p_bonf=0.0000 | d=-1.157 (veliki) ✓
-    C=16:       cs vs htap     | U=          11 | p_bonf=0.0000 | d=-2.755 (veliki) ✓
-    C=16:       im vs htap     | U=         286 | p_bonf=0.0000 | d=-2.364 (veliki) ✓
-    C=32: baseline vs cs       | U=           0 | p_bonf=0.0000 | d=-5.860 (veliki) ✓
-    C=32: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-5.528 (veliki) ✓
-    C=32: baseline vs htap     | U=          19 | p_bonf=0.0000 | d=-4.684 (veliki) ✓
-    C=32:       cs vs im       | U=       2,779 | p_bonf=0.0024 | d=-0.672 (srednji) ✓
-    C=32:       cs vs htap     | U=         148 | p_bonf=0.0000 | d=-3.102 (veliki) ✓
-    C=32:       im vs htap     | U=         214 | p_bonf=0.0000 | d=-2.808 (veliki) ✓
+    20_80 C=4: baseline vs cs       | U=           0 | p_bonf=0.0000 | d=-8.575 (veliki) ✓
+    20_80 C=4: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-7.039 (veliki) ✓
+    20_80 C=4: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-20.202 (veliki) ✓
+    20_80 C=4:       cs vs im       | U=           8 | p_bonf=0.0000 | d=-5.079 (veliki) ✓
+    20_80 C=4:       cs vs htap     | U=           0 | p_bonf=0.0000 | d=-16.391 (veliki) ✓
+    20_80 C=4:       im vs htap     | U=          24 | p_bonf=0.0000 | d=-1.851 (veliki) ✓
+    20_80 C=16: baseline vs cs       | U=           0 | p_bonf=0.0000 | d=-11.437 (veliki) ✓
+    20_80 C=16: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-6.642 (veliki) ✓
+    20_80 C=16: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-14.705 (veliki) ✓
+    20_80 C=16:       cs vs im       | U=         166 | p_bonf=0.0003 | d=-1.538 (veliki) ✓
+    20_80 C=16:       cs vs htap     | U=           0 | p_bonf=0.0000 | d=-10.898 (veliki) ✓
+    20_80 C=16:       im vs htap     | U=           0 | p_bonf=0.0000 | d=-8.070 (veliki) ✓
+    20_80 C=32: baseline vs cs       | U=           0 | p_bonf=0.0000 | d=-9.324 (veliki) ✓
+    20_80 C=32: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-6.908 (veliki) ✓
+    20_80 C=32: baseline vs htap     | U=           6 | p_bonf=0.0000 | d=-4.622 (veliki) ✓
+    20_80 C=32:       cs vs im       | U=         127 | p_bonf=0.0000 | d=-1.655 (veliki) ✓
+    20_80 C=32:       cs vs htap     | U=          30 | p_bonf=0.0000 | d=-3.176 (veliki) ✓
+    20_80 C=32:       im vs htap     | U=          49 | p_bonf=0.0000 | d=-2.640 (veliki) ✓
+    50_50 C=4: baseline vs cs       | U=           4 | p_bonf=0.0000 | d=-4.879 (veliki) ✓
+    50_50 C=4: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-12.525 (veliki) ✓
+    50_50 C=4: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-12.398 (veliki) ✓
+    50_50 C=4:       cs vs im       | U=           0 | p_bonf=0.0000 | d=-8.971 (veliki) ✓
+    50_50 C=4:       cs vs htap     | U=           0 | p_bonf=0.0000 | d=-9.129 (veliki) ✓
+    50_50 C=4:       im vs htap     | U=         267 | p_bonf=0.0416 | d=-0.640 (srednji) ✓
+    50_50 C=16: baseline vs cs       | U=           0 | p_bonf=0.0000 | d=-12.255 (veliki) ✓
+    50_50 C=16: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-7.566 (veliki) ✓
+    50_50 C=16: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-12.619 (veliki) ✓
+    50_50 C=16:       cs vs im       | U=         113 | p_bonf=0.0000 | d=-1.074 (veliki) ✓
+    50_50 C=16:       cs vs htap     | U=           0 | p_bonf=0.0000 | d=-9.295 (veliki) ✓
+    50_50 C=16:       im vs htap     | U=           0 | p_bonf=0.0000 | d=-8.145 (veliki) ✓
+    50_50 C=32: baseline vs cs       | U=           0 | p_bonf=0.0000 | d=-10.403 (veliki) ✓
+    50_50 C=32: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-6.847 (veliki) ✓
+    50_50 C=32: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-5.083 (veliki) ✓
+    50_50 C=32:       cs vs im       | U=         720 | p_bonf=0.0001 | d=+1.234 (veliki) ✓
+    50_50 C=32:       cs vs htap     | U=          29 | p_bonf=0.0000 | d=-3.256 (veliki) ✓
+    50_50 C=32:       im vs htap     | U=          24 | p_bonf=0.0000 | d=-3.547 (veliki) ✓
+    80_20 C=4: baseline vs cs       | U=         224 | p_bonf=0.0050 | d=-1.198 (veliki) ✓
+    80_20 C=4: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-8.324 (veliki) ✓
+    80_20 C=4: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-6.280 (veliki) ✓
+    80_20 C=4:       cs vs im       | U=           0 | p_bonf=0.0000 | d=-6.345 (veliki) ✓
+    80_20 C=4:       cs vs htap     | U=           0 | p_bonf=0.0000 | d=-4.257 (veliki) ✓
+    80_20 C=4:       im vs htap     | U=         850 | p_bonf=0.0000 | d=+2.378 (veliki) ✓
+    80_20 C=16: baseline vs cs       | U=           0 | p_bonf=0.0000 | d=-4.996 (veliki) ✓
+    80_20 C=16: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-12.405 (veliki) ✓
+    80_20 C=16: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-10.852 (veliki) ✓
+    80_20 C=16:       cs vs im       | U=           0 | p_bonf=0.0000 | d=-5.697 (veliki) ✓
+    80_20 C=16:       cs vs htap     | U=           0 | p_bonf=0.0000 | d=-7.304 (veliki) ✓
+    80_20 C=16:       im vs htap     | U=           0 | p_bonf=0.0000 | d=-3.729 (veliki) ✓
+    80_20 C=32: baseline vs cs       | U=           0 | p_bonf=0.0000 | d=-10.699 (veliki) ✓
+    80_20 C=32: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-8.927 (veliki) ✓
+    80_20 C=32: baseline vs htap     | U=           0 | p_bonf=0.0000 | d=-10.949 (veliki) ✓
+    80_20 C=32:       cs vs im       | U=          29 | p_bonf=0.0000 | d=-2.776 (veliki) ✓
+    80_20 C=32:       cs vs htap     | U=           0 | p_bonf=0.0000 | d=-7.729 (veliki) ✓
+    80_20 C=32:       im vs htap     | U=           0 | p_bonf=0.0000 | d=-5.708 (veliki) ✓
 
   Metrika: OLTP Latencija P50 (ms)
-    C=4: baseline vs cs       | U=       3,644 | p_bonf=1.0000 | d=+0.735 (srednji) ✗
-    C=4: baseline vs im       | U=       8,010 | p_bonf=0.0000 | d=+2.067 (veliki) ✓
-    C=4: baseline vs htap     | U=       8,100 | p_bonf=0.0000 | d=+2.385 (veliki) ✓
-    C=4:       cs vs im       | U=       8,010 | p_bonf=0.0000 | d=+7.517 (veliki) ✓
-    C=4:       cs vs htap     | U=       8,100 | p_bonf=0.0000 | d=+9.993 (veliki) ✓
-    C=4:       im vs htap     | U=       8,006 | p_bonf=0.0000 | d=+4.122 (veliki) ✓
-    C=16: baseline vs cs       | U=       2,368 | p_bonf=0.0000 | d=-0.264 (mali) ✓
-    C=16: baseline vs im       | U=       8,010 | p_bonf=0.0000 | d=+1.051 (veliki) ✓
-    C=16: baseline vs htap     | U=       8,010 | p_bonf=0.0000 | d=+1.107 (veliki) ✓
-    C=16:       cs vs im       | U=       7,921 | p_bonf=0.0000 | d=+1.189 (veliki) ✓
-    C=16:       cs vs htap     | U=       7,921 | p_bonf=0.0000 | d=+1.235 (veliki) ✓
-    C=16:       im vs htap     | U=       7,416 | p_bonf=0.0000 | d=+2.317 (veliki) ✓
-    C=32: baseline vs cs       | U=       4,056 | p_bonf=1.0000 | d=+0.125 (trivijalan) ✗
-    C=32: baseline vs im       | U=       7,869 | p_bonf=0.0000 | d=+1.914 (veliki) ✓
-    C=32: baseline vs htap     | U=       7,656 | p_bonf=0.0000 | d=+1.984 (veliki) ✓
-    C=32:       cs vs im       | U=       7,982 | p_bonf=0.0000 | d=+1.740 (veliki) ✓
-    C=32:       cs vs htap     | U=       7,743 | p_bonf=0.0000 | d=+1.812 (veliki) ✓
-    C=32:       im vs htap     | U=       7,126 | p_bonf=0.0000 | d=+1.125 (veliki) ✓
+    20_80 C=4: baseline vs cs       | U=         900 | p_bonf=0.0000 | d=+5.087 (veliki) ✓
+    20_80 C=4: baseline vs im       | U=         870 | p_bonf=0.0000 | d=+8.064 (veliki) ✓
+    20_80 C=4: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+8.900 (veliki) ✓
+    20_80 C=4:       cs vs im       | U=         870 | p_bonf=0.0000 | d=+10.835 (veliki) ✓
+    20_80 C=4:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+16.960 (veliki) ✓
+    20_80 C=4:       im vs htap     | U=         870 | p_bonf=0.0000 | d=+3.559 (veliki) ✓
+    20_80 C=16: baseline vs cs       | U=         219 | p_bonf=0.0039 | d=-0.860 (veliki) ✓
+    20_80 C=16: baseline vs im       | U=         870 | p_bonf=0.0000 | d=+2.654 (veliki) ✓
+    20_80 C=16: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+2.681 (veliki) ✓
+    20_80 C=16:       cs vs im       | U=         870 | p_bonf=0.0000 | d=+4.964 (veliki) ✓
+    20_80 C=16:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+5.013 (veliki) ✓
+    20_80 C=16:       im vs htap     | U=         467 | p_bonf=1.0000 | d=+0.264 (mali) ✗
+    20_80 C=32: baseline vs cs       | U=         446 | p_bonf=1.0000 | d=-0.054 (trivijalan) ✗
+    20_80 C=32: baseline vs im       | U=         899 | p_bonf=0.0000 | d=+4.839 (veliki) ✓
+    20_80 C=32: baseline vs htap     | U=         870 | p_bonf=0.0000 | d=+4.825 (veliki) ✓
+    20_80 C=32:       cs vs im       | U=         900 | p_bonf=0.0000 | d=+5.563 (veliki) ✓
+    20_80 C=32:       cs vs htap     | U=         870 | p_bonf=0.0000 | d=+5.549 (veliki) ✓
+    20_80 C=32:       im vs htap     | U=         617 | p_bonf=0.0355 | d=+0.334 (mali) ✓
+    50_50 C=4: baseline vs cs       | U=           0 | p_bonf=0.0000 | d=-3.432 (veliki) ✓
+    50_50 C=4: baseline vs im       | U=         900 | p_bonf=0.0000 | d=+19.620 (veliki) ✓
+    50_50 C=4: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+27.383 (veliki) ✓
+    50_50 C=4:       cs vs im       | U=         900 | p_bonf=0.0000 | d=+16.082 (veliki) ✓
+    50_50 C=4:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+20.652 (veliki) ✓
+    50_50 C=4:       im vs htap     | U=         900 | p_bonf=0.0000 | d=+9.788 (veliki) ✓
+    50_50 C=16: baseline vs cs       | U=          98 | p_bonf=0.0000 | d=-1.501 (veliki) ✓
+    50_50 C=16: baseline vs im       | U=         900 | p_bonf=0.0000 | d=+5.033 (veliki) ✓
+    50_50 C=16: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+7.154 (veliki) ✓
+    50_50 C=16:       cs vs im       | U=         870 | p_bonf=0.0000 | d=+12.817 (veliki) ✓
+    50_50 C=16:       cs vs htap     | U=         870 | p_bonf=0.0000 | d=+19.655 (veliki) ✓
+    50_50 C=16:       im vs htap     | U=         900 | p_bonf=0.0000 | d=+5.695 (veliki) ✓
+    50_50 C=32: baseline vs cs       | U=         641 | p_bonf=0.0110 | d=+0.837 (veliki) ✓
+    50_50 C=32: baseline vs im       | U=         900 | p_bonf=0.0000 | d=+3.827 (veliki) ✓
+    50_50 C=32: baseline vs htap     | U=         840 | p_bonf=0.0000 | d=+3.862 (veliki) ✓
+    50_50 C=32:       cs vs im       | U=         870 | p_bonf=0.0000 | d=+3.970 (veliki) ✓
+    50_50 C=32:       cs vs htap     | U=         812 | p_bonf=0.0000 | d=+4.044 (veliki) ✓
+    50_50 C=32:       im vs htap     | U=         806 | p_bonf=0.0000 | d=+2.618 (veliki) ✓
+    80_20 C=4: baseline vs cs       | U=         411 | p_bonf=1.0000 | d=+0.147 (trivijalan) ✗
+    80_20 C=4: baseline vs im       | U=         900 | p_bonf=0.0000 | d=+10.514 (veliki) ✓
+    80_20 C=4: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+14.866 (veliki) ✓
+    80_20 C=4:       cs vs im       | U=         900 | p_bonf=0.0000 | d=+5.799 (veliki) ✓
+    80_20 C=4:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+7.393 (veliki) ✓
+    80_20 C=4:       im vs htap     | U=         899 | p_bonf=0.0000 | d=+3.447 (veliki) ✓
+    80_20 C=16: baseline vs cs       | U=           0 | p_bonf=0.0000 | d=-5.073 (veliki) ✓
+    80_20 C=16: baseline vs im       | U=         900 | p_bonf=0.0000 | d=+18.308 (veliki) ✓
+    80_20 C=16: baseline vs htap     | U=         870 | p_bonf=0.0000 | d=+24.507 (veliki) ✓
+    80_20 C=16:       cs vs im       | U=         900 | p_bonf=0.0000 | d=+29.270 (veliki) ✓
+    80_20 C=16:       cs vs htap     | U=         870 | p_bonf=0.0000 | d=+37.077 (veliki) ✓
+    80_20 C=16:       im vs htap     | U=         870 | p_bonf=0.0000 | d=+7.998 (veliki) ✓
+    80_20 C=32: baseline vs cs       | U=         338 | p_bonf=1.0000 | d=-0.187 (trivijalan) ✗
+    80_20 C=32: baseline vs im       | U=         809 | p_bonf=0.0000 | d=+2.700 (veliki) ✓
+    80_20 C=32: baseline vs htap     | U=         840 | p_bonf=0.0000 | d=+7.415 (veliki) ✓
+    80_20 C=32:       cs vs im       | U=         873 | p_bonf=0.0000 | d=+3.209 (veliki) ✓
+    80_20 C=32:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+11.898 (veliki) ✓
+    80_20 C=32:       im vs htap     | U=         900 | p_bonf=0.0000 | d=+2.022 (veliki) ✓
 
   Metrika: OLTP Latencija P95 (ms)
-    C=4: baseline vs cs       | U=       4,468 | p_bonf=1.0000 | d=+0.494 (mali) ✗
-    C=4: baseline vs im       | U=       3,888 | p_bonf=1.0000 | d=+0.222 (mali) ✗
-    C=4: baseline vs htap     | U=       8,100 | p_bonf=0.0000 | d=+2.247 (veliki) ✓
-    C=4:       cs vs im       | U=       3,704 | p_bonf=1.0000 | d=-0.288 (mali) ✗
-    C=4:       cs vs htap     | U=       8,100 | p_bonf=0.0000 | d=+3.358 (veliki) ✓
-    C=4:       im vs htap     | U=       7,950 | p_bonf=0.0000 | d=+2.481 (veliki) ✓
-    C=16: baseline vs cs       | U=       3,544 | p_bonf=1.0000 | d=-0.174 (trivijalan) ✗
-    C=16: baseline vs im       | U=       4,523 | p_bonf=0.8127 | d=+0.353 (mali) ✗
-    C=16: baseline vs htap     | U=       7,119 | p_bonf=0.0000 | d=+1.637 (veliki) ✓
-    C=16:       cs vs im       | U=       4,477 | p_bonf=0.7999 | d=+0.520 (srednji) ✗
-    C=16:       cs vs htap     | U=       7,029 | p_bonf=0.0000 | d=+1.630 (veliki) ✓
-    C=16:       im vs htap     | U=       7,682 | p_bonf=0.0000 | d=+2.435 (veliki) ✓
-    C=32: baseline vs cs       | U=       4,014 | p_bonf=1.0000 | d=+0.099 (trivijalan) ✗
-    C=32: baseline vs im       | U=       6,733 | p_bonf=0.0000 | d=+1.483 (veliki) ✓
-    C=32: baseline vs htap     | U=       7,656 | p_bonf=0.0000 | d=+2.662 (veliki) ✓
-    C=32:       cs vs im       | U=       6,835 | p_bonf=0.0000 | d=+1.570 (veliki) ✓
-    C=32:       cs vs htap     | U=       7,743 | p_bonf=0.0000 | d=+2.973 (veliki) ✓
-    C=32:       im vs htap     | U=       7,734 | p_bonf=0.0000 | d=+3.036 (veliki) ✓
+    20_80 C=4: baseline vs cs       | U=         891 | p_bonf=0.0000 | d=+4.865 (veliki) ✓
+    20_80 C=4: baseline vs im       | U=         657 | p_bonf=0.0047 | d=+1.252 (veliki) ✓
+    20_80 C=4: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+16.343 (veliki) ✓
+    20_80 C=4:       cs vs im       | U=         351 | p_bonf=1.0000 | d=-0.691 (srednji) ✗
+    20_80 C=4:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+5.348 (veliki) ✓
+    20_80 C=4:       im vs htap     | U=         868 | p_bonf=0.0000 | d=+2.867 (veliki) ✓
+    20_80 C=16: baseline vs cs       | U=         167 | p_bonf=0.0002 | d=-1.183 (veliki) ✓
+    20_80 C=16: baseline vs im       | U=         870 | p_bonf=0.0000 | d=+2.795 (veliki) ✓
+    20_80 C=16: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+4.953 (veliki) ✓
+    20_80 C=16:       cs vs im       | U=         870 | p_bonf=0.0000 | d=+5.237 (veliki) ✓
+    20_80 C=16:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+13.139 (veliki) ✓
+    20_80 C=16:       im vs htap     | U=         692 | p_bonf=0.0006 | d=+1.644 (veliki) ✓
+    20_80 C=32: baseline vs cs       | U=         502 | p_bonf=1.0000 | d=+0.435 (mali) ✗
+    20_80 C=32: baseline vs im       | U=         899 | p_bonf=0.0000 | d=+4.130 (veliki) ✓
+    20_80 C=32: baseline vs htap     | U=         870 | p_bonf=0.0000 | d=+6.087 (veliki) ✓
+    20_80 C=32:       cs vs im       | U=         900 | p_bonf=0.0000 | d=+5.659 (veliki) ✓
+    20_80 C=32:       cs vs htap     | U=         870 | p_bonf=0.0000 | d=+11.073 (veliki) ✓
+    20_80 C=32:       im vs htap     | U=         833 | p_bonf=0.0000 | d=+2.172 (veliki) ✓
+    50_50 C=4: baseline vs cs       | U=         338 | p_bonf=0.5955 | d=+0.234 (mali) ✗
+    50_50 C=4: baseline vs im       | U=         151 | p_bonf=0.0001 | d=-1.020 (veliki) ✓
+    50_50 C=4: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+3.283 (veliki) ✓
+    50_50 C=4:       cs vs im       | U=         104 | p_bonf=0.0000 | d=-1.683 (veliki) ✓
+    50_50 C=4:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+13.877 (veliki) ✓
+    50_50 C=4:       im vs htap     | U=         900 | p_bonf=0.0000 | d=+4.896 (veliki) ✓
+    50_50 C=16: baseline vs cs       | U=         502 | p_bonf=1.0000 | d=+0.153 (trivijalan) ✗
+    50_50 C=16: baseline vs im       | U=         352 | p_bonf=0.8967 | d=-0.348 (mali) ✗
+    50_50 C=16: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+8.679 (veliki) ✓
+    50_50 C=16:       cs vs im       | U=         300 | p_bonf=0.2485 | d=-0.425 (mali) ✗
+    50_50 C=16:       cs vs htap     | U=         870 | p_bonf=0.0000 | d=+13.165 (veliki) ✓
+    50_50 C=16:       im vs htap     | U=         900 | p_bonf=0.0000 | d=+3.678 (veliki) ✓
+    50_50 C=32: baseline vs cs       | U=         466 | p_bonf=1.0000 | d=-0.006 (trivijalan) ✗
+    50_50 C=32: baseline vs im       | U=         900 | p_bonf=0.0000 | d=+4.122 (veliki) ✓
+    50_50 C=32: baseline vs htap     | U=         840 | p_bonf=0.0000 | d=+9.655 (veliki) ✓
+    50_50 C=32:       cs vs im       | U=         870 | p_bonf=0.0000 | d=+3.960 (veliki) ✓
+    50_50 C=32:       cs vs htap     | U=         812 | p_bonf=0.0000 | d=+8.979 (veliki) ✓
+    50_50 C=32:       im vs htap     | U=         833 | p_bonf=0.0000 | d=+3.293 (veliki) ✓
+    80_20 C=4: baseline vs cs       | U=         333 | p_bonf=0.5100 | d=-0.495 (mali) ✗
+    80_20 C=4: baseline vs im       | U=         445 | p_bonf=1.0000 | d=+0.356 (mali) ✗
+    80_20 C=4: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+3.921 (veliki) ✓
+    80_20 C=4:       cs vs im       | U=         667 | p_bonf=0.0082 | d=+0.813 (veliki) ✓
+    80_20 C=4:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+3.662 (veliki) ✓
+    80_20 C=4:       im vs htap     | U=         900 | p_bonf=0.0000 | d=+3.651 (veliki) ✓
+    80_20 C=16: baseline vs cs       | U=         205 | p_bonf=0.0018 | d=-0.827 (veliki) ✓
+    80_20 C=16: baseline vs im       | U=           0 | p_bonf=0.0000 | d=-5.777 (veliki) ✓
+    80_20 C=16: baseline vs htap     | U=         870 | p_bonf=0.0000 | d=+6.666 (veliki) ✓
+    80_20 C=16:       cs vs im       | U=           0 | p_bonf=0.0000 | d=-5.596 (veliki) ✓
+    80_20 C=16:       cs vs htap     | U=         870 | p_bonf=0.0000 | d=+10.373 (veliki) ✓
+    80_20 C=16:       im vs htap     | U=         870 | p_bonf=0.0000 | d=+9.850 (veliki) ✓
+    80_20 C=32: baseline vs cs       | U=         386 | p_bonf=1.0000 | d=-0.146 (trivijalan) ✗
+    80_20 C=32: baseline vs im       | U=         368 | p_bonf=1.0000 | d=-0.296 (mali) ✗
+    80_20 C=32: baseline vs htap     | U=         840 | p_bonf=0.0000 | d=+8.044 (veliki) ✓
+    80_20 C=32:       cs vs im       | U=         407 | p_bonf=1.0000 | d=-0.239 (mali) ✗
+    80_20 C=32:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+13.959 (veliki) ✓
+    80_20 C=32:       im vs htap     | U=         900 | p_bonf=0.0000 | d=+4.535 (veliki) ✓
 
   Metrika: OLAP Latencija P50 (ms)
-    C=4: baseline vs cs       | U=       8,012 | p_bonf=0.0000 | d=+1.888 (veliki) ✓
-    C=4: baseline vs im       | U=       7,921 | p_bonf=0.0000 | d=+3.230 (veliki) ✓
-    C=4: baseline vs htap     | U=       8,010 | p_bonf=0.0000 | d=+3.032 (veliki) ✓
-    C=4:       cs vs im       | U=       7,654 | p_bonf=0.0000 | d=+3.641 (veliki) ✓
-    C=4:       cs vs htap     | U=       7,740 | p_bonf=0.0000 | d=+3.093 (veliki) ✓
-    C=4:       im vs htap     | U=         570 | p_bonf=0.0000 | d=-1.927 (veliki) ✓
-    C=16: baseline vs cs       | U=       7,016 | p_bonf=0.0000 | d=+1.567 (veliki) ✓
-    C=16: baseline vs im       | U=       7,869 | p_bonf=0.0000 | d=+2.084 (veliki) ✓
-    C=16: baseline vs htap     | U=       8,010 | p_bonf=0.0000 | d=+2.884 (veliki) ✓
-    C=16:       cs vs im       | U=       5,274 | p_bonf=0.0008 | d=+0.719 (srednji) ✓
-    C=16:       cs vs htap     | U=       7,380 | p_bonf=0.0000 | d=+2.031 (veliki) ✓
-    C=16:       im vs htap     | U=       5,796 | p_bonf=0.0000 | d=+1.338 (veliki) ✓
-    C=32: baseline vs cs       | U=       6,219 | p_bonf=0.0000 | d=+1.254 (veliki) ✓
-    C=32: baseline vs im       | U=       6,775 | p_bonf=0.0000 | d=+1.665 (veliki) ✓
-    C=32: baseline vs htap     | U=       7,620 | p_bonf=0.0000 | d=+2.086 (veliki) ✓
-    C=32:       cs vs im       | U=       5,342 | p_bonf=0.0007 | d=+0.679 (srednji) ✓
-    C=32:       cs vs htap     | U=       6,613 | p_bonf=0.0000 | d=+1.614 (veliki) ✓
-    C=32:       im vs htap     | U=       6,449 | p_bonf=0.0000 | d=+1.564 (veliki) ✓
+    20_80 C=4: baseline vs cs       | U=         900 | p_bonf=0.0000 | d=+9.145 (veliki) ✓
+    20_80 C=4: baseline vs im       | U=         870 | p_bonf=0.0000 | d=+15.226 (veliki) ✓
+    20_80 C=4: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+14.772 (veliki) ✓
+    20_80 C=4:       cs vs im       | U=         870 | p_bonf=0.0000 | d=+15.075 (veliki) ✓
+    20_80 C=4:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+13.480 (veliki) ✓
+    20_80 C=4:       im vs htap     | U=          71 | p_bonf=0.0000 | d=-2.030 (veliki) ✓
+    20_80 C=16: baseline vs cs       | U=         900 | p_bonf=0.0000 | d=+7.042 (veliki) ✓
+    20_80 C=16: baseline vs im       | U=         870 | p_bonf=0.0000 | d=+9.526 (veliki) ✓
+    20_80 C=16: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+12.293 (veliki) ✓
+    20_80 C=16:       cs vs im       | U=         870 | p_bonf=0.0000 | d=+5.221 (veliki) ✓
+    20_80 C=16:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+11.688 (veliki) ✓
+    20_80 C=16:       im vs htap     | U=         870 | p_bonf=0.0000 | d=+7.393 (veliki) ✓
+    20_80 C=32: baseline vs cs       | U=         900 | p_bonf=0.0000 | d=+3.831 (veliki) ✓
+    20_80 C=32: baseline vs im       | U=         900 | p_bonf=0.0000 | d=+5.326 (veliki) ✓
+    20_80 C=32: baseline vs htap     | U=         870 | p_bonf=0.0000 | d=+5.955 (veliki) ✓
+    20_80 C=32:       cs vs im       | U=         900 | p_bonf=0.0000 | d=+5.820 (veliki) ✓
+    20_80 C=32:       cs vs htap     | U=         870 | p_bonf=0.0000 | d=+6.980 (veliki) ✓
+    20_80 C=32:       im vs htap     | U=         840 | p_bonf=0.0000 | d=+3.047 (veliki) ✓
+    50_50 C=4: baseline vs cs       | U=         900 | p_bonf=0.0000 | d=+1.355 (veliki) ✓
+    50_50 C=4: baseline vs im       | U=         900 | p_bonf=0.0000 | d=+2.187 (veliki) ✓
+    50_50 C=4: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+2.074 (veliki) ✓
+    50_50 C=4:       cs vs im       | U=         900 | p_bonf=0.0000 | d=+7.028 (veliki) ✓
+    50_50 C=4:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+6.142 (veliki) ✓
+    50_50 C=4:       im vs htap     | U=          13 | p_bonf=0.0000 | d=-3.261 (veliki) ✓
+    50_50 C=16: baseline vs cs       | U=         870 | p_bonf=0.0000 | d=+7.149 (veliki) ✓
+    50_50 C=16: baseline vs im       | U=         900 | p_bonf=0.0000 | d=+7.723 (veliki) ✓
+    50_50 C=16: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+14.638 (veliki) ✓
+    50_50 C=16:       cs vs im       | U=         620 | p_bonf=0.0309 | d=+0.765 (srednji) ✓
+    50_50 C=16:       cs vs htap     | U=         870 | p_bonf=0.0000 | d=+8.623 (veliki) ✓
+    50_50 C=16:       im vs htap     | U=         900 | p_bonf=0.0000 | d=+7.402 (veliki) ✓
+    50_50 C=32: baseline vs cs       | U=         870 | p_bonf=0.0000 | d=+5.798 (veliki) ✓
+    50_50 C=32: baseline vs im       | U=         900 | p_bonf=0.0000 | d=+6.359 (veliki) ✓
+    50_50 C=32: baseline vs htap     | U=         840 | p_bonf=0.0000 | d=+8.859 (veliki) ✓
+    50_50 C=32:       cs vs im       | U=         691 | p_bonf=0.0006 | d=+1.077 (veliki) ✓
+    50_50 C=32:       cs vs htap     | U=         812 | p_bonf=0.0000 | d=+6.519 (veliki) ✓
+    50_50 C=32:       im vs htap     | U=         840 | p_bonf=0.0000 | d=+5.456 (veliki) ✓
+    80_20 C=4: baseline vs cs       | U=         872 | p_bonf=0.0000 | d=+2.277 (veliki) ✓
+    80_20 C=4: baseline vs im       | U=         870 | p_bonf=0.0000 | d=+5.117 (veliki) ✓
+    80_20 C=4: baseline vs htap     | U=         870 | p_bonf=0.0000 | d=+4.497 (veliki) ✓
+    80_20 C=4:       cs vs im       | U=         780 | p_bonf=0.0000 | d=+2.403 (veliki) ✓
+    80_20 C=4:       cs vs htap     | U=         780 | p_bonf=0.0000 | d=+1.722 (veliki) ✓
+    80_20 C=4:       im vs htap     | U=          10 | p_bonf=0.0000 | d=-3.882 (veliki) ✓
+    80_20 C=16: baseline vs cs       | U=         900 | p_bonf=0.0000 | d=+7.542 (veliki) ✓
+    80_20 C=16: baseline vs im       | U=         900 | p_bonf=0.0000 | d=+13.113 (veliki) ✓
+    80_20 C=16: baseline vs htap     | U=         870 | p_bonf=0.0000 | d=+12.106 (veliki) ✓
+    80_20 C=16:       cs vs im       | U=         900 | p_bonf=0.0000 | d=+4.509 (veliki) ✓
+    80_20 C=16:       cs vs htap     | U=         870 | p_bonf=0.0000 | d=+4.135 (veliki) ✓
+    80_20 C=16:       im vs htap     | U=         521 | p_bonf=1.0000 | d=+0.169 (trivijalan) ✗
+    80_20 C=32: baseline vs cs       | U=         840 | p_bonf=0.0000 | d=+5.719 (veliki) ✓
+    80_20 C=32: baseline vs im       | U=         840 | p_bonf=0.0000 | d=+6.532 (veliki) ✓
+    80_20 C=32: baseline vs htap     | U=         840 | p_bonf=0.0000 | d=+9.824 (veliki) ✓
+    80_20 C=32:       cs vs im       | U=         629 | p_bonf=0.0499 | d=+0.846 (veliki) ✓
+    80_20 C=32:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+6.078 (veliki) ✓
+    80_20 C=32:       im vs htap     | U=         900 | p_bonf=0.0000 | d=+6.158 (veliki) ✓
 
   Metrika: OLAP Latencija P95 (ms)
-    C=4: baseline vs cs       | U=       7,144 | p_bonf=0.0000 | d=+2.300 (veliki) ✓
-    C=4: baseline vs im       | U=       7,893 | p_bonf=0.0000 | d=+2.962 (veliki) ✓
-    C=4: baseline vs htap     | U=       8,010 | p_bonf=0.0000 | d=+3.095 (veliki) ✓
-    C=4:       cs vs im       | U=       7,546 | p_bonf=0.0000 | d=+2.435 (veliki) ✓
-    C=4:       cs vs htap     | U=       7,740 | p_bonf=0.0000 | d=+3.855 (veliki) ✓
-    C=4:       im vs htap     | U=       5,116 | p_bonf=0.0081 | d=+0.315 (mali) ✓
-    C=16: baseline vs cs       | U=       7,820 | p_bonf=0.0000 | d=+2.122 (veliki) ✓
-    C=16: baseline vs im       | U=       7,747 | p_bonf=0.0000 | d=+2.168 (veliki) ✓
-    C=16: baseline vs htap     | U=       8,010 | p_bonf=0.0000 | d=+3.006 (veliki) ✓
-    C=16:       cs vs im       | U=       4,897 | p_bonf=0.0388 | d=+0.254 (mali) ✓
-    C=16:       cs vs htap     | U=       7,880 | p_bonf=0.0000 | d=+2.305 (veliki) ✓
-    C=16:       im vs htap     | U=       6,834 | p_bonf=0.0000 | d=+1.403 (veliki) ✓
-    C=32: baseline vs cs       | U=       7,193 | p_bonf=0.0000 | d=+1.906 (veliki) ✓
-    C=32: baseline vs im       | U=       6,723 | p_bonf=0.0000 | d=+1.519 (veliki) ✓
-    C=32: baseline vs htap     | U=       7,592 | p_bonf=0.0000 | d=+2.929 (veliki) ✓
-    C=32:       cs vs im       | U=       3,878 | p_bonf=1.0000 | d=-0.200 (trivijalan) ✗
-    C=32:       cs vs htap     | U=       6,363 | p_bonf=0.0000 | d=+1.274 (veliki) ✓
-    C=32:       im vs htap     | U=       6,149 | p_bonf=0.0000 | d=+1.203 (veliki) ✓
+    20_80 C=4: baseline vs cs       | U=         870 | p_bonf=0.0000 | d=+4.249 (veliki) ✓
+    20_80 C=4: baseline vs im       | U=         866 | p_bonf=0.0000 | d=+4.774 (veliki) ✓
+    20_80 C=4: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+5.561 (veliki) ✓
+    20_80 C=4:       cs vs im       | U=         840 | p_bonf=0.0000 | d=+2.262 (veliki) ✓
+    20_80 C=4:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+40.637 (veliki) ✓
+    20_80 C=4:       im vs htap     | U=         870 | p_bonf=0.0000 | d=+0.598 (srednji) ✓
+    20_80 C=16: baseline vs cs       | U=         868 | p_bonf=0.0000 | d=+2.576 (veliki) ✓
+    20_80 C=16: baseline vs im       | U=         839 | p_bonf=0.0000 | d=+2.567 (veliki) ✓
+    20_80 C=16: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+3.717 (veliki) ✓
+    20_80 C=16:       cs vs im       | U=         658 | p_bonf=0.0045 | d=+0.330 (mali) ✓
+    20_80 C=16:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+8.646 (veliki) ✓
+    20_80 C=16:       im vs htap     | U=         870 | p_bonf=0.0000 | d=+3.272 (veliki) ✓
+    20_80 C=32: baseline vs cs       | U=         819 | p_bonf=0.0000 | d=+1.893 (veliki) ✓
+    20_80 C=32: baseline vs im       | U=         734 | p_bonf=0.0002 | d=+1.297 (veliki) ✓
+    20_80 C=32: baseline vs htap     | U=         861 | p_bonf=0.0000 | d=+3.071 (veliki) ✓
+    20_80 C=32:       cs vs im       | U=         239 | p_bonf=0.0111 | d=-0.860 (veliki) ✓
+    20_80 C=32:       cs vs htap     | U=         829 | p_bonf=0.0000 | d=+2.812 (veliki) ✓
+    20_80 C=32:       im vs htap     | U=         849 | p_bonf=0.0000 | d=+2.813 (veliki) ✓
+    50_50 C=4: baseline vs cs       | U=         849 | p_bonf=0.0000 | d=+3.485 (veliki) ✓
+    50_50 C=4: baseline vs im       | U=         900 | p_bonf=0.0000 | d=+4.424 (veliki) ✓
+    50_50 C=4: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+4.516 (veliki) ✓
+    50_50 C=4:       cs vs im       | U=         900 | p_bonf=0.0000 | d=+11.747 (veliki) ✓
+    50_50 C=4:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+13.744 (veliki) ✓
+    50_50 C=4:       im vs htap     | U=         883 | p_bonf=0.0000 | d=+2.616 (veliki) ✓
+    50_50 C=16: baseline vs cs       | U=         870 | p_bonf=0.0000 | d=+7.781 (veliki) ✓
+    50_50 C=16: baseline vs im       | U=         891 | p_bonf=0.0000 | d=+5.452 (veliki) ✓
+    50_50 C=16: baseline vs htap     | U=         900 | p_bonf=0.0000 | d=+10.290 (veliki) ✓
+    50_50 C=16:       cs vs im       | U=         725 | p_bonf=0.0001 | d=+0.103 (trivijalan) ✓
+    50_50 C=16:       cs vs htap     | U=         870 | p_bonf=0.0000 | d=+15.961 (veliki) ✓
+    50_50 C=16:       im vs htap     | U=         900 | p_bonf=0.0000 | d=+2.097 (veliki) ✓
+    50_50 C=32: baseline vs cs       | U=         840 | p_bonf=0.0000 | d=+2.744 (veliki) ✓
+    50_50 C=32: baseline vs im       | U=         840 | p_bonf=0.0000 | d=+2.229 (veliki) ✓
+    50_50 C=32: baseline vs htap     | U=         837 | p_bonf=0.0000 | d=+3.591 (veliki) ✓
+    50_50 C=32:       cs vs im       | U=         264 | p_bonf=0.0584 | d=-0.864 (veliki) ✗
+    50_50 C=32:       cs vs htap     | U=         761 | p_bonf=0.0000 | d=+2.776 (veliki) ✓
+    50_50 C=32:       im vs htap     | U=         809 | p_bonf=0.0000 | d=+2.655 (veliki) ✓
+    80_20 C=4: baseline vs cs       | U=         712 | p_bonf=0.0007 | d=+1.560 (veliki) ✓
+    80_20 C=4: baseline vs im       | U=         870 | p_bonf=0.0000 | d=+2.409 (veliki) ✓
+    80_20 C=4: baseline vs htap     | U=         870 | p_bonf=0.0000 | d=+2.319 (veliki) ✓
+    80_20 C=4:       cs vs im       | U=         780 | p_bonf=0.0000 | d=+2.292 (veliki) ✓
+    80_20 C=4:       cs vs htap     | U=         780 | p_bonf=0.0000 | d=+2.020 (veliki) ✓
+    80_20 C=4:       im vs htap     | U=           0 | p_bonf=0.0000 | d=-3.606 (veliki) ✓
+    80_20 C=16: baseline vs cs       | U=         900 | p_bonf=0.0000 | d=+8.280 (veliki) ✓
+    80_20 C=16: baseline vs im       | U=         900 | p_bonf=0.0000 | d=+10.171 (veliki) ✓
+    80_20 C=16: baseline vs htap     | U=         870 | p_bonf=0.0000 | d=+10.820 (veliki) ✓
+    80_20 C=16:       cs vs im       | U=         900 | p_bonf=0.0000 | d=+4.787 (veliki) ✓
+    80_20 C=16:       cs vs htap     | U=         870 | p_bonf=0.0000 | d=+7.093 (veliki) ✓
+    80_20 C=16:       im vs htap     | U=         870 | p_bonf=0.0000 | d=+4.423 (veliki) ✓
+    80_20 C=32: baseline vs cs       | U=         840 | p_bonf=0.0000 | d=+10.115 (veliki) ✓
+    80_20 C=32: baseline vs im       | U=         840 | p_bonf=0.0000 | d=+9.926 (veliki) ✓
+    80_20 C=32: baseline vs htap     | U=         840 | p_bonf=0.0000 | d=+13.021 (veliki) ✓
+    80_20 C=32:       cs vs im       | U=         836 | p_bonf=0.0000 | d=+1.622 (veliki) ✓
+    80_20 C=32:       cs vs htap     | U=         900 | p_bonf=0.0000 | d=+8.142 (veliki) ✓
+    80_20 C=32:       im vs htap     | U=         898 | p_bonf=0.0000 | d=+2.748 (veliki) ✓
 
 ══════════════════════════════════════════════════════════════════════
 3. PROVJERA HIPOTEZA

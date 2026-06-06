@@ -197,23 +197,28 @@ def main():
 
     for metric, label in kw_metrics:
         log(f"\n  Metrika: {label}")
-        for concurrency in sorted(df["ConcurrencyLevel"].unique()):
-            subset = df[df["ConcurrencyLevel"] == concurrency]
-            pairwise = mann_whitney_pairwise(subset, metric)
+        for ratio in sorted(df["OltpOlapRatio"].unique()):
+            for concurrency in sorted(df["ConcurrencyLevel"].unique()):
+                # Stratificiramo po omjeru opterećenja da izbjegnemo confounding
+                subset = df[(df["ConcurrencyLevel"] == concurrency) &
+                            (df["OltpOlapRatio"]    == ratio)]
+                pairwise = mann_whitney_pairwise(subset, metric)
 
-            if pairwise.empty:
-                continue
+                if pairwise.empty:
+                    continue
 
-            for _, row in pairwise.iterrows():
-                sig = "✓" if row["Significant"] else "✗"
-                log(f"    C={concurrency}: {row['Group1']:>8} vs {row['Group2']:<8} | "
-                    f"U={row['U']:>12,.0f} | p_bonf={row['p_bonferroni']:.4f} | "
-                    f"d={row['CohenD']:>+6.3f} ({row['EffectSize']}) {sig}")
+                for _, row in pairwise.iterrows():
+                    sig = "✓" if row["Significant"] else "✗"
+                    log(f"    {ratio} C={concurrency}: {row['Group1']:>8} vs {row['Group2']:<8} | "
+                        f"U={row['U']:>12,.0f} | p_bonf={row['p_bonferroni']:.4f} | "
+                        f"d={row['CohenD']:>+6.3f} ({row['EffectSize']}) {sig}")
 
-                pairwise["Metrika"]          = metric
-                pairwise["ConcurrencyLevel"] = concurrency
-                all_results.append(row.to_dict() | {"Test": "Mann-Whitney", "Metrika": metric,
-                                                      "ConcurrencyLevel": concurrency})
+                    all_results.append(row.to_dict() | {
+                        "Test":            "Mann-Whitney",
+                        "Metrika":         metric,
+                        "OltpOlapRatio":   ratio,
+                        "ConcurrencyLevel": concurrency,
+                    })
 
     # ================================================================
     # BLOK 3: Testiranje hipoteza
