@@ -426,12 +426,14 @@ python 03_visualizations.py
 
 | Procedura | Tip | Udio |
 |-----------|-----|------|
-| `usp_GetPostById` | SELECT (točkačno) | ~25% |
-| `usp_GetUserById` | SELECT (točkačno) | ~20% |
-| `usp_GetRecentUserPosts` | SELECT (raspon) | ~15% |
-| `usp_InsertVote` | INSERT | ~20% |
-| `usp_InsertComment` | INSERT | ~10% |
-| `usp_UpdatePostScore` | UPDATE | ~10% |
+| `usp_InsertVote` | INSERT | 35% |
+| `usp_UpdatePostScore` | UPDATE | 25% |
+| `usp_InsertComment` | INSERT | 15% |
+| `usp_GetRecentUserPosts` | SELECT (raspon) | 10% |
+| `usp_GetPostById` | SELECT (točkačno) | 10% |
+| `usp_GetUserById` | SELECT (točkačno) | 5% |
+
+> Udio definiran u `OltpQueries.cs` — write-heavy workload (75% pisanja / 25% čitanja), što naglašava OLTP stres pod mješovitim opterećenjem.
 
 ### OLAP upiti (5 tipova, nasumična selekcija)
 
