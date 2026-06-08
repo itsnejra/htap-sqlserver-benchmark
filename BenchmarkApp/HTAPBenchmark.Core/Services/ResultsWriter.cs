@@ -63,6 +63,9 @@ public sealed class ResultsWriter : IDisposable
                     "OltpThroughput,OlapThroughput," +
                     "OltpLatencyP50,OltpLatencyP95,OltpLatencyP99," +
                     "OlapLatencyP50,OlapLatencyP95,OlapLatencyP99," +
+                    "OltpLatencyMin,OltpLatencyAvg,OltpLatencyMax,OltpLatencyTotal," +
+                    "OlapLatencyMin,OlapLatencyAvg,OlapLatencyMax,OlapLatencyTotal," +
+                    "SqlCpuPercent,SqlMemoryUsedMB," +
                     "OltpSuccessRate,OlapSuccessRate,OltpTotalOps,OlapTotalOps");
                 _summaryHeaderWritten = true;
             }
@@ -72,6 +75,9 @@ public sealed class ResultsWriter : IDisposable
                 $"{summary.OltpThroughput:F4},{summary.OlapThroughput:F4}," +
                 $"{summary.OltpLatencyP50:F4},{summary.OltpLatencyP95:F4},{summary.OltpLatencyP99:F4}," +
                 $"{summary.OlapLatencyP50:F4},{summary.OlapLatencyP95:F4},{summary.OlapLatencyP99:F4}," +
+                $"{summary.OltpLatencyMin:F4},{summary.OltpLatencyAvg:F4},{summary.OltpLatencyMax:F4},{summary.OltpLatencyTotal:F2}," +
+                $"{summary.OlapLatencyMin:F4},{summary.OlapLatencyAvg:F4},{summary.OlapLatencyMax:F4},{summary.OlapLatencyTotal:F2}," +
+                $"{summary.SqlCpuPercent:F2},{summary.SqlMemoryUsedMB:F1}," +
                 $"{summary.OltpSuccessRate:F4},{summary.OlapSuccessRate:F4}," +
                 $"{summary.OltpTotalOps},{summary.OlapTotalOps}"));
 
