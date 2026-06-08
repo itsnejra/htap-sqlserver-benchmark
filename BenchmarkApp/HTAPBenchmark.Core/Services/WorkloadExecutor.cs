@@ -405,10 +405,20 @@ public sealed class WorkloadExecutor
                 // Complex DELETE: briše sve glasove VoteTypeId=2 (DownVote) za nasumični post
                 // Operira samo nad redovima koje je benchmark insertovao
                 // (VoteTypeId=2 poklapa se s random voteType iz InsertVote)
-                int postId     = ctx.PostIds[rng.Next(ctx.PostIds.Length)];
+                int postId      = ctx.PostIds[rng.Next(ctx.PostIds.Length)];
                 byte voteTypeId = 2; // DownVote — najčešće za moderatorske akcije
                 await conn.ExecuteAsync(OltpQueries.DeletePostVotes(schema),
                     new { PostId = postId, VoteTypeId = voteTypeId });
+                break;
+            }
+
+            case "usp_UpdateUserReputation":
+            {
+                // Complex UPDATE: čita COUNT odgovora iz Posts, upisuje u Users.Reputation
+                // Pristupa dvjema tablicama — realistična poslovna logika
+                int userId = ctx.UserIds[rng.Next(ctx.UserIds.Length)];
+                await conn.ExecuteAsync(OltpQueries.UpdateUserReputation(schema),
+                    new { UserId = userId });
                 break;
             }
         }

@@ -34,15 +34,26 @@ public static class OltpQueries
     public static string DeletePostVotes(string schema) =>
         $"EXEC {schema}.usp_DeletePostVotes @PostId, @VoteTypeId;";
 
+    /// <summary>
+    /// Complex UPDATE — čita COUNT odgovora korisnika iz Posts, ažurira Users.Reputation.
+    /// Pristupa dvjema tablicama; nativno kompajlirano za im/htap.
+    /// </summary>
+    public static string UpdateUserReputation(string schema) =>
+        $"EXEC {schema}.usp_UpdateUserReputation @UserId;";
+
     // Operacije i njihove relativne težine (ukupno 100)
+    // Uključuje puni CRUD pokrivač: SELECT / INSERT / UPDATE / DELETE (Simple + Complex)
     public static readonly (string Name, int Weight)[] Operations =
     [
-        ("usp_InsertVote",         35),
-        ("usp_UpdatePostScore",    25),
-        ("usp_InsertComment",      15),
-        ("usp_GetRecentUserPosts", 10),
-        ("usp_GetPostById",        10),
-        ("usp_GetUserById",         5),
+        ("usp_InsertVote",              30),
+        ("usp_UpdatePostScore",         22),
+        ("usp_InsertComment",           13),
+        ("usp_GetRecentUserPosts",       9),
+        ("usp_GetPostById",              9),
+        ("usp_GetUserById",              4),
+        ("usp_DeleteVote",               7),
+        ("usp_DeletePostVotes",          4),
+        ("usp_UpdateUserReputation",     2),
     ];
 
     // Kumulativne težine za weighted random selection
