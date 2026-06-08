@@ -1,0 +1,8 @@
+Model,Parametar,Koeficijent,StdGreska,T_stat,p_value,Significant,R_squared,Adj_R_squared,N
+log(OltpThroughput),Intercept,7.394229,0.054162,136.5211,0.0,True,0.8809,0.8802,1065
+log(OltpThroughput),"C(Configuration, Treatment(reference='baseline'))[T.cs]",0.020972,0.039932,0.5252,0.599553,False,0.8809,0.8802,1065
+log(OltpThroughput),"C(Configuration, Treatment(reference='baseline'))[T.im]",0.707725,0.039782,17.7901,0.0,True,0.8809,0.8802,1065
+log(OltpThroughput),"C(Configuration, Treatment(reference='baseline'))[T.htap]",1.96462,0.039856,49.2926,0.0,True,0.8809,0.8802,1065
+log(OltpThroughput),"C(OltpOlapRatio, Treatment(reference='80_20'))[T.50_50]",-0.820878,0.034583,-23.7363,0.0,True,0.8809,0.8802,1065
+log(OltpThroughput),"C(OltpOlapRatio, Treatment(reference='80_20'))[T.20_80]",-2.210952,0.034559,-63.9754,0.0,True,0.8809,0.8802,1065
+log(OltpThroughput),LogConcurrency,0.324906,0.01633,19.8964,0.0,True,0.8809,0.8802,1065

@@ -1,0 +1,8 @@
+Model,Parametar,Koeficijent,StdGreska,T_stat,p_value,Significant,R_squared,Adj_R_squared,N
+log(OlapLatencyP50),Intercept,7.067103,0.033613,210.2518,0.0,True,0.8541,0.8532,1065
+log(OlapLatencyP50),"C(Configuration, Treatment(reference='baseline'))[T.cs]",-0.635807,0.024781,-25.6566,0.0,True,0.8541,0.8532,1065
+log(OlapLatencyP50),"C(Configuration, Treatment(reference='baseline'))[T.im]",-1.165533,0.024689,-47.2095,0.0,True,0.8541,0.8532,1065
+log(OlapLatencyP50),"C(Configuration, Treatment(reference='baseline'))[T.htap]",-1.382198,0.024735,-55.8811,0.0,True,0.8541,0.8532,1065
+log(OlapLatencyP50),"C(OltpOlapRatio, Treatment(reference='80_20'))[T.50_50]",0.403248,0.021462,18.7887,0.0,True,0.8541,0.8532,1065
+log(OlapLatencyP50),"C(OltpOlapRatio, Treatment(reference='80_20'))[T.20_80]",0.640144,0.021447,29.8471,0.0,True,0.8541,0.8532,1065
+log(OlapLatencyP50),LogConcurrency,0.395277,0.010134,39.0041,0.0,True,0.8541,0.8532,1065

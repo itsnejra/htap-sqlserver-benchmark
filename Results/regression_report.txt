@@ -1,0 +1,82 @@
+======================================================================
+HTAPBenchmark: Regresijska i ANOVA analiza
+N = 1065 runova | Alpha = 0.05
+======================================================================
+
+──────────────────────────────────────────────────────────────────────
+1. JEDNOSMJERNA ANOVA
+──────────────────────────────────────────────────────────────────────
+
+  1a. Uticaj OltpOlapRatio na OltpThroughput (po konfiguraciji):
+  baseline |    OltpOlapRatio: F=  206.031  p=0.000000  η²=0.6095  ✓ ZNAČAJNO
+        cs |    OltpOlapRatio: F=  243.475  p=0.000000  η²=0.6510  ✓ ZNAČAJNO
+        im |    OltpOlapRatio: F=  123.572  p=0.000000  η²=0.4826  ✓ ZNAČAJNO
+      htap |    OltpOlapRatio: F=  188.733  p=0.000000  η²=0.5894  ✓ ZNAČAJNO
+
+  1b. Uticaj ConcurrencyLevel na OltpThroughput (po konfiguraciji):
+  baseline | ConcurrencyLevel: F=   27.719  p=0.000000  η²=0.1735  ✓ ZNAČAJNO
+        cs | ConcurrencyLevel: F=   24.337  p=0.000000  η²=0.1572  ✓ ZNAČAJNO
+        im | ConcurrencyLevel: F=   32.752  p=0.000000  η²=0.1982  ✓ ZNAČAJNO
+      htap | ConcurrencyLevel: F=   32.120  p=0.000000  η²=0.1963  ✓ ZNAČAJNO
+
+  1c. Uticaj OltpOlapRatio na OlapLatencyP50 (po konfiguraciji):
+  baseline |    OltpOlapRatio: F=   60.833  p=0.000000  η²=0.3155  ✓ ZNAČAJNO
+        cs |    OltpOlapRatio: F=   68.138  p=0.000000  η²=0.3430  ✓ ZNAČAJNO
+        im |    OltpOlapRatio: F=   38.277  p=0.000000  η²=0.2241  ✓ ZNAČAJNO
+      htap |    OltpOlapRatio: F=   34.858  p=0.000000  η²=0.2095  ✓ ZNAČAJNO
+
+  1d. Uticaj ConcurrencyLevel na OlapLatencyP50 (po konfiguraciji):
+  baseline | ConcurrencyLevel: F=   62.722  p=0.000000  η²=0.3221  ✓ ZNAČAJNO
+        cs | ConcurrencyLevel: F=   74.201  p=0.000000  η²=0.3625  ✓ ZNAČAJNO
+        im | ConcurrencyLevel: F=  291.656  p=0.000000  η²=0.6876  ✓ ZNAČAJNO
+      htap | ConcurrencyLevel: F=  125.315  p=0.000000  η²=0.4880  ✓ ZNAČAJNO
+
+──────────────────────────────────────────────────────────────────────
+2. OLS REGRESIJA: log(OltpThroughput)
+──────────────────────────────────────────────────────────────────────
+   Referentna kategorija: Configuration='baseline', OltpOlapRatio='80_20'
+
+  Zavisna varijabla: log(OltpThroughput)
+  Formula: LogOltpThroughput ~ C(Configuration, Treatment(reference='baseline')) + C(OltpOlapRatio, Treatment(reference='80_20')) + LogConcurrency
+  N = 1065,  R² = 0.8809,  Adj. R² = 0.8802
+  F-statistika modela: 1303.72  (p=0.00e+00)
+
+  Parametar                                 Koeficijent  Std.greška    T-stat  p-vrijednost   Sig.
+  -----------------------------------------------------------------------------------------------
+  Intercept                                      7.3942      0.0542   136.521      0.000000    ***
+  C(Configuration, Treatment(reference='baseline'))[T.cs]       0.0210      0.0399     0.525      0.599553       
+  C(Configuration, Treatment(reference='baseline'))[T.im]       0.7077      0.0398    17.790      0.000000    ***
+  C(Configuration, Treatment(reference='baseline'))[T.htap]       1.9646      0.0399    49.293      0.000000    ***
+  C(OltpOlapRatio, Treatment(reference='80_20'))[T.50_50]      -0.8209      0.0346   -23.736      0.000000    ***
+  C(OltpOlapRatio, Treatment(reference='80_20'))[T.20_80]      -2.2110      0.0346   -63.975      0.000000    ***
+  LogConcurrency                                 0.3249      0.0163    19.896      0.000000    ***
+
+──────────────────────────────────────────────────────────────────────
+3. OLS REGRESIJA: log(OlapLatencyP50)
+──────────────────────────────────────────────────────────────────────
+
+  Zavisna varijabla: log(OlapLatencyP50)
+  Formula: LogOlapLatencyP50 ~ C(Configuration, Treatment(reference='baseline')) + C(OltpOlapRatio, Treatment(reference='80_20')) + LogConcurrency
+  N = 1065,  R² = 0.8541,  Adj. R² = 0.8532
+  F-statistika modela: 1031.92  (p=0.00e+00)
+
+  Parametar                                 Koeficijent  Std.greška    T-stat  p-vrijednost   Sig.
+  -----------------------------------------------------------------------------------------------
+  Intercept                                      7.0671      0.0336   210.252      0.000000    ***
+  C(Configuration, Treatment(reference='baseline'))[T.cs]      -0.6358      0.0248   -25.657      0.000000    ***
+  C(Configuration, Treatment(reference='baseline'))[T.im]      -1.1655      0.0247   -47.209      0.000000    ***
+  C(Configuration, Treatment(reference='baseline'))[T.htap]      -1.3822      0.0247   -55.881      0.000000    ***
+  C(OltpOlapRatio, Treatment(reference='80_20'))[T.50_50]       0.4032      0.0215    18.789      0.000000    ***
+  C(OltpOlapRatio, Treatment(reference='80_20'))[T.20_80]       0.6401      0.0214    29.847      0.000000    ***
+  LogConcurrency                                 0.3953      0.0101    39.004      0.000000    ***
+
+──────────────────────────────────────────────────────────────────────
+4. BRZI PREGLED REZULTATA
+──────────────────────────────────────────────────────────────────────
+  OLTP       cs vs baseline: +2.1%  (p=0.5996) ✗
+  OLTP       im vs baseline: +102.9%  (p=0.0000) ✓
+  OLTP     htap vs baseline: +613.2%  (p=0.0000) ✓
+
+ANOVA rezultati:          ..\Results\anova_results.csv
+Regresija OLTP:           ..\Results\regression_oltp_throughput.csv
+Regresija OLAP latencija: ..\Results\regression_olap_latency.csv
