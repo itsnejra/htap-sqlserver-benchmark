@@ -23,6 +23,7 @@ Execute the scripts in the following order against the `HTAPBenchmark` database.
 | 9 | `07b_StoredProcs_OLAP_HTAP_DualStore.sql` | **Override** HTAP OLAP procedures to read from `cs.*` instead of `htap.*` — **must run after script 8** |
 | 10 | `09_Fix_OLAP_MaxDop.sql` | Add `OPTION(MAXDOP 2)` hints to OLAP procedures to prevent CPU saturation at C=32 |
 | 11 | `10_StoredProcs_DELETE.sql` | Simple DELETE (`usp_DeleteVote`) and Complex DELETE (`usp_DeletePostVotes`) stored procedures for all 4 schemas — natively compiled for `im` and `htap` |
+| 12 | `11_StoredProcs_ComplexUPDATE.sql` | Complex UPDATE (`usp_UpdateUserReputation`) — reads answer count from `Posts`, updates `Users.Reputation`; natively compiled for `im` and `htap` |
 
 > **Important:** Script `08_ResultsSchema.sql` is optional — it creates a DB-side results logging table not used by the benchmark application (results are written to CSV files directly).
 

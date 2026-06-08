@@ -12,14 +12,15 @@ Izračunava za svaku kombinaciju (Konfiguracija × Operacija):
   - SuccessRate           — stopa uspješnosti
 
 Kategorizacija operacija (prema zahtjevu predmeta):
-  Simple SELECT  → usp_GetPostById, usp_GetUserById
-  Complex SELECT → OLAP_Q1 … OLAP_Q5  (JOIN, GROUP BY, ORDER BY, agregacije)
-  Simple INSERT  → usp_InsertVote
-  Complex INSERT → usp_InsertComment  (višetablični UPDATE + INSERT)
-  Simple UPDATE  → usp_UpdatePostScore
-  Complex UPDATE → usp_GetRecentUserPosts  (range scan s ORDER BY)
-  Simple DELETE  → usp_DeleteVote          (ako je prisutan u podacima)
-  Complex DELETE → usp_DeletePostVotes     (ako je prisutan)
+  Simple SELECT        → usp_GetPostById, usp_GetUserById
+  Complex SELECT (OLTP)→ usp_GetRecentUserPosts  (range scan s ORDER BY)
+  Complex SELECT (OLAP)→ OLAP_Q1 … OLAP_Q5  (JOIN, GROUP BY, ORDER BY, agregacije)
+  Simple INSERT        → usp_InsertVote
+  Complex INSERT       → usp_InsertComment  (višetablični UPDATE + INSERT)
+  Simple UPDATE        → usp_UpdatePostScore
+  Complex UPDATE       → usp_UpdateUserReputation  (COUNT iz Posts + UPDATE Users)
+  Simple DELETE        → usp_DeleteVote
+  Complex DELETE       → usp_DeletePostVotes
 
 Izlaz:
   - Results/per_operation_stats.csv
@@ -34,8 +35,17 @@ import numpy as np
 from pathlib import Path
 
 MEASUREMENTS_CSV = Path("../Results/measurements.csv")
-OUTPUT_CSV       = Path("../Results/per_operation_stats.csv")
-OUTPUT_XLSX      = Path("../Results/per_operation_stats.xlsx")
+
+# Lokacija runner-ovih fajlova (generiraju se tokom benchmarka)
+# Sadrže sve 4 konfiguracije raspoređene po fajlovima:
+#   measurements.csv         → baseline + cs + im (8.5 GB)
+#   measurements_htap.csv    → htap (12.5 GB)
+RUNNER_RESULTS = (Path(__file__).parent.parent /
+                  "BenchmarkApp" / "HTAPBenchmark.Runner" /
+                  "bin" / "Release" / "net8.0" / "Results")
+
+OUTPUT_CSV   = Path("../Results/per_operation_stats.csv")
+OUTPUT_XLSX  = Path("../Results/per_operation_stats.xlsx")
 
 # Mapiranje naziva operacije → kategorija (zahtjev predmeta)
 OPERATION_CATEGORY = {
@@ -74,6 +84,74 @@ def load_measurements(path: Path) -> pd.DataFrame:
     })
     print(f"  Ukupno redova: {len(df):,}")
     return df
+
+
+def load_all_measurements() -> pd.DataFrame:
+    """
+    Učitava mjerenja za sve 4 konfiguracije.
+    Ako tracked measurements.csv ima samo jednu konfiguraciju,
+    pokušava učitati iz runner-ovih velikih fajlova (uzorkovanjem).
+    """
+    tracked_df = load_measurements(MEASUREMENTS_CSV)
+    configs_in_tracked = tracked_df["Configuration"].unique().tolist()
+
+    if len(configs_in_tracked) >= 4:
+        return tracked_df
+
+    print(f"  Tracked fajl ima samo: {configs_in_tracked}")
+    print("  Uzorkujem iz runner-ovih fajlova za sve 4 konfiguracije ...")
+
+    dfs = [tracked_df]  # start with what we have
+
+    # Runner fajlovi po konfiguraciji
+    runner_main     = RUNNER_RESULTS / "measurements.csv"         # baseline + cs
+    runner_im_htap  = RUNNER_RESULTS / "measurements_im_htap.csv" # im
+    runner_htap     = RUNNER_RESULTS / "measurements_htap.csv"    # htap
+
+    SAMPLE_ROWS = 50_000_000  # skenira do 50M redova da pronađe sve konfiguracije
+
+    for fpath in [runner_main, runner_im_htap, runner_htap]:
+        if not fpath.exists():
+            print(f"  Preskačem (ne postoji): {fpath}")
+            continue
+
+        already_loaded = set(c for df in dfs for c in df["Configuration"].unique())
+        print(f"  Čitam {fpath.name} (uzorak ~{SAMPLE_ROWS//1_000_000}M redova) ...")
+
+        chunks = []
+        rows_read = 0
+        for chunk in pd.read_csv(
+            fpath,
+            chunksize=500_000,
+            dtype={"Configuration": "category", "OltpOlapRatio": "category",
+                   "OperationType": "category", "OperationName": "category",
+                   "Success": "int8"}
+        ):
+            # Zadrži samo konfiguracije koje još nisu učitane
+            new_configs = [c for c in chunk["Configuration"].unique()
+                           if c not in already_loaded]
+            if not new_configs:
+                rows_read += len(chunk)
+                if rows_read > SAMPLE_ROWS:
+                    break
+                continue
+
+            chunks.append(chunk[chunk["Configuration"].isin(new_configs + list(already_loaded))])
+            rows_read += len(chunk)
+            already_loaded.update(new_configs)
+            print(f"    Konfiguracije pronađene: {sorted(already_loaded)}")
+            if rows_read > SAMPLE_ROWS:
+                break
+
+        if chunks:
+            dfs.extend(chunks)
+
+    result = pd.concat(dfs, ignore_index=True)
+    # Ukloni duplikate ako tracked i runner sadrže iste podatke
+    result = result.drop_duplicates()
+    print(f"  Ukupno redova: {len(result):,}")
+    print(f"  Konfiguracije: {sorted(result['Configuration'].unique().tolist())}")
+    return result
 
 
 def percentile(x, q):
@@ -200,7 +278,7 @@ def main():
     print("HTAPBenchmark: Per-operacijska statistika (04_per_operation_stats)")
     print("=" * 70)
 
-    df = load_measurements(MEASUREMENTS_CSV)
+    df = load_all_measurements()
 
     # ----------------------------------------------------------------
     # 1. Agregirane statistike po konfiguraciji + operaciji (sve ratios + concurrencies)
@@ -228,7 +306,13 @@ def main():
     print(f"\nAgregirane statistike pohranene:   {OUTPUT_CSV}")
 
     detailed_csv = OUTPUT_CSV.parent / "per_operation_stats_detailed.csv"
-    stats_detailed.to_csv(detailed_csv, index=False)
+    try:
+        stats_detailed.to_csv(detailed_csv, index=False)
+        print(f"Detaljne statistike pohranene:     {detailed_csv}")
+    except PermissionError:
+        alt = OUTPUT_CSV.parent / "per_operation_stats_detailed_new.csv"
+        stats_detailed.to_csv(alt, index=False)
+        print(f"Detaljne statistike pohranene:     {alt} (originalni fajl zauzet)")
     print(f"Detaljne statistike pohranene:     {detailed_csv}")
 
     with pd.ExcelWriter(OUTPUT_XLSX, engine="openpyxl") as writer:

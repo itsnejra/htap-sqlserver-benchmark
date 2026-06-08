@@ -1,46 +1,57 @@
-# Build output
+# ── Build output ────────────────────────────────────────────────
 BenchmarkApp/**/bin/
 BenchmarkApp/**/obj/
 *.user
 .vs/
 
-# Results - measurements su preveliki za git (500MB+)
+# ── Benchmark raw measurements (500 MB+, not tracked) ───────────
 Results/measurements*.csv
 BenchmarkApp/**/Results/measurements*.csv
 
-# Python
+# ── Python ──────────────────────────────────────────────────────
 Analysis/__pycache__/
 Analysis/*.pyc
 Analysis/.venv/
 Analysis/venv/
+__pycache__/
+*.pyc
 *.egg-info/
 
-# OS
+# ── OS ──────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 
-# Editor
+# ── Editor ──────────────────────────────────────────────────────
 *.suo
 .idea/
 *.swp
 
-# Word temp files
+# ── Word / Office ────────────────────────────────────────────────
 ~$*.docx
 ~$*.xlsx
+Paper/*.docx
 
-# LaTeX auxiliary files
+# ── LaTeX compiled output & auxiliary files ──────────────────────
+*.pdf
 *.aux
 *.bbl
 *.blg
 *.log
 *.out
 *.toc
+*.synctex.gz
 
-# Node modules
+# ── Node ─────────────────────────────────────────────────────────
 node_modules/
 package-lock.json
 
-# Leftover root-level artifacts
-/null
-/rad.pdf
-/rad.tex
+# ── Paper scratch / dev artefacts (not part of reproducible repo) ─
+Paper/docgen/
+Paper/figures/
+Paper/per_query_stats*.py
+Paper/rad_nacrt.md
+Paper/*_nacrt.*
+
+# ── Junk / stale result files ────────────────────────────────────
+Results/per_operation_stats_detailed_new.csv
+null

@@ -95,10 +95,14 @@ HTAPBenchmark/
 │   ├── 03_Schema_IM.sql                   # IM schema (memory-optimized)
 │   ├── 04_Schema_HTAP.sql                 # HTAP schema (memory-optimized, dual-store)
 │   ├── 05_LoadData.sql                    # Učitavanje podataka (~30-60 min)
-│   ├── 06_StoredProcs_OLTP.sql            # 6 OLTP procedura × 4 sheme
-│   ├── 07_StoredProcs_OLAP.sql            # 5 OLAP procedura × 3 sheme
-│   ├── 07b_StoredProcs_OLAP_HTAP_DualStore.sql  # HTAP dual-store OLAP
-│   └── 09_Fix_OLAP_MaxDop.sql             # MAXDOP optimizacija
+│   ├── 05b_LoadData_CS_HTAP_Only.sql      # Obnova IM/HTAP tablica nakon restarta
+│   ├── 06_StoredProcs_OLTP.sql            # OLTP procedure: SELECT/INSERT/UPDATE × 4 sheme
+│   ├── 07_StoredProcs_OLAP.sql            # OLAP upiti Q1–Q5 × sve sheme
+│   ├── 07b_StoredProcs_OLAP_HTAP_DualStore.sql  # Override: HTAP OLAP čita iz cs.*
+│   ├── 08_ResultsSchema.sql               # (Opcionalno) DB-side log tablica
+│   ├── 09_Fix_OLAP_MaxDop.sql             # MAXDOP 2 za OLAP procedure (anti-CXSYNC)
+│   ├── 10_StoredProcs_DELETE.sql          # DELETE procedure: Simple/Complex × 4 sheme
+│   └── 11_StoredProcs_ComplexUPDATE.sql   # Complex UPDATE: usp_UpdateUserReputation × 4 sheme
 │
 ├── BenchmarkApp/
 │   └── HTAPBenchmark.sln
@@ -111,19 +115,31 @@ HTAPBenchmark/
 │           └── appsettings.json  # Konfiguracija (connection string, broj runova itd.)
 │
 ├── Analysis/
-│   ├── requirements.txt
-│   ├── 00_merge_results.py       # → Results/summary.csv (spaja sirova mjerenja)
-│   ├── 01_descriptive_stats.py   # → descriptive_summary.csv / .xlsx
-│   ├── 02_statistical_tests.py   # → statistical_tests.csv, hypothesis_results.txt
-│   └── 03_visualizations.py      # → figures/*.png (6 grafova)
+│   ├── requirements.txt                   # pip install -r requirements.txt
+│   ├── 00_merge_results.py                # → Results/summary.csv
+│   ├── 01_descriptive_stats.py            # → descriptive_summary.csv / .xlsx
+│   ├── 02_statistical_tests.py            # → statistical_tests.csv, hypothesis_results.txt
+│   ├── 03_visualizations.py               # → figures/*.png (6 grafova)
+│   ├── 04_per_operation_stats.py          # → per_operation_stats.csv / .xlsx
+│   ├── 05_regression_anova.py             # → regression_*.csv, anova_results.csv
+│   └── 06_delete_update_benchmark.py      # DELETE + Complex UPDATE mini benchmark
 │
-└── Results/                      # Auto-generirani (ne editovati ručno)
-    ├── measurements.csv
-    ├── summary.csv
-    ├── descriptive_summary.csv
-    ├── descriptive_summary.xlsx
+├── Paper/
+│   ├── rad.tex                            # LaTeX izvorni fajl rada
+│   └── refs.bib                           # BibTeX bibliografija
+│
+└── Results/                               # Generirani izlazi (ne editovati ručno)
+    ├── summary.csv                        # Agregirani po runu (1.070 runova)
+    ├── descriptive_summary.csv / .xlsx
     ├── statistical_tests.csv
     ├── hypothesis_results.txt
+    ├── per_operation_stats.csv / .xlsx    # Per-operacijska statistika
+    ├── per_operation_stats_detailed.csv
+    ├── delete_update_benchmark.csv        # DELETE + Complex UPDATE mjerenja
+    ├── anova_results.csv
+    ├── regression_oltp_throughput.csv
+    ├── regression_olap_latency.csv
+    ├── regression_report.txt
     └── figures/
         ├── 01_oltp_latency_violin.png
         ├── 02_olap_latency_violin.png
@@ -149,22 +165,23 @@ Preuzimanje gotovog SQL Server backup-a (preporučeno):
 Otvoriti svaki fajl u SSMS i pokrenuti redom (`F5`):
 
 ```
-1. 00_DatabaseSetup.sql          -- baza, filegroups, sheme
-2. 01_Schema_Baseline.sql        -- disk B-tree tablice
-3. 02_Schema_CS.sql              -- disk + columnstore tablice
-4. 03_Schema_IM.sql              -- memory-optimized tablice (IM)
-5. 04_Schema_HTAP.sql            -- memory-optimized tablice (HTAP/OLTP sloj)
-6. 05_LoadData.sql               -- punjenje podataka (~30–60 min)
-7. 06_StoredProcs_OLTP.sql       -- OLTP stored procedure (sve 4 sheme)
-8. 07_StoredProcs_OLAP.sql       -- OLAP upiti Q1–Q5 (sve sheme)
-9. 07b_StoredProcs_OLAP_HTAP_DualStore.sql  -- OVERRIDE: HTAP OLAP čita iz cs.*
-10. 09_Fix_OLAP_MaxDop.sql       -- dodaje MAXDOP 2 svim OLAP procedurama
+ 1. 00_DatabaseSetup.sql                      -- baza, filegroups, sheme
+ 2. 01_Schema_Baseline.sql                    -- disk B-tree tablice
+ 3. 02_Schema_CS.sql                          -- disk + columnstore tablice
+ 4. 03_Schema_IM.sql                          -- memory-optimized tablice (IM)
+ 5. 04_Schema_HTAP.sql                        -- memory-optimized tablice (HTAP/OLTP sloj)
+ 6. 05_LoadData.sql                           -- punjenje podataka (~30–60 min)
+ 7. 06_StoredProcs_OLTP.sql                   -- OLTP procedure: SELECT/INSERT/UPDATE (sve 4 sheme)
+ 8. 07_StoredProcs_OLAP.sql                   -- OLAP upiti Q1–Q5 (sve sheme)
+ 9. 07b_StoredProcs_OLAP_HTAP_DualStore.sql   -- OVERRIDE: HTAP OLAP čita iz cs.*
+10. 09_Fix_OLAP_MaxDop.sql                    -- dodaje MAXDOP 2 svim OLAP procedurama
+11. 10_StoredProcs_DELETE.sql                 -- DELETE procedure: Simple/Complex (sve 4 sheme)
+12. 11_StoredProcs_ComplexUPDATE.sql          -- Complex UPDATE: usp_UpdateUserReputation (sve 4 sheme)
 ```
 
-> ⚠️ **Važno**: Skript `07b` mora se pokrenuti **nakon** `07` — on prepisuje HTAP OLAP procedure da čitaju iz `cs.*` (columnstore) umjesto iz `htap.*` (memory-optimized). Redoslijed 9 → 10 je obavezan.
+> ⚠️ **Važno**: Skript `07b` mora se pokrenuti **nakon** `07` — on prepisuje HTAP OLAP procedure da čitaju iz `cs.*` (columnstore) umjesto iz `htap.*` (memory-optimized). Redoslijed je obavezan.
 
 > ℹ️ **Opcionalno**: `08_ResultsSchema.sql` kreira tablicu za DB-side logging rezultata — benchmark aplikacija ovo ne koristi (rezultati idu u CSV), ali može biti korisno za ručno testiranje.
-```
 
 **Provjera učitanih podataka:**
 ```sql
@@ -302,6 +319,20 @@ python 02_statistical_tests.py
 python 03_visualizations.py
 # 6 grafova: violin, throughput-latency, degradacija, heatmap
 # Izlaz: ../Results/figures/*.png
+
+python 04_per_operation_stats.py
+# Per-operacijska statistika iz sirovih mjerenja (measurements.csv)
+# avg/min/max/total/P50/P95/P99 za svaku od 9 kategorija × 4 konfiguracije
+# Izlaz: ../Results/per_operation_stats.csv / .xlsx
+
+python 05_regression_anova.py
+# OLS regresija + ANOVA analiza
+# Izlaz: ../Results/regression_*.csv, anova_results.csv, regression_report.txt
+
+python 06_delete_update_benchmark.py
+# Mini benchmark za DELETE (Simple/Complex) i Complex UPDATE operacije
+# Zahtijeva: pyodbc i aktivnu SQL Server instancu s procedurama 10 i 11
+# Izlaz: ../Results/delete_update_benchmark.csv
 ```
 
 ### Generirani grafovi
