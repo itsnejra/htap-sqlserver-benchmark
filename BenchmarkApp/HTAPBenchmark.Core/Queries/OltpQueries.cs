@@ -20,6 +20,20 @@ public static class OltpQueries
     public static string GetRecentUserPosts(string schema) =>
         $"EXEC {schema}.usp_GetRecentUserPosts @UserId;";
 
+    /// <summary>
+    /// Simple DELETE — briše jedan glas po primarnom ključu.
+    /// ID mora biti iz skupa glasanja koje je benchmark insertovao (Id > OriginalMaxVoteId).
+    /// </summary>
+    public static string DeleteVote(string schema) =>
+        $"EXEC {schema}.usp_DeleteVote @Id;";
+
+    /// <summary>
+    /// Complex DELETE — briše sve glasove datog tipa za određeni post.
+    /// Simulira povlačenje moderatorskih oznaka s posta (višestruko brisanje).
+    /// </summary>
+    public static string DeletePostVotes(string schema) =>
+        $"EXEC {schema}.usp_DeletePostVotes @PostId, @VoteTypeId;";
+
     // Operacije i njihove relativne težine (ukupno 100)
     public static readonly (string Name, int Weight)[] Operations =
     [
