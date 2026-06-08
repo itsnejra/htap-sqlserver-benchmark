@@ -23,3 +23,24 @@ Thumbs.db
 *.suo
 .idea/
 *.swp
+
+# Word temp files
+~$*.docx
+~$*.xlsx
+
+# LaTeX auxiliary files
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+
+# Node modules
+node_modules/
+package-lock.json
+
+# Leftover root-level artifacts
+/null
+/rad.pdf
+/rad.tex
