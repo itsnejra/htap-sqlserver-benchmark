@@ -282,6 +282,222 @@ def plot_latency_heatmap(df: pd.DataFrame):
 
 
 # ----------------------------------------------------------------
+# Graf 7: OLTP throughput heatmap
+# ----------------------------------------------------------------
+def plot_oltp_heatmap(df: pd.DataFrame):
+    """Heatmap srednje OLTP propusnosti po svim kombinacijama config × ratio × concurrency."""
+    pivot = df.groupby(["Configuration", "OltpOlapRatio", "ConcurrencyLevel"])["OltpThroughput"].mean().reset_index()
+    pivot["Label"] = pivot["OltpOlapRatio"] + "  C=" + pivot["ConcurrencyLevel"].astype(str)
+    heatmap_data = pivot.pivot(index="Configuration", columns="Label", values="OltpThroughput")
+    cols = sorted(heatmap_data.columns,
+                  key=lambda x: (x.split("  ")[0], int(x.split("C=")[1])))
+    heatmap_data = heatmap_data[cols]
+
+    fig, ax = plt.subplots(figsize=(14, 5))
+    sns.heatmap(
+        heatmap_data, ax=ax,
+        annot=True, fmt=".0f", annot_kws={"size": 9},
+        cmap="Blues",
+        linewidths=0.5, linecolor="white",
+        cbar_kws={"label": "Srednja OLTP propusnost (ops/s)"}
+    )
+    ax.set_title("Heatmap: Srednja OLTP propusnost (ops/s) po svim kombinacijama",
+                 fontsize=13, fontweight="bold", pad=12)
+    ax.set_xlabel("OLTP/OLAP omjer + konkurentnost")
+    ax.set_ylabel("Konfiguracija")
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+    save_fig("07_oltp_throughput_heatmap")
+
+
+# ----------------------------------------------------------------
+# Graf 8: Grouped bar chart -- OLTP propusnost po konfiguraciji i konkurentnosti
+# ----------------------------------------------------------------
+def plot_oltp_grouped_bar(df: pd.DataFrame):
+    """
+    Grupirani stupičasti dijagram srednje OLTP propusnosti.
+    X-os: razine konkurentnosti; grupe: konfiguracije.
+    Agregiran po svim omjerima opterećenja.
+    """
+    agg = df.groupby(["Configuration", "ConcurrencyLevel"])["OltpThroughput"].agg(["mean", "std"]).reset_index()
+    concurrencies = sorted(agg["ConcurrencyLevel"].unique())
+    n_configs = len(CONFIGS_ORDER)
+    x = np.arange(len(concurrencies))
+    width = 0.18
+    offsets = np.linspace(-(n_configs - 1) / 2, (n_configs - 1) / 2, n_configs) * width
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    for i, config in enumerate(CONFIGS_ORDER):
+        cdata = agg[agg["Configuration"] == config].set_index("ConcurrencyLevel")
+        means = [cdata.loc[c, "mean"] if c in cdata.index else 0 for c in concurrencies]
+        stds  = [cdata.loc[c, "std"]  if c in cdata.index else 0 for c in concurrencies]
+        bars = ax.bar(x + offsets[i], means, width,
+                      yerr=stds, capsize=4,
+                      label=config.upper(),
+                      color=CONFIG_COLORS[config],
+                      edgecolor="black", linewidth=0.6, alpha=0.85,
+                      error_kw={"elinewidth": 1.2, "ecolor": "black"})
+        # Vrijednosti iznad stupaca
+        for bar, mean in zip(bars, means):
+            if mean > 0:
+                ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + max(stds) * 0.05,
+                        f"{mean/1000:.1f}k", ha="center", va="bottom",
+                        fontsize=7.5, color=CONFIG_COLORS[config], fontweight="bold")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"C = {c}" for c in concurrencies])
+    ax.set_xlabel("Razina konkurentnosti")
+    ax.set_ylabel("OLTP propusnost (ops/s)")
+    ax.set_title("Srednja OLTP propusnost po konfiguraciji i razini konkurentnosti\n"
+                 "(agregirano po svim omjerima opterećenja)",
+                 fontsize=13, fontweight="bold")
+    ax.legend(title="Konfiguracija", loc="upper left")
+    ax.grid(axis="y", linestyle="--", alpha=0.4)
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v/1000:.0f}k"))
+    plt.tight_layout()
+    save_fig("08_oltp_grouped_bar")
+
+
+# ----------------------------------------------------------------
+# Graf 9: OLTP vs OLAP throughput scatter (tradeoff)
+# ----------------------------------------------------------------
+def plot_oltp_olap_scatter(df: pd.DataFrame):
+    """
+    Scatter dijagram: x = srednja OLAP propusnost, y = srednja OLTP propusnost.
+    Svaka točka = (config, concurrency), linije spajaju iste konfiguracije po porastu C.
+    Vizualizira tradeoff: HTAP bi trebao biti gore-desno.
+    """
+    agg = df.groupby(["Configuration", "ConcurrencyLevel"]).agg(
+        OltpMean=("OltpThroughput", "mean"),
+        OlapMean=("OlapThroughput", "mean"),
+    ).reset_index()
+
+    concurrencies = sorted(agg["ConcurrencyLevel"].unique())
+    marker_map = {c: m for c, m in zip(concurrencies, ["o", "s", "^"])}
+
+    fig, ax = plt.subplots(figsize=(9, 7))
+
+    for config in CONFIGS_ORDER:
+        cdata = agg[agg["Configuration"] == config].sort_values("ConcurrencyLevel")
+        ax.plot(cdata["OlapMean"], cdata["OltpMean"],
+                color=CONFIG_COLORS[config], linewidth=1.8,
+                linestyle="--", alpha=0.5, zorder=1)
+        for _, row in cdata.iterrows():
+            ax.scatter(row["OlapMean"], row["OltpMean"],
+                       color=CONFIG_COLORS[config],
+                       marker=marker_map[row["ConcurrencyLevel"]],
+                       s=100, zorder=3, edgecolors="black", linewidths=0.5)
+            ax.annotate(f"C={int(row['ConcurrencyLevel'])}",
+                        (row["OlapMean"], row["OltpMean"]),
+                        textcoords="offset points", xytext=(6, 4),
+                        fontsize=8, color=CONFIG_COLORS[config])
+
+    # Legenda konfiguracije
+    legend_patches = [mpatches.Patch(color=CONFIG_COLORS[c], label=c.upper())
+                      for c in CONFIGS_ORDER]
+    ax.legend(handles=legend_patches, title="Konfiguracija", loc="upper left")
+
+    ax.set_xlabel("Srednja OLAP propusnost (q/s)", fontsize=11)
+    ax.set_ylabel("Srednja OLTP propusnost (ops/s)", fontsize=11)
+    ax.set_title("OLTP vs OLAP propusnost -- tradeoff po konfiguraciji i konkurentnosti\n"
+                 "(gore-desno = bolje na oba radna toka)",
+                 fontsize=13, fontweight="bold")
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v/1000:.0f}k"))
+    ax.grid(linestyle="--", alpha=0.4)
+    plt.tight_layout()
+    save_fig("09_oltp_olap_scatter")
+
+
+# ----------------------------------------------------------------
+# Graf 10: Per-operation latency -- grupirani bar chart
+# ----------------------------------------------------------------
+PER_OP_CSV = Path("../Results/per_operation_stats.csv")
+
+def plot_per_operation_bar():
+    """
+    Grupirani stupičasti dijagram prosječne latencije po tipu operacije i konfiguraciji.
+    Čita Results/per_operation_stats.csv.
+    """
+    if not PER_OP_CSV.exists():
+        print(f"  Preskačem graf 10: {PER_OP_CSV} nije pronađen.")
+        return
+
+    df = pd.read_csv(PER_OP_CSV)
+    df["Configuration"] = pd.Categorical(df["Configuration"], categories=CONFIGS_ORDER, ordered=True)
+
+    # Odabir reprezentativnih operacija i željeni redoslijed
+    op_map = {
+        "usp_GetPostById":         "Simple\nSELECT",
+        "usp_GetRecentUserPosts":  "Complex\nSELECT",
+        "usp_InsertVote":          "Complex\nINSERT",
+        "usp_InsertComment":       "Simple\nINSERT",
+        "usp_UpdatePostScore":     "Simple\nUPDATE",
+    }
+    olap_cats = ["Complex SELECT (OLAP)"]
+
+    # OLTP operacije
+    oltp = df[df["OperationName"].isin(op_map.keys())].copy()
+    oltp["OpLabel"] = oltp["OperationName"].map(op_map)
+
+    # OLAP: agregiraj sve OLAP upite po konfiguraciji (prosječna latencija)
+    olap = df[df["Category"].isin(olap_cats)].groupby("Configuration")["averageExecutionTime_ms"].mean().reset_index()
+    olap["OpLabel"] = "OLAP\n(prosjek)"
+
+    # Spoji
+    plot_df = pd.concat([
+        oltp[["Configuration", "OpLabel", "averageExecutionTime_ms"]],
+        olap[["Configuration", "OpLabel", "averageExecutionTime_ms"]]
+    ], ignore_index=True)
+
+    op_order = list(op_map.values()) + ["OLAP\n(prosjek)"]
+    plot_df["OpLabel"] = pd.Categorical(plot_df["OpLabel"], categories=op_order, ordered=True)
+    plot_df = plot_df.dropna(subset=["OpLabel"])
+
+    n_ops = len(op_order)
+    n_configs = len(CONFIGS_ORDER)
+    x = np.arange(n_ops)
+    width = 0.18
+    offsets = np.linspace(-(n_configs - 1) / 2, (n_configs - 1) / 2, n_configs) * width
+
+    # Razdvoj OLTP i OLAP u dva panela zbog razlike u skalama (~ms vs ~sekunde)
+    oltp_ops  = [op for op in op_order if op != "OLAP\n(prosjek)"]
+    olap_ops  = ["OLAP\n(prosjek)"]
+
+    fig, (ax_oltp, ax_olap) = plt.subplots(1, 2, figsize=(14, 6),
+                                            gridspec_kw={"width_ratios": [5, 1.2]})
+
+    for ax, ops_subset, title_suffix in [
+        (ax_oltp, oltp_ops,  "OLTP operacije"),
+        (ax_olap, olap_ops,  "OLAP (prosjek)"),
+    ]:
+        x_sub = np.arange(len(ops_subset))
+        off_sub = np.linspace(-(n_configs - 1) / 2, (n_configs - 1) / 2, n_configs) * width
+
+        for i, config in enumerate(CONFIGS_ORDER):
+            cdata = plot_df[plot_df["Configuration"] == config].set_index("OpLabel")
+            vals = [cdata.loc[op, "averageExecutionTime_ms"] if op in cdata.index else 0
+                    for op in ops_subset]
+            bars = ax.bar(x_sub + off_sub[i], vals, width,
+                          label=config.upper(),
+                          color=CONFIG_COLORS[config],
+                          edgecolor="black", linewidth=0.6, alpha=0.85)
+
+        ax.set_xticks(x_sub)
+        ax.set_xticklabels(ops_subset, fontsize=10)
+        ax.set_ylabel("Prosječna latencija (ms)")
+        ax.set_title(title_suffix, fontweight="bold")
+        ax.grid(axis="y", linestyle="--", alpha=0.4)
+
+    ax_oltp.legend(title="Konfiguracija", loc="upper right", fontsize=9)
+    fig.suptitle("Prosječna latencija po tipu operacije i konfiguraciji\n"
+                 "(agregirano po svim omjerima opterećenja i razinama konkurentnosti)",
+                 fontsize=13, fontweight="bold")
+    plt.tight_layout()
+    save_fig("10_per_operation_latency")
+
+
+# ----------------------------------------------------------------
 # Glavni program
 # ----------------------------------------------------------------
 
@@ -337,6 +553,18 @@ def main():
 
     print("6. Latencija heatmap...")
     plot_latency_heatmap(df)
+
+    print("7. OLTP throughput heatmap...")
+    plot_oltp_heatmap(df)
+
+    print("8. OLTP grupirani bar chart...")
+    plot_oltp_grouped_bar(df)
+
+    print("9. OLTP vs OLAP scatter (tradeoff)...")
+    plot_oltp_olap_scatter(df)
+
+    print("10. Per-operation latencija bar chart...")
+    plot_per_operation_bar()
 
     print(f"\nSvi grafovi pohraneni u: {FIGURES_DIR.resolve()}")
     print("Završeno.")
