@@ -467,12 +467,15 @@ Tokom implementacije identificirana su tri tehnička izazova. Pri $C=32$ s 30 uz
 \chapter{Rezultati}
 \label{ch:rezultati}
 
-U okviru eksperimentalnog istraživanja sprovedene su ukupno 1.080 planiranih mjernih serija, od čega je 10 serija (0,93\%) isključeno iz analize usljed nestabilnosti mjernog okruženja, definisane kao stopa uspješnosti OLTP operacija ispod 90\%. Konačan uzorak obuhvata 1.070 validnih mjerenja, s 28 do 30 serija po svakoj eksperimentalnoj kombinaciji, čime je osigurana statistička pouzdanost provedenih analiza.
+\section{Pregled eksperimenta}
+\label{sec:pregled}
 
-\section{Deskriptivna statistika}
-\label{sec:deskriptivna}
+U okviru eksperimentalnog istraživanja sprovedene su ukupno 1.080 planiranih mjernih serija u punom faktorijalnom dizajnu $4 \times 3 \times 3$ (4 konfiguracije $\times$ 3 OLTP/OLAP omjera $\times$ 3 razine konkurentnosti), s 30 serija po kombinaciji. Deset serija (0,93\%) isključeno je iz analize usljed nestabilnosti mjernog okruženja, definisane kao stopa uspješnosti OLTP operacija ispod 90\%. Konačan uzorak obuhvata 1.070 validnih mjerenja, s 28 do 30 serija po svakoj eksperimentalnoj kombinaciji, čime je osigurana statistička pouzdanost provedenih analiza.
 
-\begin{table}[H]
+\section{OLTP performanse}
+\label{sec:oltp_rezultati}
+
+\begin{table}[tbp]
 \centering
 \caption{OLTP propusnost (ops/s) -- srednja vrijednost $\pm$ standardna devijacija, agregirano kroz sve omjere opterećenja}
 \label{tab:oltp_throughput}
@@ -489,7 +492,49 @@ IM & $2.007 \pm 1.258$ & $4.249 \pm 2.923$ & $4.726 \pm 2.664$ \\
 \end{tabular}
 \end{table}
 
-\begin{table}[H]
+\begin{table}[tbp]
+\centering
+\caption{Usporedba HTAP i IM konfiguracije: OLTP propusnost pri 80/20 opterećenju (H3)}
+\label{tab:h3}
+\small
+\begin{tabular}{lrrrrl}
+\toprule
+\textbf{C} & \textbf{IM (ops/s)} & \textbf{HTAP (ops/s)} & \textbf{Omjer} & \textbf{Cohen's $\bm{d}$} & \textbf{Nul hip.} \\
+\midrule
+4 & 3.027 & 10.083 & 3,3$\times$ & $-$4,38 & odbijena \\
+16 & 7.726 & 35.914 & 4,6$\times$ & $-$8,29 & odbijena \\
+32 & 6.325 & 43.751 & 6,9$\times$ & $-$11,93 & odbijena \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Tablica~\ref{tab:oltp_throughput} prikazuje OLTP propusnost po konfiguraciji i razini konkurentnosti. HTAP konfiguracija dominira: pri $C=32$ dostiže 21.920 ops/s, naspram 4.726 ops/s za IM (faktor 4,6$\times$), 2.477 ops/s za CS i 2.432 ops/s za Baseline. Tablica~\ref{tab:h3} kvantificira razliku između HTAP i IM pri transakcijsko-intenzivnom opterećenju (80/20): HTAP nadmašuje IM za faktor koji raste od 3,3$\times$ pri $C=4$ do 6,9$\times$ pri $C=32$ (ekstremno veliki efekti, $d > 4$). Slika~\ref{fig:oltp_throughput_latency} prikazuje throughput-latency krivulje za sve konfiguracije, a Slika~\ref{fig:scalability} skalabilnost propusnosti s porastom broja niti pri omjeru 50/50. Slika~\ref{fig:update_p95} pokazuje da je razlika vidljiva i na razini pojedinačnih procedura: \texttt{usp\_UpdatePostScore} bilježi P95\,=\,11,9\,ms u IM naspram 4,3\,ms u HTAP. Interpretacija ovog nalaza data je u odjeljku~\ref{sec:oltp_diskusija}.
+
+\begin{figure}[tbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{../Results/figures/03_oltp_throughput_latency.png}
+    \caption{OLTP Throughput-Latency krivulje po konfiguracijama i omjerima opterećenja.}
+    \label{fig:oltp_throughput_latency}
+\end{figure}
+
+\begin{figure}[tbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{../Results/figures/11_scalability_line.png}
+    \caption{Skalabilnost OLTP propusnosti s brojem konkurentnih niti pri omjeru opterećenja 50\%/50\%. HTAP i IM pokazuju superlinarno povećanje propusnosti pri prelasku s C=4 na C=32, dok Baseline i CS ostaju ograničeni I/O kapacitetom diska.}
+    \label{fig:scalability}
+\end{figure}
+
+\begin{figure}[tbp]
+    \centering
+    \includegraphics[width=0.75\textwidth]{../Results/figures/13_update_p95_bar.png}
+    \caption{P95 latencija procedure \texttt{usp\_UpdatePostScore} po konfiguraciji (agregirano po svim omjerima i razinama konkurentnosti). IM postiže P95\,=\,11,9\,ms naspram HTAP P95\,=\,4,3\,ms -- razlika od 2,8$\times$ objašnjava se CPU saturacijom uzrokovanom row-mode OLAP upitima u IM konfiguraciji.}
+    \label{fig:update_p95}
+\end{figure}
+
+\section{OLAP performanse}
+\label{sec:olap_rezultati}
+
+\begin{table}[tbp]
 \centering
 \caption{OLAP propusnost (q/s) -- srednja vrijednost $\pm$ standardna devijacija}
 \label{tab:olap_throughput}
@@ -506,7 +551,7 @@ IM & $2,52 \pm 0,71$ & $3,05 \pm 0,54$ & $3,13 \pm 0,55$ \\
 \end{tabular}
 \end{table}
 
-\begin{table}[H]
+\begin{table}[tbp]
 \centering
 \caption{OLAP latencija $P_{50}$ (ms) -- srednja vrijednost $\pm$ standardna devijacija, agregirano kroz sve razine konkurentnosti}
 \label{tab:olap_latency}
@@ -523,107 +568,68 @@ IM & $1.048 \pm 549$ & $2.035 \pm 1.119$ & $2.281 \pm 1.202$ \\
 \end{tabular}
 \end{table}
 
-Tablice~\ref{tab:oltp_throughput}, \ref{tab:olap_throughput} i \ref{tab:olap_latency} ukazuju na dominantnost HTAP konfiguracije u svim mjerenim metrikama. Pri razini konkurentnosti $C=32$, HTAP dostiže 21.920 ops/s, naspram 4.726 ops/s za IM, 2.477 ops/s za CS i 2.432 ops/s za Baseline konfiguraciju. Razlike u OLAP latenciji su konzistentne kroz sve omjere opterećenja, s HTAP konfiguracijom koja ostvaruje $P_{50}=924$\,ms pri 80/20 nasuprot 3.128\,ms za Baseline -- smanjenje od 70\%.
+\begin{table}[tbp]
+\centering
+\caption{CS vs HTAP: OLAP latencija $P_{50}$ pri niskoj i visokoj konkurentnosti (H1)}
+\label{tab:h1}
+\small
+\begin{tabular}{lrrrrl}
+\toprule
+\textbf{C} & \textbf{CS $P_{50}$ (ms)} & \textbf{HTAP $P_{50}$ (ms)} & \textbf{Razlika} & \textbf{Cohen's $\bm{d}$} & \textbf{Zaključak} \\
+\midrule
+4 & 1.850 & 825 & $-$55\% & 6,14 & djelimično potvrđena \\
+32 & 3.620 & 1.813 & $-$50\% & 6,52 & potvrđena \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{../Results/figures/01_oltp_latency_violin.png}
-    \caption{Distribucija OLTP latencije $P_{50}$ po konfiguracijama i razinama konkurentnosti.}
-    \label{fig:oltp_violin}
-\end{figure}
+HTAP konfiguracija postiže najniže OLAP latencije kroz sve omjere opterećenja: $P_{50}=924$\,ms pri 80/20 nasuprot 3.128\,ms za Baseline, smanjenje od 70\%. Tablica~\ref{tab:h1} prikazuje usporedbu CS i HTAP koja je predmet hipoteze H1: HTAP je bolji i pri $C=4$ ($\Delta=1.025$\,ms, $d=6,14$), a razlika raste pri $C=32$ ($\Delta=1.807$\,ms). Distribucija latencija vidljiva je na Slici~\ref{fig:olap_violin}.
 
-\begin{figure}[H]
+\begin{figure}[tbp]
     \centering
     \includegraphics[width=0.85\textwidth]{../Results/figures/02_olap_latency_violin.png}
     \caption{Distribucija OLAP latencije $P_{50}$ po konfiguracijama i razinama konkurentnosti.}
     \label{fig:olap_violin}
 \end{figure}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{../Results/figures/03_oltp_throughput_latency.png}
-    \caption{OLTP Throughput-Latency krivulje po konfiguracijama i omjerima opterećenja.}
-    \label{fig:oltp_throughput_latency}
-\end{figure}
+\section{Mješovito opterećenje i degradacija}
+\label{sec:misovito_rezultati}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{../Results/figures/04_olap_throughput_latency.png}
-    \caption{OLAP Throughput-Latency krivulje po konfiguracijama i omjerima opterećenja.}
-    \label{fig:olap_throughput_latency}
-\end{figure}
+\begin{table}[tbp]
+\centering
+\caption{Degradacija OLTP propusnosti pri prelasku s 80/20 na 50/50 opterećenje (H2)}
+\label{tab:h2}
+\small
+\begin{tabular}{lrrrl}
+\toprule
+\textbf{Konfiguracija} & \textbf{Degradacija (\%)} & \textbf{SD (\%)} & \textbf{Cohen's $\bm{d}$} & \textbf{Zaključak} \\
+\midrule
+CS & 67,4 & 2,8 & 2,315 & potvrđena \\
+HTAP & 55,9 & 6,3 & --- & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\begin{figure}[H]
+CS konfiguracija bilježi degradaciju OLTP propusnosti od 67,4\% pri prelasku s transakcijskog (80/20) na mješovito (50/50) opterećenje, dok HTAP bilježi 55,9\% (Tablica~\ref{tab:h2}). Razlika od 11,5 procentnih poena, uz $p < 0,001$ i $d = 2,315$ (veliki efekt), potvrđuje prednost izolacije workloada u dual-store pristupu. Slika~\ref{fig:degradacija} prikazuje distribuciju degradacije po konfiguracijama, a Slika~\ref{fig:ratio_impact} proširuje analizu na sva tri omjera opterećenja.
+
+\begin{figure}[tbp]
     \centering
     \includegraphics[width=0.85\textwidth]{../Results/figures/05_oltp_degradation.png}
     \caption{Degradacija OLTP propusnosti pri prelasku s 80/20 na 50/50 omjer opterećenja po konfiguraciji.}
     \label{fig:degradacija}
 \end{figure}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{../Results/figures/06_latency_heatmap.png}
-    \caption{Heatmap OLAP latencije $P_{50}$ za sve kombinacije konfiguracija, omjera opterećenja i razina konkurentnosti.}
-    \label{fig:heatmap}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{../Results/figures/07_oltp_throughput_heatmap.png}
-    \caption{Heatmap srednje OLTP propusnosti (ops/s) za sve kombinacije konfiguracija, omjera opterećenja i razina konkurentnosti. Dominacija HTAP konfiguracije vidljiva je intenzitetom plave boje.}
-    \label{fig:oltp_heatmap}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{../Results/figures/08_oltp_grouped_bar.png}
-    \caption{Srednja OLTP propusnost po konfiguraciji i razini konkurentnosti, agregirano po svim omjerima opterećenja. Greške prikazuju standardnu devijaciju.}
-    \label{fig:oltp_bar}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.75\textwidth]{../Results/figures/09_oltp_olap_scatter.png}
-    \caption{Scatter dijagram OLTP vs.\ OLAP propusnosti po konfiguraciji i razini konkurentnosti. Svaka točka označava jednu kombinaciju; linije spajaju iste konfiguracije po porastu $C$. Gore-desno označava bolju performansu na oba radna toka istovremeno.}
-    \label{fig:scatter}
-\end{figure}
-
-Slika~\ref{fig:scalability} prikazuje skalabilnost OLTP propusnosti pri rastu broja konkurentnih niti, a Slika~\ref{fig:ratio_impact} pokazuje kako omjer OLTP/OLAP opterećenja utječe na prosječnu propusnost svake konfiguracije.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{../Results/figures/11_scalability_line.png}
-    \caption{Skalabilnost OLTP propusnosti s brojem konkurentnih niti pri omjeru opterećenja OLTP\,50\%/OLAP\,50\%. HTAP i IM pokazuju superlinarno povećanje propusnosti pri prelasku s C=4 na C=32, dok Baseline i CS ostaju ograničeni I/O kapacitetom diska.}
-    \label{fig:scalability}
-\end{figure}
-
-\begin{figure}[H]
+\begin{figure}[tbp]
     \centering
     \includegraphics[width=0.85\textwidth]{../Results/figures/12_ratio_impact_bar.png}
-    \caption{Utjecaj omjera OLTP/OLAP opterećenja na srednju OLTP propusnost (agregirano po svim razinama konkurentnosti). HTAP zadržava relativno visoku propusnost čak i pri pretežno analitičkom opterećenju (20\%/80\%), što potvrđuje izolaciju workloada zahvaljujući dualnom pohranišnom mehanizmu.}
+    \caption{Utjecaj omjera OLTP/OLAP opterećenja na srednju OLTP propusnost (agregirano po svim razinama konkurentnosti). HTAP zadržava relativno visoku propusnost čak i pri dominantno analitičkom opterećenju (20\%/80\%), što potvrđuje izolaciju workloada dual-store mehanizma.}
     \label{fig:ratio_impact}
 \end{figure}
 
-Analiza latencije po tipu operacije (Slike~\ref{fig:per_op} i~\ref{fig:update_p95}) pokazuje da HTAP postiže najniže prosječno vrijeme izvršavanja u pet od šest kategorija. Jedini izuzetak je OLAP (Complex SELECT) gdje IM ostvaruje 495\,ms naspram HTAP 780\,ms, što se objašnjava izostankom columnstore overhead-a pri kratkim analitičkim upitima. Posebno je indikativna latencija procedure \texttt{usp\_UpdatePostScore}: IM bilježi P95\,=\,11,9\,ms naspram HTAP P95\,=\,4,3\,ms, razlika od 2,8$\times$ uzrokovana CPU saturacijom uslijed row-mode OLAP izvršavanja.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\textwidth]{../Results/figures/10_per_operation_latency.png}
-    \caption{Prosječna latencija po tipu operacije i konfiguraciji (lijevo: OLTP operacije; desno: OLAP prosjek). Skale su namjerno odvojene jer OLAP latencija premašuje OLTP za dva do tri reda veličine.}
-    \label{fig:per_op}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.75\textwidth]{../Results/figures/13_update_p95_bar.png}
-    \caption{P95 latencija procedure \texttt{usp\_UpdatePostScore} po konfiguraciji (agregirano po svim omjerima i razinama konkurentnosti). IM postiže P95\,=\,11,9\,ms naspram HTAP P95\,=\,4,3\,ms -- razlika od 2,8$\times$ objašnjava se CPU saturacijom uzrokovanom row-mode OLAP upitima u IM konfiguraciji, koji ne mogu iskoristiti columnstore batch-mode izvršavanje.}
-    \label{fig:update_p95}
-\end{figure}
-
-\section{Rezultati statističkih testova}
+\section{Statistički testovi i regresijska analiza}
 \label{sec:statisticki_testovi}
 
-\begin{table}[H]
+\begin{table}[tbp]
 \centering
 \caption{Kruskal-Wallis H-test -- globalne razlike između konfiguracija (df = 3)}
 \label{tab:kruskal_wallis}
@@ -642,7 +648,7 @@ OLAP latencija $P_{50}$ & $H=300,91$; $p<0,001$ & $H=228,87$; $p<0,001$ & $H=182
 
 Svi provedeni Kruskal-Wallis testovi (Tablica~\ref{tab:kruskal_wallis}) potvrđuju statistički značajne globalne razlike ($p < 0,001$) za sve mjerne metrike i sve razine konkurentnosti.
 
-\begin{table}[H]
+\begin{table}[tbp]
 \centering
 \caption{Mann-Whitney U test s Bonferroni korekcijom -- OLAP latencija $P_{50}$, $C=32$}
 \label{tab:mw_olap_latency_c32}
@@ -663,17 +669,14 @@ IM vs HTAP & 6.449 & $<0,001$ & $+1,564$ & veliki \\
 
 \noindent\textit{Napomena: Pozitivan predznak Cohenovog $d$ označava da prva konfiguracija u paru ima veću (lošiju) latenciju.}
 
-\section{Regresijska analiza}
-\label{sec:regresija_anova}
-
-Uz neparametarsku analizu, provedena je i parametarska analiza u svrhu kvantifikacije veličine efekta faktora te izgradnje prediktivnog modela performansi. Konstruisana su dva OLS regresijska modela s logaritamskom transformacijom zavisnih varijabli (log-linearni model):
+Uz neparametarsku analizu, provedena je i parametarska analiza radi kvantifikacije veličine efekta faktora i izgradnje prediktivnog modela performansi. Konstruisana su dva OLS regresijska modela s logaritamskom transformacijom zavisnih varijabli:
 
 \begin{align}
 \log(\text{OltpThroughput}) &\sim \text{Config} + \text{OltpOlapRatio} + \log(\text{Concurrency}) \label{eq:oltp_reg} \\
 \log(\text{OlapLatencyP50}) &\sim \text{Config} + \text{OltpOlapRatio} + \log(\text{Concurrency}) \label{eq:olap_reg}
 \end{align}
 
-\begin{table}[H]
+\begin{table}[tbp]
 \centering
 \caption{OLS regresijski koeficijenti za oba modela ($N=1.065$; sve vrijednosti $p<0{,}001$ osim CS za OLTP)}
 \label{tab:reg_oba}
@@ -696,7 +699,28 @@ $R^2$ & \multicolumn{2}{c}{0,881} & \multicolumn{2}{c}{0,854} \\
 \end{tabular}
 \end{table}
 
-Koeficijent HTAP konfiguracije u modelu~\eqref{eq:oltp_reg} iznosi $+1,965$ ($p<0,001$), što znači da HTAP, uz jednake vrijednosti ostalih prediktora, ima $e^{1,965} \approx 7,14$ puta veću OLTP propusnost od Baseline ($R^2 = 0,881$). U modelu~\eqref{eq:olap_reg} koeficijent $-1,382$ odgovara smanjenju OLAP latencije za faktor $e^{1,382} \approx 3,98$ u korist HTAP ($R^2 = 0,854$).
+Koeficijent HTAP konfiguracije u modelu~\eqref{eq:oltp_reg} iznosi $+1,965$ ($p<0,001$), što znači da HTAP ima $e^{1,965} \approx 7,14$ puta veću OLTP propusnost od Baseline ($R^2 = 0,881$). U modelu~\eqref{eq:olap_reg} koeficijent $-1,382$ odgovara smanjenju OLAP latencije za faktor $e^{1,382} \approx 3,98$ u korist HTAP ($R^2 = 0,854$).
+
+\section{Sažetak hipoteza}
+\label{sec:sazetak_hipoteza}
+
+\begin{table}[tbp]
+\centering
+\caption{Pregled istraživačkih hipoteza -- ishodi empirijskog testiranja}
+\label{tab:hipoteze_sazetak}
+\small
+\begin{tabular}{lp{4.8cm}lp{4.5cm}}
+\toprule
+\textbf{Hip.} & \textbf{Tvrdnja} & \textbf{Ishod} & \textbf{Ključni nalaz} \\
+\midrule
+H1 & CS $\approx$ HTAP OLAP latencija pri $C=4$; razlika raste pri $C=32$ & Djelimično potvrđena & HTAP bolji i pri $C=4$ ($d=6,14$); razlika raste s konkurentnošću \\[6pt]
+H2 & CS degradacija $>$ HTAP degradacija & Potvrđena & CS $-$67,4\% vs HTAP $-$55,9\% ($d=2,315$) \\[6pt]
+H3 & HTAP $\approx$ IM OLTP propusnost (nul hip.) & Nul hip. odbijena & HTAP 3,3--6,9$\times$ bolji; ključni mehanizam: izolacija workloada \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Odbacivanje nul hipoteze H3 predstavlja najznačajniji nalaz ovog rada jer razotkriva temeljni mehanizam prednosti dual-store arhitekture: columnstore sloj ne samo da ubrzava analitičke upite, već neizravno štiti transakcijske resurse od analitičke interference. Diskusija u Poglavlju~\ref{ch:diskusija} tumači ove nalaze i stavlja ih u kontekst dosadašnje literature.
 
 % ======================================================================
 % POGLAVLJE 6: DISKUSIJA
@@ -704,68 +728,9 @@ Koeficijent HTAP konfiguracije u modelu~\eqref{eq:oltp_reg} iznosi $+1,965$ ($p<
 \chapter{Diskusija}
 \label{ch:diskusija}
 
-\section{Provjera istraživačkih hipoteza}
-\label{sec:provjera_hipoteza}
+Empirijski rezultati prezentirani u Poglavlju~\ref{ch:rezultati} pružaju osnovu za sljedeće interpretativne zaključke o arhitekturalnim prednostima i ograničenjima ispitivanih konfiguracija.
 
-\subsection{Hipoteza H1: CS vs HTAP -- OLAP latencija pri različitim razinama konkurentnosti}
-
-\begin{table}[H]
-\centering
-\caption{CS vs HTAP: OLAP latencija $P_{50}$ pri niskoj i visokoj konkurentnosti}
-\label{tab:h1}
-\small
-\begin{tabular}{lrrrrl}
-\toprule
-\textbf{C} & \textbf{CS $P_{50}$ (ms)} & \textbf{HTAP $P_{50}$ (ms)} & \textbf{Razlika} & \textbf{Cohen's $\bm{d}$} & \textbf{Zaključak} \\
-\midrule
-4 & 1.850 & 825 & $-$55\% & 6,14 & djelimično potvrđena \\
-32 & 3.620 & 1.813 & $-$50\% & 6,52 & potvrđena \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Hipoteza H1 je djelimično potvrđena. Pretpostavka o usporedivosti performansi pri niskom $C$ odbačena je jer HTAP postiže statistički značajno bolju OLAP latenciju i pri $C=4$ ($d=6,14$, veliki efekt). Međutim, hipoteza je potvrđena u dijelu da razlika raste s konkurentnošću: $\Delta=1.025$\,ms pri $C=4$ naspram $\Delta=1.807$\,ms pri $C=32$. Taj obrazac rasta razlike konzistentan je s modelom opisanim u Tablici~\ref{tab:reg_oba}, gdje $\log(\text{Concurrency})$ ima pozitivan koeficijent ($+0,395$, $p<0,001$), što znači da visoka konkurentnost eksponencijalno povećava razliku u latenciji između konfiguracija s columnstore pohranom i bez nje.
-
-\subsection{Hipoteza H2: Degradacija OLTP propusnosti pri mješovitom opterećenju}
-
-\begin{table}[H]
-\centering
-\caption{Degradacija OLTP propusnosti pri prelasku s 80/20 na 50/50 opterećenje}
-\label{tab:h2}
-\small
-\begin{tabular}{lrrrl}
-\toprule
-\textbf{Konfiguracija} & \textbf{Degradacija (\%)} & \textbf{SD (\%)} & \textbf{Cohen's $\bm{d}$} & \textbf{Zaključak} \\
-\midrule
-CS & 67,4 & 2,8 & 2,315 & potvrđena \\
-HTAP & 55,9 & 6,3 & --- & --- \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Hipoteza H2 je potvrđena. CS konfiguracija bilježi degradaciju od 67,4\%, dok HTAP bilježi 55,9\% ($p < 0,001$, $d = 2,315$ -- veliki efekt). Mehanizam izolacije leži u fizičkom odvajanju OLTP i OLAP sloja pohrane: analitički upiti rade nad columnstore tablicama u shemi \texttt{cs.*}, dok OLTP operacije koriste memorijsko-optimizovane tablice u shemi \texttt{htap.*} koje ne koriste buffer pool. Ovaj nalaz potvrđuje zaključke Zhao et al. \cite{zhao2023benchmarking} koji tvrde da je performansna izolacija kritičnija metrika od vršnih vrijednosti propusnosti.
-
-\subsection{Hipoteza H3: HTAP vs IM -- OLTP propusnost pri transakcijsko intenzivnom opterećenju}
-
-\begin{table}[H]
-\centering
-\caption{Usporedba HTAP i IM konfiguracije: OLTP propusnost pri 80/20 opterećenju}
-\label{tab:h3}
-\small
-\begin{tabular}{lrrrrl}
-\toprule
-\textbf{C} & \textbf{IM (ops/s)} & \textbf{HTAP (ops/s)} & \textbf{Omjer} & \textbf{Cohen's $\bm{d}$} & \textbf{Nul hip.} \\
-\midrule
-4 & 3.027 & 10.083 & 3,3$\times$ & $-$4,38 & odbijena \\
-16 & 7.726 & 35.914 & 4,6$\times$ & $-$8,29 & odbijena \\
-32 & 6.325 & 43.751 & 6,9$\times$ & $-$11,93 & odbijena \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Nul hipoteza H3 je odbijena na svim razinama konkurentnosti -- i upravo to odbacivanje predstavlja \textbf{najznačajniji nalaz ovog rada}. HTAP ostvaruje 3,3--6,9$\times$ veću OLTP propusnost od IM konfiguracije, pri čemu razlika raste s konkurentnošću ($d = -4,38$ do $-11,93$, ekstremno veliki efekti). Međutim, pravi zaključak nije puko "HTAP ima bolji OLTP throughput od IM" -- on je dublji. IM konfiguracija je "čisto transakcijska" samo na papiru: kada su pokrenute OLAP niti s 20\% udjela, one izvode full-table skenove nad hash indeksima memorijsko-optimizovanih tablica u row-modu, troše ogroman CPU kapacitet i direktno guše OLTP niti koje dijele iste procesore. HTAP taj problem ne poznaje jer OLAP čita isključivo iz \texttt{cs.*} columnstore sloja, dok OLTP operira unutar \texttt{htap.*} memorijskog sloja -- fizička izolacija radnih opterećenja sprečava interferenciju između analitičkih i transakcijskih niti na razini procesora. Pravi empirijski nalaz H3 stoga nije usporedba propusnosti, nego kvantifikacija benefita izolacije workloada: dual-store arhitektura pruža bolji OLTP throughput pri mješovitom opterećenju ne zahvaljujući superiornom transakcijskom engine-u, već zahvaljujući tome što OLAP niti ne mogu ugroziti OLTP resurse. Mehanizam je detaljno objašnjen u odjeljku~\ref{sec:oltp_diskusija}.
-
-\section{OLTP performanse -- memorija nasuprot disku}
+\section{OLTP performanse -- izolacija workloada}
 \label{sec:oltp_diskusija}
 
 Razlika između HTAP i Baseline konfiguracije pri $C=32$ iznosi faktor 9,0 (21.920 vs 2.432 ops/s), što je konzistentno s originalnim Hekaton radom \cite{diaconu2013hekaton} koji izvještava o ubrzanjima od 5--70$\times$ za memorijsko-optimizovane tablice. Međutim, znatno iznenađujući nalaz je da IM konfiguracija ostvaruje značajno nižu OLTP propusnost od HTAP (4.726 vs 21.920 ops/s) unatoč tome što obje konfiguracije koriste isti Hekaton engine.
@@ -775,10 +740,14 @@ Objašnjenje leži u arhitekturalnoj izolaciji radnih opterećenja, a ne u nadmo
 \section{OLAP performanse -- prednost columnstore arhitekture}
 \label{sec:olap_diskusija}
 
+Hipoteza H1 je djelimično potvrđena. Pretpostavka o usporedivosti OLAP latencije CS i HTAP pri niskom $C$ odbačena je jer HTAP postiže statistički značajno bolju latenciju i pri $C=4$ ($d=6,14$, veliki efekt). Hipoteza je potvrđena u dijelu da razlika raste s konkurentnošću: $\Delta=1.025$\,ms pri $C=4$ naspram $\Delta=1.807$\,ms pri $C=32$, konzistentno s modelom u Tablici~\ref{tab:reg_oba} gdje $\log(\text{Concurrency})$ nosi koeficijent $+0,395$ ($p<0,001$).
+
 Rezultati potvrđuju očekivanu prednost columnstore pohrane za analitičke upite. HTAP (6,84 q/s pri $C=32$) i CS (2,80 q/s) značajno nadmašuju Baseline (0,85 q/s). Međutim, zanimljiv je nalaz da IM (3,13 q/s) nadmašuje CS (2,80 q/s) u OLAP propusnosti pri $C=32$, unatoč tome što CS posjeduje columnstore indekse. Objašnjenje leži u kontenciji za memorijskim resursima pri visokoj konkurentnosti. Pri $C=32$ sa 6 i više simultanih batch-mode upita, čekanje na dodjelu memorijskog prostora (\texttt{RESOURCE\_SEMAPHORE} wait type) povećava ukupno vrijeme izvršavanja više nego što ga batch-mode skraćuje. IM konfiguracija, s podacima u RAM-u i bez batch-mode overhead-a, izbjegava ovaj problem. Ovaj nalaz je konzistentan sa Zeng et al. \cite{zeng2023empirical} koji naglašavaju da upravljanje memorijom postaje dominantni faktor performansi pri visokim razinama konkurentnosti.
 
 \section{Degradacija pri mješovitom opterećenju}
 \label{sec:degradacija_diskusija}
+
+Hipoteza H2 je potvrđena: CS konfiguracija bilježi degradaciju od 67,4\%, HTAP 55,9\% ($p < 0,001$, $d = 2,315$ -- veliki efekt). Ovaj nalaz potvrđuje zaključke Zhao et al.\ \cite{zhao2023benchmarking} koji tvrde da je performansna izolacija kritičnija metrika od vršnih vrijednosti propusnosti.
 
 Razlika u degradaciji (67,4\% CS vs 55,9\% HTAP) od 11,5 procentnih poena, iako naizgled skromna, u apsolutnim brojevima pri $C=32$ predstavlja razliku između gubitka dvije trećine i polovice ukupnog OLTP kapaciteta. Ovo je kritično u scenarijima s garantiranom razinom usluge (SLA). Mehanizam izolacije je jasan: u CS konfiguraciji, analitički batch-mode skenovi dijele buffer pool i CPU threadove s OLTP operacijama; u HTAP dual-store pristupu, analitički upiti idu na \texttt{cs.*} tablice, dok OLTP operacije koriste \texttt{htap.*} memorijsko-optimizovane tablice koje ne koriste buffer pool uopće, čime se eliminira jedan od ključnih izvora međusobne interference.
 
@@ -1028,5 +997,63 @@ END;
 \end{lstlisting}
 
 \noindent\textit{Napomena o HTAP dual-store varijanti:} procedure Q1--Q5 za \texttt{htap.*} shemu su strukturno identične prikazanim, ali svaki \texttt{FROM baseline.Posts} zamijenjen je s \texttt{FROM cs.Posts} -- čime OLAP workload čita iz disk-based columnstore sloja dok OLTP istovremeno piše u \texttt{htap.*} memorijsko-optimizovani sloj, ostvarujući fizičku izolaciju radnih tokova.
+
+% ------------------------------------------------------------------
+% PRILOG C
+% ------------------------------------------------------------------
+\newpage
+\chapter{Dodatne vizualizacije}
+\label{app:vizualizacije}
+
+Ovaj prilog sadrži dopunske grafove koji pružaju dodatnu perspektivu na izmjerene distribucije, ali nisu neophodni za razumijevanje ključnih nalaza iznesenih u Poglavljima~\ref{ch:rezultati} i~\ref{ch:diskusija}.
+
+\begin{figure}[tbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{../Results/figures/01_oltp_latency_violin.png}
+    \caption{Distribucija OLTP latencije $P_{50}$ po konfiguracijama i razinama konkurentnosti.}
+    \label{fig:oltp_violin}
+\end{figure}
+
+\begin{figure}[tbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{../Results/figures/04_olap_throughput_latency.png}
+    \caption{OLAP Throughput-Latency krivulje po konfiguracijama i omjerima opterećenja.}
+    \label{fig:olap_throughput_latency}
+\end{figure}
+
+\begin{figure}[tbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{../Results/figures/06_latency_heatmap.png}
+    \caption{Heatmap OLAP latencije $P_{50}$ za sve kombinacije konfiguracija, omjera opterećenja i razina konkurentnosti.}
+    \label{fig:heatmap}
+\end{figure}
+
+\begin{figure}[tbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{../Results/figures/07_oltp_throughput_heatmap.png}
+    \caption{Heatmap srednje OLTP propusnosti (ops/s) za sve kombinacije konfiguracija, omjera opterećenja i razina konkurentnosti.}
+    \label{fig:oltp_heatmap}
+\end{figure}
+
+\begin{figure}[tbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{../Results/figures/08_oltp_grouped_bar.png}
+    \caption{Srednja OLTP propusnost po konfiguraciji i razini konkurentnosti, agregirano po svim omjerima opterećenja.}
+    \label{fig:oltp_bar}
+\end{figure}
+
+\begin{figure}[tbp]
+    \centering
+    \includegraphics[width=0.75\textwidth]{../Results/figures/09_oltp_olap_scatter.png}
+    \caption{Scatter dijagram OLTP vs.\ OLAP propusnosti po konfiguraciji i razini konkurentnosti. Gore-desno označava bolju performansu na oba radna toka istovremeno.}
+    \label{fig:scatter}
+\end{figure}
+
+\begin{figure}[tbp]
+    \centering
+    \includegraphics[width=\textwidth]{../Results/figures/10_per_operation_latency.png}
+    \caption{Prosječna latencija po tipu operacije i konfiguraciji (lijevo: OLTP operacije; desno: OLAP prosjek). Skale su namjerno odvojene jer OLAP latencija premašuje OLTP za dva do tri reda veličine.}
+    \label{fig:per_op}
+\end{figure}
 
 \end{document}
