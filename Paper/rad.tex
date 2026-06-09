@@ -68,6 +68,11 @@
 \usepackage[numbers,sort&compress]{natbib}
 \bibliographystyle{IEEEtran}
 
+% ---------- NASLOVI POGLAVLJA ----------
+\usepackage{titlesec}
+\titleformat{\chapter}[hang]{\Large\bfseries}{\thechapter.}{0.8em}{}
+\titlespacing*{\chapter}{0pt}{30pt}{20pt}
+
 % ---------- OSTALO ----------
 \usepackage{enumitem}
 \usepackage{textcomp}
@@ -222,16 +227,16 @@ Rad je organiziran na sljedeći način. Poglavlje~\ref{ch:literatura} daje pregl
 \section{HTAP paradigma i arhitekturalni pristupi}
 \label{sec:htap_paradigma}
 
-Sveobuhvatni pregled Zhang et al. \cite{zhang2024htap} klasificira HTAP sisteme prema tri primarne arhitekturalne strategije. \textbf{Single-engine} pristup koristi jedinstveni motor za obradu oba tipa opterećenja, što je karakteristično za sisteme SAP HANA i HyPer; ključna prednost je eliminacija troškova replikacije podataka, no ovakav pristup neminovno uzrokuje kompromis u dizajnu internog motora koji ne može biti istovremeno optimalan za transakcijska i analitička opterećenja. \textbf{Dual-engine} pristup, koji implementiraju TiDB \cite{huang2020tidb} i Google F1 Lightning \cite{yang2020f1}, replikuje podatke između specijalizovanih OLTP i OLAP motora i tako osigurava nezavisnu optimizaciju svakog motora, uz cijenu mrežne latencije i overhead-a replikacije. \textbf{In-place dual-store} pristup indeksira isti fizički zapis istovremeno u rednom i stupčastom formatu unutar istog procesnog prostora -- SQL Server-ova dual-store arhitektura, koja je predmet ovog istraživanja, pripada upravo ovoj kategoriji.
+Sveobuhvatni pregled Zhang et al. \cite{zhang2024htap} klasificira HTAP sisteme prema tri primarne arhitekturalne strategije. Single-engine pristup koristi jedinstveni motor za obradu oba tipa opterećenja, što je karakteristično za sisteme SAP HANA i HyPer; ključna prednost je eliminacija troškova replikacije podataka, no ovakav pristup neminovno uzrokuje kompromis u dizajnu internog motora koji ne može biti istovremeno optimalan za transakcijska i analitička opterećenja. Dual-engine pristup, koji implementiraju TiDB \cite{huang2020tidb} i Google F1 Lightning \cite{yang2020f1}, replikuje podatke između specijalizovanih OLTP i OLAP motora i tako osigurava nezavisnu optimizaciju svakog motora, uz cijenu mrežne latencije i overhead-a replikacije. In-place dual-store pristup indeksira isti fizički zapis istovremeno u rednom i stupčastom formatu unutar istog procesnog prostora -- SQL Server-ova dual-store arhitektura, koja je predmet ovog istraživanja, pripada upravo ovoj kategoriji.
 
-Ključni koncept u evaluaciji HTAP sistema je \textbf{performansna izolacija} -- sposobnost sistema da garantira stabilne OLTP performanse bez obzira na istovremeno analitičko opterećenje \cite{song2024survey}. Song et al. \cite{song2024survey} naglašavaju da degradacija OLTP propusnosti veća od 30\% predstavlja neprihvatljiv prag u produkcijskim okruženjima s ugovorenom razinom usluge (SLA), mada empirijski rezultati dostupni u literaturi pokazuju da ovaj prag ostaje teško dostižan čak i za napredne HTAP konfiguracije pri visokim razinama konkurentnosti.
+Ključni koncept u evaluaciji HTAP sistema je performansna izolacija -- sposobnost sistema da garantira stabilne OLTP performanse bez obzira na istovremeno analitičko opterećenje \cite{song2024survey}. Song et al. \cite{song2024survey} naglašavaju da degradacija OLTP propusnosti veća od 30\% predstavlja neprihvatljiv prag u produkcijskim okruženjima s ugovorenom razinom usluge (SLA), mada empirijski rezultati dostupni u literaturi pokazuju da ovaj prag ostaje teško dostižan čak i za napredne HTAP konfiguracije pri visokim razinama konkurentnosti.
 
 \section{Komercijalne HTAP implementacije}
 \label{sec:htap_implementacije}
 
-Medu komercijalnim HTAP implementacijama izdvajaju se \textbf{SAP HANA} \cite{ozcan2017htap}, koji primjenjuje single-engine pristup s rednim i stupčastim pohranom u jednom in-memory motoru, te \textbf{TiDB} \cite{huang2020tidb}, koji implementira dual-engine arhitekturu s TiKV za OLTP i TiFlash za OLAP, međusobno sinhroniziranim Raft protokolom. Huang et al. \cite{huang2020tidb} izvještavaju da TiDB-ov pristup postiže gotovo linearnu skalabilnost za OLAP upite dodavanjem TiFlash čvorova, uz prihvatljivo povećanje OLTP latencije uzrokovano protokolom replikacije. Yang et al. \cite{yang2020f1} opisuju \textbf{Google F1 Lightning} kao delta-store arhitekturu s periodičnom kompakcijom, koja omogućuje efikasnu analitičku obradu nad podacima koji su u konstantnoj OLTP promjeni.
+Medu komercijalnim HTAP implementacijama izdvajaju se SAP HANA \cite{ozcan2017htap}, koji primjenjuje single-engine pristup s rednim i stupčastim pohranom u jednom in-memory motoru, te TiDB \cite{huang2020tidb}, koji implementira dual-engine arhitekturu s TiKV za OLTP i TiFlash za OLAP, međusobno sinhroniziranim Raft protokolom. Huang et al. \cite{huang2020tidb} izvještavaju da TiDB-ov pristup postiže gotovo linearnu skalabilnost za OLAP upite dodavanjem TiFlash čvorova, uz prihvatljivo povećanje OLTP latencije uzrokovano protokolom replikacije. Yang et al. \cite{yang2020f1} opisuju Google F1 Lightning kao delta-store arhitekturu s periodičnom kompakcijom, koja omogućuje efikasnu analitičku obradu nad podacima koji su u konstantnoj OLTP promjeni.
 
-\textbf{Microsoft SQL Server 2022}, kao predmet ovog istraživanja, zauzima jedinstvenu poziciju jer implementira in-process dual-store koji kombinira Hekaton in-memory OLTP engine s columnstore indeksima unutar istog procesa. Ova arhitektura eliminiše mrežnu latenciju karakterističnu za distribuirane sisteme poput TiDB-a, ali uvodi izazove u upravljanju dijeljenim CPU i memorijskim resursima između transakcijskog i analitičkog opterećenja.
+Microsoft SQL Server 2022, kao predmet ovog istraživanja, zauzima jedinstvenu poziciju jer implementira in-process dual-store koji kombinira Hekaton in-memory OLTP engine s columnstore indeksima unutar istog procesa. Ova arhitektura eliminiše mrežnu latenciju karakterističnu za distribuirane sisteme poput TiDB-a, ali uvodi izazove u upravljanju dijeljenim CPU i memorijskim resursima između transakcijskog i analitičkog opterećenja.
 
 \section{In-Memory OLTP (Hekaton) u SQL Serveru}
 \label{sec:hekaton}
@@ -294,7 +299,7 @@ Parametar \texttt{DURABILITY = SCHEMA\_ONLY} odabran je jer eliminira overhead p
 
 \subsection{HTAP -- dual-store hibridna konfiguracija}
 
-HTAP konfiguracija implementira dual-store arhitekturalni obrazac inspirisan TiDB/TiFlash pristupom \cite{huang2020tidb}, prilagođen SQL Server-ovom in-process modelu. \textbf{OLTP pisanja i točkačna čitanja} usmjeravaju se na memorijsko-optimizovane tablice u shemi \texttt{htap.*}, koristeći Hekaton engine i nativno kompajlirane procedure, dok se \textbf{analitički upiti} izvršavaju nad columnstore tablicama u shemi \texttt{cs.*}, koristeći batch-mode executor i columnstore kompresiju.
+HTAP konfiguracija implementira dual-store arhitekturalni obrazac inspirisan TiDB/TiFlash pristupom \cite{huang2020tidb}, prilagođen SQL Server-ovom in-process modelu. OLTP pisanja i točkačna čitanja usmjeravaju se na memorijsko-optimizovane tablice u shemi \texttt{htap.*}, koristeći Hekaton engine i nativno kompajlirane procedure, dok se analitički upiti izvršavaju nad columnstore tablicama u shemi \texttt{cs.*}, koristeći batch-mode executor i columnstore kompresiju.
 
 Ovo arhitekturalno odvajanje osigurava da analitički batch-mode skenovi ne ometaju OLTP operacije na razini dijeljenih resursa. Važno je napomenuti implementacijsku posebnost: postoji konzistentnosna razlika između \texttt{htap.*} i \texttt{cs.*} shema -- analitički upiti ne vide upravo unesene OLTP zapise dok se podaci eksplicitno ne sinhronizuju s \texttt{cs.*} kopijom. U kontekstu benchmarka, gdje je svaka kombinacija zasebna izolirana sesija s unaprijed učitanim podacima, ova razlika ne utječe na mjerene metrike. U produkcijskim scenarijima, međutim, ovo arhitekturalno ograničenje mora biti uzeto u obzir pri dizajnu aplikacije.
 
@@ -318,7 +323,7 @@ HTAP & OLTP$\rightarrow$Memorija / OLAP$\rightarrow$Disk+CS & Dual-store & Batch
 \section{Skup podataka -- StackOverflow2010}
 \label{sec:skup_podataka}
 
-StackOverflow2010 je javno dostupan dump produkcijske baze platforme Stack Overflow koji obuhvata zapise od osnivanja 2008. do kraja 2010. godine. Ovaj skup podataka odabran je umjesto sintetičkih alternativa (TPC-C, TPC-H) jer odražava \textbf{stvarnu distribuciju korisničke aktivnosti} karakterističnu za web aplikacije. Za razliku od sintetičkih skupova koji proizvode uniformne distribucije, StackOverflow2010 prirodno sadrži Pareto distribuciju gdje mali postotak korisnika generiše najveći dio sadržaja \cite{zhang2024htap}. Isti skup podataka (Stack Overflow 2010, tabela Posts s više od tri miliona zapisa) korišten je u prethodnom istraživanju performansi sistema za keširanje u .NET 6 okruženju \cite{catovic2023caching}, što potvrđuje njegovu pogodnost za evaluaciju sistema upravljanja bazama podataka u akademskim istraživanjima.
+StackOverflow2010 je javno dostupan dump produkcijske baze platforme Stack Overflow koji obuhvata zapise od osnivanja 2008. do kraja 2010. godine. Ovaj skup podataka odabran je umjesto sintetičkih alternativa (TPC-C, TPC-H) jer odražava stvarnu distribuciju korisničke aktivnosti karakterističnu za web aplikacije. Za razliku od sintetičkih skupova koji proizvode uniformne distribucije, StackOverflow2010 prirodno sadrži Pareto distribuciju gdje mali postotak korisnika generiše najveći dio sadržaja \cite{zhang2024htap}. Isti skup podataka (Stack Overflow 2010, tabela Posts s više od tri miliona zapisa) korišten je u prethodnom istraživanju performansi sistema za keširanje u .NET 6 okruženju \cite{catovic2023caching}, što potvrđuje njegovu pogodnost za evaluaciju sistema upravljanja bazama podataka u akademskim istraživanjima.
 
 \begin{table}[H]
 \centering
@@ -354,7 +359,7 @@ Cilj eksperimenta je utvrditi kako arhitekturalna strategija pohrane u SQL Serve
 \section{Eksperimentalni dizajn}
 \label{sec:eksperimentalni_dizajn}
 
-Istraživanje je provedeno kao \textbf{4$\times$3$\times$3 puni faktorijalni dizajn} s 30 ponavljanja po eksperimentalnoj kombinaciji:
+Istraživanje je provedeno kao 4$\times$3$\times$3 puni faktorijalni dizajn s 30 ponavljanja po eksperimentalnoj kombinaciji:
 
 \[
 4\text{ konfiguracije} \times 3\text{ OLTP/OLAP omjera} \times 3\text{ razine konkurentnosti} \times 30\text{ runova} = 1.080\text{ ukupnih mjernih serija}
@@ -395,7 +400,7 @@ Pohrana na HDD-u za disk-zasnovane konfiguracije (Baseline, CS) odabrana je namj
 \section{Implementacija benchmark sustava}
 \label{sec:implementacija}
 
-Benchmark aplikacija razvijena je u \textbf{.NET 8} programskom jeziku C\#, koristeći \texttt{async/await} model za istovremeno izvršavanje OLTP i OLAP radnih niti (workera). Aplikacija se na SQL Server povezuje putem \texttt{Microsoft.Data.SqlClient} drajvera, a upiti se izvršavaju preko \textbf{Dapper} micro-ORM-a radi minimalnog refleksivnog overhead-a.
+Benchmark aplikacija razvijena je u .NET 8 programskom jeziku C\#, koristeći \texttt{async/await} model za istovremeno izvršavanje OLTP i OLAP radnih niti (workera). Aplikacija se na SQL Server povezuje putem \texttt{Microsoft.Data.SqlClient} drajvera, a upiti se izvršavaju preko Dapper micro-ORM-a radi minimalnog refleksivnog overhead-a.
 
 Arhitektura aplikacije organizovana je u četiri komponente s jasno razdvojenim odgovornostima. \texttt{BenchmarkOrchestrator} koordinira slijed izvršavanja kroz sve kombinacije konfiguracija, omjera i razina konkurentnosti, implementirajući resume logiku za nastavak od mjesta prekida u slučaju dugotrajnih sesija. \texttt{WorkloadExecutor} kreira OLTP i OLAP workere, upravlja warmup i mjernom fazom i implementira MVCC garbage collection za memorijsko-optimizovane tablice. \texttt{MetricsCalculator} računa deskriptivne statistike -- propusnost i percentile latencije -- iz sirovih mjerenja u realnom vremenu. \texttt{ResultsWriter} atomarno upisuje rezultate u CSV datoteke uz thread-safe \texttt{FileStream} mehanizam zaključavanja koji sprječava gubitak podataka pri istovremenom pisanju iz više niti.
 
@@ -499,7 +504,7 @@ Tokom implementacije identificirana su tri tehnička izazova. Pri $C=32$ s 30 uz
 \chapter{Rezultati}
 \label{ch:rezultati}
 
-U okviru eksperimentalnog istraživanja sprovedene su ukupno 1.080 planiranih mjernih serija, od čega je \textbf{10 serija (0,93\%)} isključeno iz analize usljed nestabilnosti mjernog okruženja, definisane kao stopa uspješnosti OLTP operacija ispod 90\%. Konačan uzorak obuhvata \textbf{1.070 validnih mjerenja}, s 28 do 30 serija po svakoj eksperimentalnoj kombinaciji, čime je osigurana statistička pouzdanost provedenih analiza.
+U okviru eksperimentalnog istraživanja sprovedene su ukupno 1.080 planiranih mjernih serija, od čega je 10 serija (0,93\%) isključeno iz analize usljed nestabilnosti mjernog okruženja, definisane kao stopa uspješnosti OLTP operacija ispod 90\%. Konačan uzorak obuhvata 1.070 validnih mjerenja, s 28 do 30 serija po svakoj eksperimentalnoj kombinaciji, čime je osigurana statistička pouzdanost provedenih analiza.
 
 \section{Deskriptivna statistika}
 \label{sec:deskriptivna}
@@ -775,7 +780,7 @@ Hipoteza H3 je odbačena na svim razinama konkurentnosti. HTAP ostvaruje 3,3--6,
 
 Razlika između HTAP i Baseline konfiguracije pri $C=32$ iznosi faktor 9,0 (21.920 vs 2.432 ops/s), što je konzistentno s originalnim Hekaton radom \cite{diaconu2013hekaton} koji izvještava o ubrzanjima od 5--70$\times$ za memorijsko-optimizovane tablice. Međutim, znatno iznenađujući nalaz je da IM konfiguracija ostvaruje značajno nižu OLTP propusnost od HTAP (4.726 vs 21.920 ops/s) unatoč tome što obje konfiguracije koriste isti Hekaton engine.
 
-Objašnjenje ovog kontraintuitivnog zapažanja leži u interakciji između OLAP i OLTP workera. U IM konfiguraciji, OLAP upiti izvršavaju se u row-mode bez prednosti columnstore kompresije i batch-mode izvršavanja. Skeniranje $\sim$3,7 miliona redova u row-modu zahtijeva znatno više CPU ciklusa po upitu, što dovodi do saturacije CPU resursa i direktne kompeticije s OLTP workerima za procesorsko vrijeme. U HTAP konfiguraciji, columnstore indeksi ubrzavaju OLAP upite za faktor 5--8, oslobađajući CPU kapacitet koji je u IM konfiguraciji trošen na analitička opterećenja. Ovaj nalaz ima direktne praktične implikacije: u mješovitim opterećenjima, optimizacija OLAP performansi indirektno poboljšava i OLTP performanse -- što predstavlja \textbf{ključni nalaz ovog rada}.
+Objašnjenje ovog kontraintuitivnog zapažanja leži u interakciji između OLAP i OLTP workera. U IM konfiguraciji, OLAP upiti izvršavaju se u row-mode bez prednosti columnstore kompresije i batch-mode izvršavanja. Skeniranje $\sim$3,7 miliona redova u row-modu zahtijeva znatno više CPU ciklusa po upitu, što dovodi do saturacije CPU resursa i direktne kompeticije s OLTP workerima za procesorsko vrijeme. U HTAP konfiguraciji, columnstore indeksi ubrzavaju OLAP upite za faktor 5--8, oslobađajući CPU kapacitet koji je u IM konfiguraciji trošen na analitička opterećenja. Ovaj nalaz ima direktne praktične implikacije: u mješovitim opterećenjima, optimizacija OLAP performansi indirektno poboljšava i OLTP performanse -- što predstavlja ključni nalaz ovog rada.
 
 \section{OLAP performanse -- prednost columnstore arhitekture}
 \label{sec:olap_diskusija}
@@ -792,7 +797,7 @@ Razlika u degradaciji (67,4\% CS vs 55,9\% HTAP) od 11,5 procentnih poena, iako 
 
 Zhao et al. \cite{zhao2023benchmarking} zaključuju da je performansna izolacija kritičnija metrika od vršne propusnosti -- empirijski rezultati ovog rada potvrđuju taj zaključak kroz mjerene razlike u degradaciji (H2). Wu et al. \cite{wu2025htap} pronalaze obrasce degradacije od 50 do 70\% za disk-zasnovane sisteme, što je konzistentno s izmjerenih 67,4\% za CS konfiguraciju. Zhang et al. \cite{zhang2024htap} tvrde da dual-engine sistemi imaju bolju izolaciju, ali plaćaju mrežnu latenciju -- SQL Server-ov in-process dual-store potvrđuje bolju izolaciju empirijski, uz eliminaciju mrežne latencije karakteristične za distribuirane sisteme.
 
-Neočekivani nalaz da HTAP ostvaruje 3,3--6,9$\times$ veću OLTP propusnost od IM nije direktno potkrijepljen dosadašnjom literaturom koja se pretežno fokusirala na usporedbu disk-zasnovanih konfiguracija. Ovaj rad kvantificira efekt koji dosad nije bio eksplicitno izmjeren: \textbf{columnstore ubrzanje OLAP-a ima pozitivan indirektan utjecaj na OLTP propusnost} pri mješovitom opterećenju, jer oslobađa CPU kapacitet koji bi inače bio potrošen na row-mode skeniranja.
+Neočekivani nalaz da HTAP ostvaruje 3,3--6,9$\times$ veću OLTP propusnost od IM nije direktno potkrijepljen dosadašnjom literaturom koja se pretežno fokusirala na usporedbu disk-zasnovanih konfiguracija. Ovaj rad kvantificira efekt koji dosad nije bio eksplicitno izmjeren: columnstore ubrzanje OLAP-a ima pozitivan indirektan utjecaj na OLTP propusnost pri mješovitom opterećenju, jer oslobađa CPU kapacitet koji bi inače bio potrošen na row-mode skeniranja.
 
 \section{Praktične preporuke}
 \label{sec:preporuke}
@@ -844,7 +849,7 @@ IM konfiguracija pokazuje iznenađujuću slabost pri mješovitom opterećenju un
 \section{Izvorni doprinos rada}
 \label{sec:doprinos}
 
-Izvorni doprinos ovog rada ogleda se u tri aspekta. Kao prvo, identificiran je i kvantificiran fenomen koji dosad nije bio eksplicitno mjeren u literaturi: \textbf{columnstore ubrzanje OLAP upita indirektno poboljšava OLTP propusnost} pri mješovitom opterećenju za faktor 3,3--6,9, jer oslobađa CPU kapacitet koji bi u alternativnoj konfiguraciji (IM) bio potrošen na row-mode skeniranja $\sim$3,7 miliona redova. Ovaj nalaz mijenja način na koji treba pristupiti optimizaciji HTAP sustava: poboljšanje OLAP performansi nije samo cilj samo po sebi, već i sredstvo za poboljšanje OLTP performansi.
+Izvorni doprinos ovog rada ogleda se u tri aspekta. Kao prvo, identificiran je i kvantificiran fenomen koji dosad nije bio eksplicitno mjeren u literaturi: columnstore ubrzanje OLAP upita indirektno poboljšava OLTP propusnost pri mješovitom opterećenju za faktor 3,3--6,9, jer oslobađa CPU kapacitet koji bi u alternativnoj konfiguraciji (IM) bio potrošen na row-mode skeniranja $\sim$3,7 miliona redova. Ovaj nalaz mijenja način na koji treba pristupiti optimizaciji HTAP sustava: poboljšanje OLAP performansi nije samo cilj samo po sebi, već i sredstvo za poboljšanje OLTP performansi.
 
 Kao drugo, rad pruža prvu sustavnu komparativnu evaluaciju četiri arhitekturalne konfiguracije SQL Servera 2022 nad stvarnim skupom podataka s Pareto distribucijom korisničke aktivnosti, u punom faktorijalnom eksperimentalnom dizajnu $4 \times 3 \times 3$ s 30 ponavljanja po kombinaciji i rigoroznom neparametarskom statističkom analizom.
 
