@@ -754,23 +754,23 @@ Hipoteza H2 je potvrđena. CS konfiguracija bilježi degradaciju od 67,4\%, dok 
 \small
 \begin{tabular}{lrrrrl}
 \toprule
-\textbf{C} & \textbf{IM (ops/s)} & \textbf{HTAP (ops/s)} & \textbf{Omjer} & \textbf{Cohen's $\bm{d}$} & \textbf{Zaključak} \\
+\textbf{C} & \textbf{IM (ops/s)} & \textbf{HTAP (ops/s)} & \textbf{Omjer} & \textbf{Cohen's $\bm{d}$} & \textbf{Nul hip.} \\
 \midrule
-4 & 3.027 & 10.083 & 3,3$\times$ & $-$4,38 & odbačena \\
-16 & 7.726 & 35.914 & 4,6$\times$ & $-$8,29 & odbačena \\
-32 & 6.325 & 43.751 & 6,9$\times$ & $-$11,93 & odbačena \\
+4 & 3.027 & 10.083 & 3,3$\times$ & $-$4,38 & odbijena \\
+16 & 7.726 & 35.914 & 4,6$\times$ & $-$8,29 & odbijena \\
+32 & 6.325 & 43.751 & 6,9$\times$ & $-$11,93 & odbijena \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Hipoteza H3 je odbačena na svim razinama konkurentnosti. HTAP ostvaruje 3,3--6,9$\times$ veću OLTP propusnost od IM konfiguracije, pri čemu razlika raste s konkurentnošću ($d = -4,38$ do $-11,93$, ekstremno veliki efekti). Ovo je najneočekivaniji nalaz rada: unatoč tome što obje konfiguracije koriste isti Hekaton engine i identične nativno kompajlirane OLTP procedure, HTAP dramatično nadmašuje IM pri mješovitom opterećenju. Objašnjenje ovog fenomena dato je u odjeljku~\ref{sec:oltp_diskusija}.
+Nul hipoteza H3 je odbijena na svim razinama konkurentnosti -- i upravo to odbacivanje predstavlja \textbf{najznačajniji nalaz ovog rada}. HTAP ostvaruje 3,3--6,9$\times$ veću OLTP propusnost od IM konfiguracije, pri čemu razlika raste s konkurentnošću ($d = -4,38$ do $-11,93$, ekstremno veliki efekti). Međutim, pravi zaključak nije puko "HTAP ima bolji OLTP throughput od IM" -- on je dublji. IM konfiguracija je "čisto transakcijska" samo na papiru: kada su pokrenute OLAP niti s 20\% udjela, one izvode full-table skenove nad hash indeksima memorijsko-optimizovanih tablica u row-modu, troše ogroman CPU kapacitet i direktno guše OLTP niti koje dijele iste procesore. HTAP taj problem ne poznaje jer OLAP čita isključivo iz \texttt{cs.*} columnstore sloja, dok OLTP operira unutar \texttt{htap.*} memorijskog sloja -- fizička izolacija radnih opterećenja sprečava interferenciju između analitičkih i transakcijskih niti na razini procesora. Pravi empirijski nalaz H3 stoga nije usporedba propusnosti, nego kvantifikacija benefita izolacije workloada: dual-store arhitektura pruža bolji OLTP throughput pri mješovitom opterećenju ne zahvaljujući superiornom transakcijskom engine-u, već zahvaljujući tome što OLAP niti ne mogu ugroziti OLTP resurse. Mehanizam je detaljno objašnjen u odjeljku~\ref{sec:oltp_diskusija}.
 
 \section{OLTP performanse -- memorija nasuprot disku}
 \label{sec:oltp_diskusija}
 
 Razlika između HTAP i Baseline konfiguracije pri $C=32$ iznosi faktor 9,0 (21.920 vs 2.432 ops/s), što je konzistentno s originalnim Hekaton radom \cite{diaconu2013hekaton} koji izvještava o ubrzanjima od 5--70$\times$ za memorijsko-optimizovane tablice. Međutim, znatno iznenađujući nalaz je da IM konfiguracija ostvaruje značajno nižu OLTP propusnost od HTAP (4.726 vs 21.920 ops/s) unatoč tome što obje konfiguracije koriste isti Hekaton engine.
 
-Objašnjenje ovog kontraintuitivnog zapažanja leži u interakciji između OLAP i OLTP workera. U IM konfiguraciji, OLAP upiti izvršavaju se u row-mode bez prednosti columnstore kompresije i batch-mode izvršavanja. Skeniranje $\sim$3,7 miliona redova u row-modu zahtijeva znatno više CPU ciklusa po upitu, što dovodi do saturacije CPU resursa i direktne kompeticije s OLTP workerima za procesorsko vrijeme. U HTAP konfiguraciji, columnstore indeksi ubrzavaju OLAP upite za faktor 5--8, oslobađajući CPU kapacitet koji je u IM konfiguraciji trošen na analitička opterećenja. Ovaj nalaz ima direktne praktične implikacije: u mješovitim opterećenjima, optimizacija OLAP performansi indirektno poboljšava i OLTP performanse -- što predstavlja ključni nalaz ovog rada.
+Objašnjenje leži u arhitekturalnoj izolaciji radnih opterećenja, a ne u nadmoći transakcijskog engine-a. U IM konfiguraciji ne postoji fizička separacija između OLTP i OLAP sloja pohrane: OLAP upiti izvode full-table skenove nad hash indeksima memorijsko-optimizovanih tablica u row-modu, bez columnstore kompresije i bez batch-mode vektoriziranog izvršavanja. Skeniranje $\sim$3,7 miliona redova u row-modu zahtijeva znatno više CPU ciklusa po upitu, što dovodi do saturacije procesorskih resursa i direktne kompeticije s OLTP nitima za procesorsko vrijeme. U HTAP konfiguraciji, columnstore indeksi u \texttt{cs.*} sloju ubrzavaju OLAP upite za faktor 5--8, dok OLTP operacije u \texttt{htap.*} sloju nikada ne dijele I/O ni CPU puteve s analitičkim nitima. Ova fizička separacija eliminira interferenciju na razini procesora: OLAP niti ne mogu saturirati CPU kapacitet koji OLTP niti trebaju za transakcijsku obradu. Ovaj nalaz mijenja perspektivu optimizacije HTAP sustava: poboljšanje OLAP performansi nije samo cilj samo po sebi, već je i sredstvo za zaštitu OLTP performansi od analitičkog opterećenja -- što je fundamentalni arhitekturalni argument za dual-store pristup u odnosu na monolitni in-memory pristup.
 
 \section{OLAP performanse -- prednost columnstore arhitekture}
 \label{sec:olap_diskusija}
