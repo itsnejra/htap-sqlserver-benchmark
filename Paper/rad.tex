@@ -862,4 +862,256 @@ Rezultati ovog rada otvaraju nekoliko smjernica za buduća istraživanja. Kao pr
 \bibliography{refs}
 \addcontentsline{toc}{section}{Literatura}
 
+% ======================================================================
+% DODACI
+% ======================================================================
+\appendix
+\addcontentsline{toc}{chapter}{Dodaci}
+
+\chapter{OLTP pohranene procedure}
+\label{app:oltp}
+
+Prikazane su pohranene procedure korištene u OLTP radnom toku. Procedure za \texttt{baseline} i \texttt{cs} shemu su identične u logici -- razlikuju se isključivo po prefiksu sheme (\texttt{baseline.*} odnosno \texttt{cs.*}), te se ovdje prikazuju jednom u reprezentativnom obliku. Procedure za \texttt{im.*} i \texttt{htap.*} sheme su nativno kompajlirane i koriste \texttt{ATOMIC} blok, što ih čini izvršivim direktno u memoriji bez interpretacije T-SQL-a.
+
+\section*{A.1 \quad Procedure za Baseline / CS konfiguraciju}
+
+\begin{lstlisting}[language=SQL, caption={usp\_GetPostById -- point lookup po primarnom ključu (10\% OLTP workloada)}, label=lst:getpost]
+CREATE OR ALTER PROCEDURE baseline.usp_GetPostById
+    @PostId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT Id, PostTypeId, CreationDate, Score, ViewCount, OwnerUserId,
+           Title, Tags, AnswerCount, CommentCount, FavoriteCount, AcceptedAnswerId
+    FROM baseline.Posts
+    WHERE Id = @PostId;
+END;
+\end{lstlisting}
+
+\begin{lstlisting}[language=SQL, caption={usp\_InsertVote -- INSERT glasa s uvjetnim UPDATE score-a (35\% OLTP workloada)}, label=lst:insertvote]
+CREATE OR ALTER PROCEDURE baseline.usp_InsertVote
+    @Id INT, @PostId INT, @VoteTypeId TINYINT,
+    @CreationDate DATE, @UserId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO baseline.Votes (Id, PostId, VoteTypeId, CreationDate, UserId)
+    VALUES (@Id, @PostId, @VoteTypeId, @CreationDate, @UserId);
+    -- Uvjetni UPDATE: UpVote (+1) ili DownVote (-1)
+    IF @VoteTypeId = 1
+        UPDATE baseline.Posts SET Score = Score + 1 WHERE Id = @PostId;
+    ELSE IF @VoteTypeId = 2
+        UPDATE baseline.Posts SET Score = Score - 1 WHERE Id = @PostId;
+END;
+\end{lstlisting}
+
+\begin{lstlisting}[language=SQL, caption={usp\_UpdatePostScore -- jednostavni UPDATE po PK (25\% OLTP workloada)}, label=lst:updatescore]
+CREATE OR ALTER PROCEDURE baseline.usp_UpdatePostScore
+    @PostId INT, @Delta INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE baseline.Posts SET Score = Score + @Delta WHERE Id = @PostId;
+END;
+\end{lstlisting}
+
+\begin{lstlisting}[language=SQL, caption={usp\_InsertComment -- INSERT komentara s UPDATE brojača (15\% OLTP workloada)}, label=lst:insertcomment]
+CREATE OR ALTER PROCEDURE baseline.usp_InsertComment
+    @Id INT, @PostId INT, @Score INT, @Text NVARCHAR(700),
+    @CreationDate DATETIME2(0), @UserId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO baseline.Comments (Id, PostId, Score, Text, CreationDate, UserId)
+    VALUES (@Id, @PostId, @Score, @Text, @CreationDate, @UserId);
+    UPDATE baseline.Posts SET CommentCount = CommentCount + 1 WHERE Id = @PostId;
+END;
+\end{lstlisting}
+
+\begin{lstlisting}[language=SQL, caption={usp\_GetRecentUserPosts -- range scan s TOP/ORDER BY (10\% OLTP workloada)}, label=lst:recentposts]
+CREATE OR ALTER PROCEDURE baseline.usp_GetRecentUserPosts
+    @UserId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT TOP 10 Id, PostTypeId, CreationDate, Score, Title,
+                  AnswerCount, CommentCount
+    FROM baseline.Posts
+    WHERE OwnerUserId = @UserId
+    ORDER BY CreationDate DESC;
+END;
+\end{lstlisting}
+
+\section*{A.2 \quad Nativno kompajlirane procedure za IM / HTAP konfiguraciju}
+
+Memorijsko-optimizovane procedure moraju biti deklarirane s klauzulama \texttt{WITH NATIVE\_COMPILATION, SCHEMABINDING} i sadržavati \texttt{BEGIN ATOMIC} blok s razinom izolacije. Nativna kompilacija prevodi T-SQL u strojni kod pri kreiranju procedure, eliminirajući interpretacijski overhead pri svakom pozivu. Prikazuje se \texttt{im.*} varijanta; \texttt{htap.*} je identična uz zamjenu prefiksa sheme.
+
+\begin{lstlisting}[language=SQL, caption={im.usp\_InsertVote -- nativno kompajlirana varijanta s ATOMIC blokom}, label=lst:insertvote_im]
+IF OBJECT_ID('im.usp_InsertVote', 'P') IS NOT NULL
+    DROP PROCEDURE im.usp_InsertVote;
+GO
+CREATE PROCEDURE im.usp_InsertVote
+    @Id INT, @PostId INT, @VoteTypeId TINYINT,
+    @CreationDate DATE, @UserId INT
+WITH NATIVE_COMPILATION, SCHEMABINDING
+AS BEGIN ATOMIC WITH
+    (TRANSACTION ISOLATION LEVEL = SNAPSHOT, LANGUAGE = N'English')
+    INSERT INTO im.Votes (Id, PostId, VoteTypeId, CreationDate, UserId)
+    VALUES (@Id, @PostId, @VoteTypeId, @CreationDate, @UserId);
+    IF @VoteTypeId = 1
+        UPDATE im.Posts SET Score = Score + 1 WHERE Id = @PostId;
+    ELSE IF @VoteTypeId = 2
+        UPDATE im.Posts SET Score = Score - 1 WHERE Id = @PostId;
+END;
+\end{lstlisting}
+
+\chapter{OLAP analitički upiti}
+\label{app:olap}
+
+Prikazanih pet analitičkih upita implementirano je kao pohranene procedure. Svi upiti su agregacijske prirode s \texttt{GROUP BY} i \texttt{ORDER BY} klauzulama koje potiču full-scan i batch-mode izvršavanje pri prisutnosti columnstore indeksa. Prikazuju se procedure za reprezentativnu shemu (\texttt{baseline.*}); identični upiti za \texttt{cs.*} i \texttt{im.*} razlikuju se isključivo po prefiksu sheme. U odjeljku~\ref{app:htap_olap} prikazan je HTAP dual-store upit koji ilustrira ključnu arhitekturalnu razliku.
+
+\section*{B.1 \quad Upiti za Baseline / CS / IM konfiguraciju}
+
+\begin{lstlisting}[language=SQL, caption={Q1 -- Aktivnost postova po mjesecu i tipu (trend analiza nad \textasciitilde3,7M redova)}, label=lst:q1]
+CREATE OR ALTER PROCEDURE baseline.usp_OLAP_Q1_MonthlyActivity AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT
+        YEAR(CreationDate)            AS Godina,
+        MONTH(CreationDate)           AS Mjesec,
+        PostTypeId,
+        COUNT(*)                      AS BrojPostova,
+        AVG(CAST(Score AS FLOAT))     AS ProsjekScore,
+        SUM(CAST(ViewCount AS BIGINT)) AS UkupnoPregleda,
+        SUM(AnswerCount)              AS UkupnoOdgovora
+    FROM baseline.Posts
+    GROUP BY YEAR(CreationDate), MONTH(CreationDate), PostTypeId
+    ORDER BY Godina, Mjesec, PostTypeId;
+END;
+\end{lstlisting}
+
+\begin{lstlisting}[language=SQL, caption={Q2 -- Top 50 korisnika po doprinosu (JOIN Posts--Users + agregacija)}, label=lst:q2]
+CREATE OR ALTER PROCEDURE baseline.usp_OLAP_Q2_TopContributors AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT TOP 50
+        u.Id, u.DisplayName, u.Reputation,
+        COUNT(p.Id)                     AS BrojOdgovora,
+        AVG(CAST(p.Score AS FLOAT))     AS ProsjekScoreOdgovora,
+        SUM(p.FavoriteCount)            AS UkupnoFavorita,
+        MAX(p.CreationDate)             AS ZadnjiOdgovor
+    FROM baseline.Users u
+    INNER JOIN baseline.Posts p
+        ON p.OwnerUserId = u.Id AND p.PostTypeId = 2
+    GROUP BY u.Id, u.DisplayName, u.Reputation
+    ORDER BY BrojOdgovora DESC;
+END;
+\end{lstlisting}
+
+\begin{lstlisting}[language=SQL, caption={Q3 -- Distribucija glasanja po score bucketu (JOIN Votes--Posts, histogramska analiza)}, label=lst:q3]
+CREATE OR ALTER PROCEDURE baseline.usp_OLAP_Q3_VoteDistribution AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT
+        CASE
+            WHEN p.Score < 0    THEN 'Negativan'
+            WHEN p.Score = 0    THEN 'Nula'
+            WHEN p.Score <= 5   THEN '1-5'
+            WHEN p.Score <= 20  THEN '6-20'
+            WHEN p.Score <= 100 THEN '21-100'
+            ELSE                     '100+'
+        END                     AS ScoreBucket,
+        v.VoteTypeId,
+        COUNT(*)                AS BrojGlasova,
+        COUNT(DISTINCT v.PostId) AS BrojPostova
+    FROM baseline.Votes v
+    INNER JOIN baseline.Posts p ON v.PostId = p.Id
+    GROUP BY
+        CASE WHEN p.Score < 0 THEN 'Negativan' WHEN p.Score = 0 THEN 'Nula'
+             WHEN p.Score <= 5 THEN '1-5' WHEN p.Score <= 20 THEN '6-20'
+             WHEN p.Score <= 100 THEN '21-100' ELSE '100+' END,
+        v.VoteTypeId
+    ORDER BY ScoreBucket, v.VoteTypeId;
+END;
+\end{lstlisting}
+
+\begin{lstlisting}[language=SQL, caption={Q4 -- Prosječno vrijeme do prihvaćenog odgovora po mjesecu (self-JOIN)}, label=lst:q4]
+CREATE OR ALTER PROCEDURE baseline.usp_OLAP_Q4_TimeToAnswer AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT
+        YEAR(q.CreationDate)  AS Godina,
+        MONTH(q.CreationDate) AS Mjesec,
+        COUNT(q.Id)           AS BrojPitanja,
+        COUNT(a.Id)           AS PitanjaSaOdgovorom,
+        CAST(COUNT(a.Id) AS FLOAT) / COUNT(q.Id) AS StopaOdgovaranja,
+        AVG(CASE WHEN a.Id IS NOT NULL THEN
+            CAST(DATEDIFF(MINUTE, q.CreationDate, a.CreationDate) AS FLOAT) / 60.0
+            ELSE NULL END)    AS ProsjecnoSatiDoOdgovora
+    FROM baseline.Posts q
+    LEFT JOIN baseline.Posts a
+        ON a.Id = q.AcceptedAnswerId AND a.PostTypeId = 2
+    WHERE q.PostTypeId = 1
+    GROUP BY YEAR(q.CreationDate), MONTH(q.CreationDate)
+    ORDER BY Godina, Mjesec;
+END;
+\end{lstlisting}
+
+\begin{lstlisting}[language=SQL, caption={Q5 -- Korisničke kohort aktivnosti po kvartalu (CTE + agregacija)}, label=lst:q5]
+CREATE OR ALTER PROCEDURE baseline.usp_OLAP_Q5_UserCohortActivity AS
+BEGIN
+    SET NOCOUNT ON;
+    WITH MonthlyUserActivity AS (
+        SELECT
+            OwnerUserId,
+            YEAR(CreationDate)              AS Godina,
+            DATEPART(QUARTER, CreationDate) AS Kvartal,
+            COUNT(*)                        AS BrojPostova,
+            SUM(Score)                      AS UkupniScore,
+            SUM(CASE WHEN PostTypeId = 1 THEN 1 ELSE 0 END) AS BrojPitanja,
+            SUM(CASE WHEN PostTypeId = 2 THEN 1 ELSE 0 END) AS BrojOdgovora
+        FROM baseline.Posts
+        WHERE OwnerUserId IS NOT NULL
+        GROUP BY OwnerUserId, YEAR(CreationDate),
+                 DATEPART(QUARTER, CreationDate)
+    )
+    SELECT
+        Godina, Kvartal,
+        COUNT(DISTINCT OwnerUserId)         AS AktivniKorisnici,
+        SUM(BrojPostova)                    AS UkupnoPostova,
+        AVG(CAST(BrojPostova AS FLOAT))     AS ProsjecnoPostovaPoKorisniku,
+        SUM(UkupniScore)                    AS UkupniScore,
+        SUM(BrojPitanja)                    AS UkupnoPitanja,
+        SUM(BrojOdgovora)                   AS UkupnoOdgovora
+    FROM MonthlyUserActivity
+    GROUP BY Godina, Kvartal
+    ORDER BY Godina, Kvartal;
+END;
+\end{lstlisting}
+
+\phantomsection
+\section*{B.2 \quad HTAP dual-store varijanta}
+\label{app:htap_olap}
+
+Ključna arhitekturalna razlika HTAP konfiguracije vidljiva je direktno u kodu: OLAP procedure deklarirane su u \texttt{htap.*} shemi ali čitaju podatke iz \texttt{cs.*} sheme (disk-based columnstore layer). OLTP procedure istovremeno pišu u \texttt{htap.*} (memorijsko-optimizovane tablice). Ovim fizičkim odvajanjem OLAP analitički skenovi ne interferiraju s OLTP transakcijama -- što je osnova dual-store pristupa i direktna implementacija arhitekture opisane u §\ref{sec:konfiguracije}. Prikazan je Q1 kao reprezentativan primjer; Q2--Q5 slijede isti obrazac.
+
+\begin{lstlisting}[language=SQL, caption={HTAP dual-store Q1 -- OLAP upit deklariran u htap.* ali čita cs.* columnstore sloj}, label=lst:q1_htap]
+CREATE OR ALTER PROCEDURE htap.usp_OLAP_Q1_MonthlyActivity AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT
+        YEAR(CreationDate)            AS Godina,
+        MONTH(CreationDate)           AS Mjesec,
+        PostTypeId,
+        COUNT(*)                      AS BrojPostova,
+        AVG(CAST(Score AS FLOAT))     AS ProsjekScore,
+        SUM(CAST(ViewCount AS BIGINT)) AS UkupnoPregleda,
+        SUM(AnswerCount)              AS UkupnoOdgovora
+    FROM cs.Posts   -- dual-store: OLAP cita columnstore layer (cs.*)
+                    -- OLTP istovremeno pise u htap.* (in-memory layer)
+    GROUP BY YEAR(CreationDate), MONTH(CreationDate), PostTypeId
+    ORDER BY Godina, Mjesec, PostTypeId;
+END;
+\end{lstlisting}
+
 \end{document}
