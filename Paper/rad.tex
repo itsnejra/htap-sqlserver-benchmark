@@ -579,6 +579,27 @@ Tablice~\ref{tab:oltp_throughput}, \ref{tab:olap_throughput} i \ref{tab:olap_lat
     \label{fig:heatmap}
 \end{figure}
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{../Results/figures/07_oltp_throughput_heatmap.png}
+    \caption{Heatmap srednje OLTP propusnosti (ops/s) za sve kombinacije konfiguracija, omjera opterećenja i razina konkurentnosti. Dominacija HTAP konfiguracije vidljiva je intenzitetom plave boje.}
+    \label{fig:oltp_heatmap}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{../Results/figures/08_oltp_grouped_bar.png}
+    \caption{Srednja OLTP propusnost po konfiguraciji i razini konkurentnosti, agregirano po svim omjerima opterećenja. Greške prikazuju standardnu devijaciju.}
+    \label{fig:oltp_bar}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{../Results/figures/09_oltp_olap_scatter.png}
+    \caption{Scatter dijagram OLTP vs.\ OLAP propusnosti po konfiguraciji i razini konkurentnosti. Svaka točka označava jednu kombinaciju; linije spajaju iste konfiguracije po porastu $C$. Gore-desno označava bolju performansu na oba radna toka istovremeno.}
+    \label{fig:scatter}
+\end{figure}
+
 \section{Deskriptivna statistika po tipu operacije}
 \label{sec:deskriptivna_po_operaciji}
 
@@ -603,7 +624,14 @@ OLAP (Complex SELECT) & 9.458 & 28.100 & 2.283 & 4.100 & \textbf{495} & \textbf{
 \end{tabular}
 \end{table}
 
-Iz Tablice~\ref{tab:per_op_full} vidljivo je da HTAP postiže najniže prosječno vrijeme izvršavanja u pet od šest kategorija. Izuzetak je OLAP (Complex SELECT) gdje IM ostvaruje 495\,ms naspram HTAP 780\,ms -- memorijsko-optimizovane tablice bez columnstore overhead-a brže završavaju kratke analitičke upite, dok HTAP mora proći kroz columnstore strukturu podataka. Kategorija Simple INSERT (\texttt{usp\_InsertVote}) bilježi najveće relativno ubrzanje: HTAP 1,29\,ms naspram Baseline 27,09\,ms (21,0$\times$). Ova operacija kombinuje INSERT u \texttt{Votes} s uvjetnim UPDATE \texttt{Posts.Score}, što na disku zahtijeva I/O i zaključavanje dviju tablica, dok Hekaton engine oba koraka izvodi u memoriji s $O(1)$ pristupom.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{../Results/figures/10_per_operation_latency.png}
+    \caption{Prosječna latencija po tipu operacije i konfiguraciji (lijevo: OLTP operacije; desno: OLAP prosjek). Skale su namjerno odvojene jer OLAP latencija premašuje OLTP za dva do tri reda veličine.}
+    \label{fig:per_op}
+\end{figure}
+
+Iz Tablice~\ref{tab:per_op_full} i Slike~\ref{fig:per_op} vidljivo je da HTAP postiže najniže prosječno vrijeme izvršavanja u pet od šest kategorija. Izuzetak je OLAP (Complex SELECT) gdje IM ostvaruje 495\,ms naspram HTAP 780\,ms -- memorijsko-optimizovane tablice bez columnstore overhead-a brže završavaju kratke analitičke upite, dok HTAP mora proći kroz columnstore strukturu podataka. Kategorija Simple INSERT (\texttt{usp\_InsertVote}) bilježi najveće relativno ubrzanje: HTAP 1,29\,ms naspram Baseline 27,09\,ms (21,0$\times$). Ova operacija kombinuje INSERT u \texttt{Votes} s uvjetnim UPDATE \texttt{Posts.Score}, što na disku zahtijeva I/O i zaključavanje dviju tablica, dok Hekaton engine oba koraka izvodi u memoriji s $O(1)$ pristupom.
 
 \section{Rezultati statističkih testova}
 \label{sec:statisticki_testovi}
