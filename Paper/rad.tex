@@ -633,6 +633,27 @@ OLAP (Complex SELECT) & 9.458 & 28.100 & 2.283 & 4.100 & \textbf{495} & \textbf{
 
 Iz Tablice~\ref{tab:per_op_full} i Slike~\ref{fig:per_op} vidljivo je da HTAP postiže najniže prosječno vrijeme izvršavanja u pet od šest kategorija. Izuzetak je OLAP (Complex SELECT) gdje IM ostvaruje 495\,ms naspram HTAP 780\,ms -- memorijsko-optimizovane tablice bez columnstore overhead-a brže završavaju kratke analitičke upite, dok HTAP mora proći kroz columnstore strukturu podataka. Kategorija Simple INSERT (\texttt{usp\_InsertVote}) bilježi najveće relativno ubrzanje: HTAP 1,29\,ms naspram Baseline 27,09\,ms (21,0$\times$). Ova operacija kombinuje INSERT u \texttt{Votes} s uvjetnim UPDATE \texttt{Posts.Score}, što na disku zahtijeva I/O i zaključavanje dviju tablica, dok Hekaton engine oba koraka izvodi u memoriji s $O(1)$ pristupom.
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{../Results/figures/11_scalability_line.png}
+    \caption{Skalabilnost OLTP propusnosti s brojem konkurentnih niti pri omjeru opterećenja OLTP\,50\%/OLAP\,50\%. HTAP i IM pokazuju superlinarno povećanje propusnosti pri prelasku s C=4 na C=32, dok Baseline i CS ostaju ograničeni I/O kapacitetom diska.}
+    \label{fig:scalability}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{../Results/figures/12_ratio_impact_bar.png}
+    \caption{Utjecaj omjera OLTP/OLAP opterećenja na srednju OLTP propusnost (agregirano po svim razinama konkurentnosti). HTAP zadržava relativno visoku propusnost čak i pri pretežno analitičkom opterećenju (20\%/80\%), što potvrđuje izolaciju workloada zahvaljujući dualnom pohranišnom mehanizmu.}
+    \label{fig:ratio_impact}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{../Results/figures/13_update_p95_bar.png}
+    \caption{P95 latencija procedure \texttt{usp\_UpdatePostScore} po konfiguraciji (agregirano po svim omjerima i razinama konkurentnosti). IM postiže P95\,=\,11,9\,ms naspram HTAP P95\,=\,4,3\,ms -- razlika od 2,8$\times$ objašnjava se CPU saturacijom uzrokovanom row-mode OLAP upitima u IM konfiguraciji, koji ne mogu iskoristiti columnstore batch-mode izvršavanje.}
+    \label{fig:update_p95}
+\end{figure}
+
 \section{Rezultati statističkih testova}
 \label{sec:statisticki_testovi}
 

@@ -566,8 +566,161 @@ def main():
     print("10. Per-operation latencija bar chart...")
     plot_per_operation_bar()
 
+    print("11. Skalabilnost OLTP (line chart, 50/50)...")
+    plot_scalability_line(df)
+
+    print("12. Utjecaj omjera opterećenja (bar chart)...")
+    plot_ratio_impact_bar(df)
+
+    print("13. P95 latencija usp_UpdatePostScore...")
+    plot_update_p95_bar()
+
     print(f"\nSvi grafovi pohraneni u: {FIGURES_DIR.resolve()}")
     print("Završeno.")
+
+
+# ----------------------------------------------------------------
+# Graf 11: Skalabilnost -- line chart throughput vs concurrency (50/50)
+# ----------------------------------------------------------------
+def plot_scalability_line(df: pd.DataFrame):
+    subset = df[df["OltpOlapRatio"] == "50_50"]
+    agg = subset.groupby(["Configuration", "ConcurrencyLevel"]).agg(
+        Mean=("OltpThroughput", "mean"),
+        SD=("OltpThroughput", "std")
+    ).reset_index()
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    for config in CONFIGS_ORDER:
+        cdata = agg[agg["Configuration"] == config].sort_values("ConcurrencyLevel")
+        ax.errorbar(
+            cdata["ConcurrencyLevel"], cdata["Mean"],
+            yerr=cdata["SD"],
+            label=config.upper(),
+            color=CONFIG_COLORS[config],
+            marker="o", markersize=8,
+            linewidth=2.5, capsize=5,
+            markeredgecolor="black", markeredgewidth=0.6
+        )
+        for _, row in cdata.iterrows():
+            ax.annotate(f"{row['Mean']/1000:.1f}k",
+                        (row["ConcurrencyLevel"], row["Mean"]),
+                        textcoords="offset points", xytext=(6, 5),
+                        fontsize=8.5, color=CONFIG_COLORS[config], fontweight="bold")
+
+    ax.set_xticks([4, 16, 32])
+    ax.set_xticklabels(["C = 4", "C = 16", "C = 32"])
+    ax.set_xlabel("Razina konkurentnosti (broj niti)")
+    ax.set_ylabel("OLTP propusnost (ops/s)")
+    ax.set_title("Skalabilnost OLTP propusnosti s brojem konkurentnih niti\n"
+                 "(omjer opterećenja OLTP 50% / OLAP 50%)",
+                 fontsize=13, fontweight="bold")
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v/1000:.0f}k"))
+    ax.legend(title="Konfiguracija", loc="upper left")
+    ax.grid(linestyle="--", alpha=0.4)
+    plt.tight_layout()
+    save_fig("11_scalability_line")
+
+
+# ----------------------------------------------------------------
+# Graf 12: Utjecaj omjera opterećenja na OLTP throughput (bar chart)
+# ----------------------------------------------------------------
+def plot_ratio_impact_bar(df: pd.DataFrame):
+    agg = df.groupby(["Configuration", "OltpOlapRatio"]).agg(
+        Mean=("OltpThroughput", "mean"),
+        SD=("OltpThroughput", "std")
+    ).reset_index()
+
+    ratios = ["80_20", "50_50", "20_80"]
+    ratio_labels = {"80_20": "80% OLTP\n20% OLAP",
+                    "50_50": "50% OLTP\n50% OLAP",
+                    "20_80": "20% OLTP\n80% OLAP"}
+
+    x = np.arange(len(ratios))
+    n_configs = len(CONFIGS_ORDER)
+    width = 0.18
+    offsets = np.linspace(-(n_configs - 1) / 2, (n_configs - 1) / 2, n_configs) * width
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    for i, config in enumerate(CONFIGS_ORDER):
+        cdata = agg[agg["Configuration"] == config].set_index("OltpOlapRatio")
+        means = [cdata.loc[r, "Mean"] if r in cdata.index else 0 for r in ratios]
+        stds  = [cdata.loc[r, "SD"]   if r in cdata.index else 0 for r in ratios]
+        bars = ax.bar(x + offsets[i], means, width,
+                      yerr=stds, capsize=4,
+                      label=config.upper(),
+                      color=CONFIG_COLORS[config],
+                      edgecolor="black", linewidth=0.6, alpha=0.85,
+                      error_kw={"elinewidth": 1.2, "ecolor": "black"})
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([ratio_labels[r] for r in ratios], fontsize=10)
+    ax.set_xlabel("Omjer OLTP/OLAP opterećenja")
+    ax.set_ylabel("Srednja OLTP propusnost (ops/s)")
+    ax.set_title("Utjecaj omjera opterećenja na OLTP propusnost\n"
+                 "(agregirano po svim razinama konkurentnosti)",
+                 fontsize=13, fontweight="bold")
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v/1000:.1f}k"))
+    ax.legend(title="Konfiguracija", loc="upper right")
+    ax.grid(axis="y", linestyle="--", alpha=0.4)
+
+    # Anotacija: HTAP zadržava relativno visoku propusnost čak i pri 80% OLAP
+    htap_vals = [agg[(agg["Configuration"] == "htap") &
+                     (agg["OltpOlapRatio"] == r)]["Mean"].values for r in ratios]
+    htap_vals = [v[0] if len(v) > 0 else 0 for v in htap_vals]
+    if htap_vals[0] > 0 and htap_vals[2] > 0:
+        # Izračunaj udio koji HTAP zadržava pri 20/80 naspram 80/20
+        retention_pct = htap_vals[2] / htap_vals[0] * 100
+        ax.annotate(f"HTAP zadržava {retention_pct:.0f}%\npropusnosti pri 20/80",
+                    xy=(2 + offsets[CONFIGS_ORDER.index("htap")], htap_vals[2]),
+                    xytext=(-70, 30), textcoords="offset points",
+                    fontsize=9, color=CONFIG_COLORS["htap"],
+                    arrowprops=dict(arrowstyle="->", color=CONFIG_COLORS["htap"], lw=1.5))
+    plt.tight_layout()
+    save_fig("12_ratio_impact_bar")
+
+
+# ----------------------------------------------------------------
+# Graf 13: P95 latencija usp_UpdatePostScore po konfiguraciji
+# ----------------------------------------------------------------
+def plot_update_p95_bar():
+    if not PER_OP_CSV.exists():
+        print(f"  Preskačem graf 13: {PER_OP_CSV} nije pronađen.")
+        return
+
+    df = pd.read_csv(PER_OP_CSV)
+    op = df[df["OperationName"] == "usp_UpdatePostScore"].copy()
+    op["Configuration"] = pd.Categorical(op["Configuration"], categories=CONFIGS_ORDER, ordered=True)
+    op = op.sort_values("Configuration")
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    colors = [CONFIG_COLORS[c] for c in op["Configuration"]]
+    bars = ax.bar(op["Configuration"].str.upper(), op["P95_ms"],
+                  color=colors, edgecolor="black", linewidth=0.7, alpha=0.88, width=0.5)
+
+    for bar, val in zip(bars, op["P95_ms"]):
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.3,
+                f"{val:.1f} ms", ha="center", va="bottom", fontsize=10, fontweight="bold")
+
+    # Strelica: IM vs HTAP razlika
+    im_val   = op[op["Configuration"] == "im"]["P95_ms"].values[0]
+    htap_val = op[op["Configuration"] == "htap"]["P95_ms"].values[0]
+    im_x   = list(op["Configuration"].cat.categories).index("im")
+    htap_x = list(op["Configuration"].cat.categories).index("htap")
+    ax.annotate("", xy=(htap_x, htap_val + 0.5), xytext=(im_x, im_val + 0.5),
+                arrowprops=dict(arrowstyle="<->", color="black", lw=1.5))
+    ax.text((im_x + htap_x) / 2, max(im_val, htap_val) + 1.5,
+            f"{im_val / htap_val:.1f}× razlika",
+            ha="center", fontsize=10, fontstyle="italic")
+
+    ax.set_xlabel("Konfiguracija")
+    ax.set_ylabel("P95 latencija (ms)")
+    ax.set_title("P95 latencija usp_UpdatePostScore po konfiguraciji\n"
+                 "(agregirano po svim omjerima i razinama konkurentnosti)",
+                 fontsize=13, fontweight="bold")
+    ax.grid(axis="y", linestyle="--", alpha=0.4)
+    plt.tight_layout()
+    save_fig("13_update_p95_bar")
 
 
 if __name__ == "__main__":
