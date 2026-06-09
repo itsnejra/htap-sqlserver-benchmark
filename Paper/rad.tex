@@ -1090,7 +1090,31 @@ END;
 \end{lstlisting}
 
 \phantomsection
-\section*{B.2 \quad HTAP dual-store varijanta}
+\section*{B.2 \quad IM konfiguracija}
+\label{app:im_olap}
+
+Za razliku od OLTP procedura, OLAP procedure u \texttt{im.*} konfiguraciji \textbf{nisu} nativno kompajlirane -- koriste standardni T-SQL interpreter. Ključna razlika u odnosu na \texttt{baseline.*} i \texttt{cs.*} je što upiti čitaju iz memorijsko-optimizovanih tablica (\texttt{im.*}), čime se eliminira disk I/O i buffer pool contention. Upravo zbog ovoga IM konfiguracija može nadmašiti CS pri visokoj konkurentnosti (\S\ref{sec:olap_diskusija}): podaci su u RAM-u pa nema \texttt{RESOURCE\_SEMAPHORE} čekanja karakterističnog za batch-mode columnstore skenove. Prikazan je Q1; Q2--Q5 slijede identičan obrazac uz zamjenu prefiksa sheme.
+
+\begin{lstlisting}[language=SQL, caption={im.usp\_OLAP\_Q1\_MonthlyActivity -- standardni T-SQL koji cita iz in-memory tablice (bez columnstore)}, label=lst:q1_im]
+CREATE OR ALTER PROCEDURE im.usp_OLAP_Q1_MonthlyActivity AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT
+        YEAR(CreationDate)            AS Godina,
+        MONTH(CreationDate)           AS Mjesec,
+        PostTypeId,
+        COUNT(*)                      AS BrojPostova,
+        AVG(CAST(Score AS FLOAT))     AS ProsjekScore,
+        SUM(CAST(ViewCount AS BIGINT)) AS UkupnoPregleda,
+        SUM(AnswerCount)              AS UkupnoOdgovora
+    FROM im.Posts   -- memory-optimized tablica: citanje iz RAM-a, bez disk I/O
+    GROUP BY YEAR(CreationDate), MONTH(CreationDate), PostTypeId
+    ORDER BY Godina, Mjesec, PostTypeId;
+END;
+\end{lstlisting}
+
+\phantomsection
+\section*{B.3 \quad HTAP dual-store varijanta}
 \label{app:htap_olap}
 
 Ključna arhitekturalna razlika HTAP konfiguracije vidljiva je direktno u kodu: OLAP procedure deklarirane su u \texttt{htap.*} shemi ali čitaju podatke iz \texttt{cs.*} sheme (disk-based columnstore layer). OLTP procedure istovremeno pišu u \texttt{htap.*} (memorijsko-optimizovane tablice). Ovim fizičkim odvajanjem OLAP analitički skenovi ne interferiraju s OLTP transakcijama -- što je osnova dual-store pristupa i direktna implementacija arhitekture opisane u §\ref{sec:konfiguracije}. Prikazan je Q1 kao reprezentativan primjer; Q2--Q5 slijede isti obrazac.
