@@ -600,38 +600,7 @@ Tablice~\ref{tab:oltp_throughput}, \ref{tab:olap_throughput} i \ref{tab:olap_lat
     \label{fig:scatter}
 \end{figure}
 
-\section{Deskriptivna statistika po tipu operacije}
-\label{sec:deskriptivna_po_operaciji}
-
-\begin{table}[H]
-\centering
-\caption{Prosječna latencija (avg, ms) i $P_{95}$ po tipu OLTP operacije. Podebljano = minimum po retku.}
-\label{tab:per_op_full}
-\footnotesize
-\begin{tabular}{lrrrrrrrr}
-\toprule
- & \multicolumn{2}{c}{\textbf{Baseline}} & \multicolumn{2}{c}{\textbf{CS}} & \multicolumn{2}{c}{\textbf{IM}} & \multicolumn{2}{c}{\textbf{HTAP}} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
-\textbf{Operacija} & Avg & $P_{95}$ & Avg & $P_{95}$ & Avg & $P_{95}$ & Avg & $P_{95}$ \\
-\midrule
-Simple SELECT      & 1,43 & 4,2  & 0,93 & 2,8  & 1,15 & 3,4  & \textbf{0,69} & \textbf{1,9} \\
-Complex SELECT     & 1,60 & 5,1  & 1,27 & 3,9  & 1,30 & 4,1  & \textbf{0,83} & \textbf{2,3} \\
-Simple INSERT      & 27,09 & 68,2 & 3,01 & 8,4  & 3,26 & 9,1  & \textbf{1,29} & \textbf{3,6} \\
-Complex INSERT     & 4,17 & 11,3 & 3,09 & 8,7  & 2,43 & 7,2  & \textbf{0,93} & \textbf{2,6} \\
-Simple UPDATE      & 3,37 & 9,8  & 2,20 & 6,4  & 2,94 & 8,5  & \textbf{1,14} & \textbf{3,2} \\
-OLAP (Complex SELECT) & 9.458 & 28.100 & 2.283 & 4.100 & \textbf{495} & \textbf{1.480} & 780 & 1.390 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\textwidth]{../Results/figures/10_per_operation_latency.png}
-    \caption{Prosječna latencija po tipu operacije i konfiguraciji (lijevo: OLTP operacije; desno: OLAP prosjek). Skale su namjerno odvojene jer OLAP latencija premašuje OLTP za dva do tri reda veličine.}
-    \label{fig:per_op}
-\end{figure}
-
-Iz Tablice~\ref{tab:per_op_full} i Slike~\ref{fig:per_op} vidljivo je da HTAP postiže najniže prosječno vrijeme izvršavanja u pet od šest kategorija. Izuzetak je OLAP (Complex SELECT) gdje IM ostvaruje 495\,ms naspram HTAP 780\,ms -- memorijsko-optimizovane tablice bez columnstore overhead-a brže završavaju kratke analitičke upite, dok HTAP mora proći kroz columnstore strukturu podataka. Kategorija Simple INSERT (\texttt{usp\_InsertVote}) bilježi najveće relativno ubrzanje: HTAP 1,29\,ms naspram Baseline 27,09\,ms (21,0$\times$). Ova operacija kombinuje INSERT u \texttt{Votes} s uvjetnim UPDATE \texttt{Posts.Score}, što na disku zahtijeva I/O i zaključavanje dviju tablica, dok Hekaton engine oba koraka izvodi u memoriji s $O(1)$ pristupom.
+Slika~\ref{fig:scalability} prikazuje skalabilnost OLTP propusnosti pri rastu broja konkurentnih niti, a Slika~\ref{fig:ratio_impact} pokazuje kako omjer OLTP/OLAP opterećenja utječe na prosječnu propusnost svake konfiguracije.
 
 \begin{figure}[H]
     \centering
@@ -645,6 +614,15 @@ Iz Tablice~\ref{tab:per_op_full} i Slike~\ref{fig:per_op} vidljivo je da HTAP po
     \includegraphics[width=0.85\textwidth]{../Results/figures/12_ratio_impact_bar.png}
     \caption{Utjecaj omjera OLTP/OLAP opterećenja na srednju OLTP propusnost (agregirano po svim razinama konkurentnosti). HTAP zadržava relativno visoku propusnost čak i pri pretežno analitičkom opterećenju (20\%/80\%), što potvrđuje izolaciju workloada zahvaljujući dualnom pohranišnom mehanizmu.}
     \label{fig:ratio_impact}
+\end{figure}
+
+Analiza latencije po tipu operacije (Slike~\ref{fig:per_op} i~\ref{fig:update_p95}) pokazuje da HTAP postiže najniže prosječno vrijeme izvršavanja u pet od šest kategorija. Jedini izuzetak je OLAP (Complex SELECT) gdje IM ostvaruje 495\,ms naspram HTAP 780\,ms, što se objašnjava izostankom columnstore overhead-a pri kratkim analitičkim upitima. Posebno je indikativna latencija procedure \texttt{usp\_UpdatePostScore}: IM bilježi P95\,=\,11,9\,ms naspram HTAP P95\,=\,4,3\,ms, razlika od 2,8$\times$ uzrokovana CPU saturacijom uslijed row-mode OLAP izvršavanja.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{../Results/figures/10_per_operation_latency.png}
+    \caption{Prosječna latencija po tipu operacije i konfiguraciji (lijevo: OLTP operacije; desno: OLAP prosjek). Skale su namjerno odvojene jer OLAP latencija premašuje OLTP za dva do tri reda veličine.}
+    \label{fig:per_op}
 \end{figure}
 
 \begin{figure}[H]
@@ -863,24 +841,15 @@ RAM ograničen ili SQL Express & CS & Express ne podržava In-Memory OLTP \\
 \chapter{Zaključak}
 \label{ch:zakljucak}
 
-\section{Ključni empirijski nalazi}
-\label{sec:kljucni_nalazi}
-
 Eksperiment proveden kroz 1.070 validnih mjernih serija nad skupom podataka StackOverflow2010 s $\sim$19,2 miliona zapisa pokazuje da HTAP dual-store konfiguracija dominira u svim ispitanim scenarijima mješovitog opterećenja. Pri razini konkurentnosti $C=32$, HTAP postiže 21.920 ops/s OLTP propusnosti, što je 4,6 puta više od IM konfiguracije, 8,8 puta više od CS konfiguracije i 9,0 puta više od Baseline konfiguracije. Najniže OLAP latencije ($P_{50}=924$\,ms pri 80/20 opterećenju), uz relativno malu standardnu devijaciju, svjedoče o stabilnom i predvidivom radu sustava.
 
 IM konfiguracija pokazuje iznenađujuću slabost pri mješovitom opterećenju unatoč korištenju istog Hekaton engina kao HTAP: row-mode izvršavanje OLAP upita saturira CPU resurse i direktno smanjuje OLTP propusnost za faktor 3,3 do 6,9 u odnosu na HTAP. CS konfiguracija bilježi degradaciju OLTP propusnosti od 67,4\% pri prelasku s transakcijskog na mješovito opterećenje, što u apsolutnim vrijednostima znači gubitak dvije trećine OLTP kapaciteta pri $C=32$. Baseline konfiguracija potvrđuje svoju ulogu referentne točke i nije preporučena za produkcijska okruženja s analitičkim zahtjevima.
-
-\section{Izvorni doprinos rada}
-\label{sec:doprinos}
 
 Izvorni doprinos ovog rada ogleda se u tri aspekta. Kao prvo, identificiran je i kvantificiran fenomen koji dosad nije bio eksplicitno mjeren u literaturi: columnstore ubrzanje OLAP upita indirektno poboljšava OLTP propusnost pri mješovitom opterećenju za faktor 3,3--6,9, jer oslobađa CPU kapacitet koji bi u alternativnoj konfiguraciji (IM) bio potrošen na row-mode skeniranja $\sim$3,7 miliona redova. Ovaj nalaz mijenja način na koji treba pristupiti optimizaciji HTAP sustava: poboljšanje OLAP performansi nije samo cilj samo po sebi, već i sredstvo za poboljšanje OLTP performansi.
 
 Kao drugo, rad pruža prvu sustavnu komparativnu evaluaciju četiri arhitekturalne konfiguracije SQL Servera 2022 nad stvarnim skupom podataka s Pareto distribucijom korisničke aktivnosti, u punom faktorijalnom eksperimentalnom dizajnu $4 \times 3 \times 3$ s 30 ponavljanja po kombinaciji i rigoroznom neparametarskom statističkom analizom.
 
 Kao treće, empirijski nalazi prevode se u konkretne, akcijske preporuke za inženjere i arhitekte koji projektuju HTAP sustave u SQL Server okruženju: za sve scenarije s mješovitim opterećenjem, bez obzira na omjer OLTP/OLAP aktivnosti, dual-store konfiguracija dosljedno daje bolje rezultate od alternativa.
-
-\section{Smjernice za buduća istraživanja}
-\label{sec:buduca_istrazivanja}
 
 Rezultati ovog rada otvaraju nekoliko smjernica za buduća istraživanja. Kao prvo, evaluacija na distribuiranim HTAP sistemima (TiDB, SingleStore) s identičnim skupom podataka i workloadom omogućila bi direktnu komparaciju SQL Server in-process dual-store-a s distribuiranim dual-engine arhitekturama i kvantifikaciju troška mrežne latencije. Kao drugo, istraživanje utjecaja SSD/NVMe pohrane na relativne prednosti konfiguracija razjasnilo bi koliko rezultata ovog rada ovisi o specifičnom I/O okruženju (HDD). Kao treće, evaluacija na novijim Stack Overflow dumpovima s većim skupovima podataka (2015, 2023) pružila bi uvid u skalabilnost izmjerenih trendova. Kao četvrto, istraživanje automatskog tuninga koji dinamički bira optimalnu konfiguraciju ovisno o trenutnom omjeru opterećenja -- ili čak kombinira sve četiri konfiguracije adaptivno -- otvorilo bi put prema samooptimiziranom HTAP sustavu.
 
