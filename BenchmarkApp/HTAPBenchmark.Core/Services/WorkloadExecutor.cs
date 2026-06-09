@@ -115,7 +115,6 @@ public sealed class WorkloadExecutor
         }
     }
 
-
     /// <summary>
     /// Resetira SAMO aktivne postove (ctx.PostIds, ~20K) u in-memory tablici:
     /// DELETE → kratka pauza (GC) → INSERT iz cs.Posts.
@@ -342,17 +341,14 @@ public sealed class WorkloadExecutor
                 long newId = Interlocked.Increment(ref voteCounter[0]);
                 int postId = ctx.PostIds[rng.Next(ctx.PostIds.Length)];
                 byte voteType = (byte)rng.Next(1, 4);
-                int insertedId = (int)(newId % int.MaxValue);
                 await conn.ExecuteAsync(OltpQueries.InsertVote(schema), new
                 {
-                    Id           = insertedId,
+                    Id           = (int)(newId % int.MaxValue),
                     PostId       = postId,
                     VoteTypeId   = voteType,
                     CreationDate = DateTime.UtcNow.Date, // DateTime maps reliably; DATE param accepts it
                     UserId       = ctx.UserIds[rng.Next(ctx.UserIds.Length)]
                 });
-                // Enqueue za potencijalne DeleteVote operacije
-                ctx.AvailableVoteIdsForDelete.Enqueue(insertedId);
                 break;
             }
             case "usp_UpdatePostScore":
@@ -367,17 +363,15 @@ public sealed class WorkloadExecutor
                 long newId = Interlocked.Increment(ref commentCounter[0]);
                 int postId = ctx.PostIds[rng.Next(ctx.PostIds.Length)];
                 string text = $"Benchmark comment {newId} - performance test.";
-                int insertedCommentId = (int)(newId % int.MaxValue);
                 await conn.ExecuteAsync(OltpQueries.InsertComment(schema), new
                 {
-                    Id           = insertedCommentId,
+                    Id           = (int)(newId % int.MaxValue),
                     PostId       = postId,
                     Score        = 0,
                     Text         = text[..Math.Min(text.Length, 700)],
                     CreationDate = DateTime.UtcNow,
                     UserId       = ctx.UserIds[rng.Next(ctx.UserIds.Length)]
                 });
-                ctx.AvailableCommentIdsForDelete.Enqueue(insertedCommentId);
                 break;
             }
             case "usp_GetRecentUserPosts":
@@ -386,81 +380,6 @@ public sealed class WorkloadExecutor
                 await conn.ExecuteAsync(OltpQueries.GetRecentUserPosts(schema), new { UserId = userId });
                 break;
             }
-
-            // ---- DELETE operacije (dodane post-benchmark za potpuni CRUD coverage) ----
-
-            case "usp_DeleteVote":
-            {
-                // Simple DELETE: briše jedan glas po PK
-                // Pokušavamo dequeue iz pool-a insertovanih glasanja;
-                // ako je pool prazan, preskačemo da ne bismo brisali originalne podatke.
-                if (ctx.AvailableVoteIdsForDelete.TryDequeue(out int voteIdToDelete))
-                {
-                    await conn.ExecuteAsync(OltpQueries.DeleteVote(schema), new { Id = voteIdToDelete });
-                }
-                break;
-            }
-
-            case "usp_DeletePostVotes":
-            {
-                // Complex DELETE: briše sve glasove VoteTypeId=2 (DownVote) za nasumični post
-                // Operira samo nad redovima koje je benchmark insertovao
-                // (VoteTypeId=2 poklapa se s random voteType iz InsertVote)
-                int postId      = ctx.PostIds[rng.Next(ctx.PostIds.Length)];
-                byte voteTypeId = 2; // DownVote — najčešće za moderatorske akcije
-                await conn.ExecuteAsync(OltpQueries.DeletePostVotes(schema),
-                    new { PostId = postId, VoteTypeId = voteTypeId });
-                break;
-            }
-
-            case "usp_UpdateUserReputation":
-            {
-                // Complex UPDATE: čita COUNT odgovora iz Posts, upisuje u Users.Reputation
-                // Pristupa dvjema tablicama — realistična poslovna logika
-                int userId = ctx.UserIds[rng.Next(ctx.UserIds.Length)];
-                await conn.ExecuteAsync(OltpQueries.UpdateUserReputation(schema),
-                    new { UserId = userId });
-                break;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Dohvata snapshot CPU i RAM iskorištenosti SQL Server procesa iz DMV-ova.
-    /// Koristi sys.dm_os_ring_buffers (CPU) i sys.dm_os_process_memory (RAM).
-    /// Poziva se na kraju mjernog perioda svakog runa.
-    /// </summary>
-    public async Task<(double CpuPercent, double MemoryUsedMB)> MeasureServerResourcesAsync()
-    {
-        try
-        {
-            await using var conn = new SqlConnection(_connectionString);
-            await conn.OpenAsync();
-
-            // CPU: zadnji zapis iz ring buffer Scheduler Monitor
-            const string cpuSql = @"
-                SELECT TOP 1
-                    record.value('(./Record/SchedulerMonitorEvent/SystemHealth/ProcessUtilization)[1]', 'int')
-                FROM (
-                    SELECT CONVERT(XML, record) AS record
-                    FROM sys.dm_os_ring_buffers
-                    WHERE ring_buffer_type = N'RING_BUFFER_SCHEDULER_MONITOR'
-                    ORDER BY [timestamp] DESC
-                ) x;";
-
-            // RAM: radna memorija SQL Server procesa u MB
-            const string ramSql = @"
-                SELECT physical_memory_in_use_kb / 1024.0
-                FROM sys.dm_os_process_memory;";
-
-            double cpu = await conn.ExecuteScalarAsync<double>(cpuSql, commandTimeout: 10);
-            double ram = await conn.ExecuteScalarAsync<double>(ramSql, commandTimeout: 10);
-            return (Math.Round(cpu, 2), Math.Round(ram, 2));
-        }
-        catch
-        {
-            // DMV upit nije kritičan — vraćamo 0 u slučaju greške
-            return (0d, 0d);
         }
     }
 

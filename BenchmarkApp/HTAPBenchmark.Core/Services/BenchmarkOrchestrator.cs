@@ -125,10 +125,6 @@ public sealed class BenchmarkOrchestrator
                             var summary = MetricsCalculator.Calculate(runId, measurements, _config.MeasurementSeconds);
                             summary.RunId = runId;
 
-                            // Izmjeri SQL Server CPU i RAM odmah nakon mjernog perioda
-                            (summary.SqlCpuPercent, summary.SqlMemoryUsedMB) =
-                                await _executor.MeasureServerResourcesAsync();
-
                             // Spremi sirova mjerenja i summary
                             foreach (var m in measurements)
                                 m.RunId = runId;

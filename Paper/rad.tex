@@ -432,9 +432,6 @@ OLTP radni tok sastoji se od šest operacija koje se biraju prema težinskoj dis
 \end{tabular}
 \end{table}
 
-Pored navedenih operacija, implementirane su i procedure za brisanje i složeno ažuriranje zapisa. Procedura \texttt{usp\_DeleteVote} (\textit{Simple DELETE}) briše jedan glas po primarnom ključu \texttt{@Id} naredbom \texttt{DELETE FROM Votes WHERE Id = @Id}. Procedura \texttt{usp\_DeletePostVotes} (\textit{Complex DELETE}) briše sve glasove određenog tipa za zadati post (\texttt{@PostId}, \texttt{@VoteTypeId}) i može obrisati više redova jednom naredbom. Procedura \texttt{usp\_UpdateUserReputation} (\textit{Complex UPDATE}) ažurira polje \texttt{Reputation} korisnika na osnovu broja njegovih odgovora iz tablice \texttt{Posts}, čitajući iz jedne tablice i pišući u drugu -- klasičan obrazac složenog ažuriranja koji testira sposobnost svakog storage engina da efikasno koordinira operacije nad više tablica.
-
-Za memorijsko-optimizovane sheme (\texttt{im.*}, \texttt{htap.*}) sve tri procedure su nativno kompajlirane s \texttt{ATOMIC} blokom. \texttt{usp\_UpdateUserReputation} koristi lokalne varijable umjesto koreliranih podupita jer Hekaton engine ne podržava korelisane podupite unutar \texttt{UPDATE} naredbe u nativno kompajliranim procedurama.
 
 \subsection{OLAP radni tok}
 
@@ -621,21 +618,12 @@ Complex SELECT     & 1,60 & 5,1  & 1,27 & 3,9  & 1,30 & 4,1  & \textbf{0,83} & \
 Simple INSERT      & 27,09 & 68,2 & 3,01 & 8,4  & 3,26 & 9,1  & \textbf{1,29} & \textbf{3,6} \\
 Complex INSERT     & 4,17 & 11,3 & 3,09 & 8,7  & 2,43 & 7,2  & \textbf{0,93} & \textbf{2,6} \\
 Simple UPDATE      & 3,37 & 9,8  & 2,20 & 6,4  & 2,94 & 8,5  & \textbf{1,14} & \textbf{3,2} \\
-Complex UPDATE     & 0,93 & 2,7  & 0,73 & 2,1  & 23,96$^\dagger$ & 41,2 & \textbf{0,08} & \textbf{0,2} \\
-Simple DELETE      & 0,80 & 2,3  & 0,26 & 0,8  & 0,25 & 0,7  & \textbf{0,07} & \textbf{0,2} \\
-Complex DELETE     & 1,24 & 3,6  & 0,48 & 1,4  & 0,62 & 1,8  & \textbf{0,09} & \textbf{0,3} \\
 OLAP (Complex SELECT) & 9.458 & 28.100 & 2.283 & 4.100 & \textbf{495} & \textbf{1.480} & 780 & 1.390 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\noindent\textit{$^\dagger$ Complex UPDATE -- IM: prosječnih 23,96\,ms zbog sekvencijalnog skeniranja in-memory redova po ne-primarnom ključu (koji nije primarni ključ Hekaton tablice).}
-
-\medskip
-
-Iz Tablice~\ref{tab:per_op_full} vidljivo je da HTAP postiže najniže prosječno vrijeme izvršavanja u sedam od devet kategorija. Izuzetak je Complex SELECT (OLAP) gdje IM ostvaruje 495\,ms naspram HTAP 780\,ms -- memorijsko-optimizovane tablice bez columnstore overhead-a brže završavaju kratke analitičke upite, dok HTAP mora proći kroz columnstore strukturu podataka. Kategorija Simple INSERT (\texttt{usp\_InsertVote}) bilježi najveće relativno ubrzanje: HTAP 1,29\,ms naspram Baseline 27,09\,ms (21,0$\times$). Ova operacija kombinuje INSERT u \texttt{Votes} s uvjetnim UPDATE \texttt{Posts.Score}, što na disku zahtijeva I/O i zaključavanje dviju tablica, dok Hekaton engine oba koraka izvodi u memoriji s $O(1)$ pristupom.
-
-Posebno zanimljiv nalaz je IM konfiguracija za Complex UPDATE: 23,955\,ms, što je \textbf{25,8$\times$ sporije od Baseline} (0,927\,ms). Procedura \texttt{usp\_UpdateUserReputation} izvodi \texttt{COUNT(*) WHERE OwnerUserId = @UserId AND PostTypeId = 2}, pri čemu \texttt{OwnerUserId} nije primarni ključ Hekaton tablice. Hekaton hash-indeksi optimizirani su za točkačni pristup po PK -- za skeniranje po ne-PK stupcu, nativno kompajlirana procedura mora sekvencijalno proći sve redove tablice. Disk-zasnovane konfiguracije imaju B-tree nonclustered indeks na \texttt{OwnerUserId} koji efikasno rješava ovaj upit. Ovaj rezultat naglašava da \textbf{in-memory nije uvijek brže}: za operacije koje ne koriste PK lookup, Hekaton može biti znatno sporiji od disk-zasnovanih B-tree indeksa.
+Iz Tablice~\ref{tab:per_op_full} vidljivo je da HTAP postiže najniže prosječno vrijeme izvršavanja u pet od šest kategorija. Izuzetak je OLAP (Complex SELECT) gdje IM ostvaruje 495\,ms naspram HTAP 780\,ms -- memorijsko-optimizovane tablice bez columnstore overhead-a brže završavaju kratke analitičke upite, dok HTAP mora proći kroz columnstore strukturu podataka. Kategorija Simple INSERT (\texttt{usp\_InsertVote}) bilježi najveće relativno ubrzanje: HTAP 1,29\,ms naspram Baseline 27,09\,ms (21,0$\times$). Ova operacija kombinuje INSERT u \texttt{Votes} s uvjetnim UPDATE \texttt{Posts.Score}, što na disku zahtijeva I/O i zaključavanje dviju tablica, dok Hekaton engine oba koraka izvodi u memoriji s $O(1)$ pristupom.
 
 \section{Rezultati statističkih testova}
 \label{sec:statisticki_testovi}
@@ -680,7 +668,7 @@ IM vs HTAP & 6.449 & $<0,001$ & $+1,564$ & veliki \\
 
 \noindent\textit{Napomena: Pozitivan predznak Cohenovog $d$ označava da prva konfiguracija u paru ima veću (lošiju) latenciju.}
 
-\section{Regresijska i ANOVA analiza}
+\section{Regresijska analiza}
 \label{sec:regresija_anova}
 
 Uz neparametarsku analizu, provedena je i parametarska analiza u svrhu kvantifikacije veličine efekta faktora te izgradnje prediktivnog modela performansi. Konstruisana su dva OLS regresijska modela s logaritamskom transformacijom zavisnih varijabli (log-linearni model):
@@ -714,26 +702,6 @@ $R^2$ & \multicolumn{2}{c}{0,881} & \multicolumn{2}{c}{0,854} \\
 \end{table}
 
 Koeficijent HTAP konfiguracije u modelu~\eqref{eq:oltp_reg} iznosi $+1,965$ ($p<0,001$), što znači da HTAP, uz jednake vrijednosti ostalih prediktora, ima $e^{1,965} \approx 7,14$ puta veću OLTP propusnost od Baseline ($R^2 = 0,881$). U modelu~\eqref{eq:olap_reg} koeficijent $-1,382$ odgovara smanjenju OLAP latencije za faktor $e^{1,382} \approx 3,98$ u korist HTAP ($R^2 = 0,854$).
-
-\begin{table}[H]
-\centering
-\caption{Jednosmjerna ANOVA -- $\eta^2$ (udio objašnjene varijance) po zavisnoj varijabli, faktoru i konfiguraciji; sve p-vrijednosti $<0{,}001$}
-\label{tab:anova}
-\small
-\begin{tabular}{llrrrr}
-\toprule
-\textbf{Zavisna var.} & \textbf{Faktor} & \textbf{Baseline} & \textbf{CS} & \textbf{IM} & \textbf{HTAP} \\
-\midrule
-\multirow{2}{*}{OLTP propusnost}
- & OltpOlapRatio     & 0,61 & 0,65 & 0,48 & 0,59 \\
- & ConcurrencyLevel  & 0,17 & 0,16 & 0,20 & 0,20 \\
-\midrule
-\multirow{2}{*}{OLAP latencija $P_{50}$}
- & OltpOlapRatio     & 0,32 & 0,34 & 0,22 & 0,21 \\
- & ConcurrencyLevel  & 0,32 & 0,36 & 0,69 & 0,49 \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 % ======================================================================
 % POGLAVLJE 6: DISKUSIJA

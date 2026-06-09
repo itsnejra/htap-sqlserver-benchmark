@@ -36,22 +36,6 @@ public static class MetricsCalculator
             OlapLatencyP95   = Percentile(olapLatencies, 0.95),
             OlapLatencyP99   = Percentile(olapLatencies, 0.99),
 
-            // Min/Avg/Max/Total latencija (zahtjev predmeta: averageExecutionTime,
-            // minimumExecutionTime, maximumExecutionTime, totalExecutionTime)
-            OltpLatencyMin   = oltpLatencies.Length > 0 ? oltpLatencies[0]    : 0d,
-            OltpLatencyAvg   = oltpLatencies.Length > 0 ? oltpLatencies.Average() : 0d,
-            OltpLatencyMax   = oltpLatencies.Length > 0 ? oltpLatencies[^1]   : 0d,
-            OltpLatencyTotal = oltpLatencies.Sum(),
-
-            OlapLatencyMin   = olapLatencies.Length > 0 ? olapLatencies[0]    : 0d,
-            OlapLatencyAvg   = olapLatencies.Length > 0 ? olapLatencies.Average() : 0d,
-            OlapLatencyMax   = olapLatencies.Length > 0 ? olapLatencies[^1]   : 0d,
-            OlapLatencyTotal = olapLatencies.Sum(),
-
-            // SQL Server CPU i RAM — popunjava BenchmarkOrchestrator pozivom MeasureServerResourcesAsync
-            SqlCpuPercent    = 0d,
-            SqlMemoryUsedMB  = 0d,
-
             OltpSuccessRate  = oltpMeasurements.Count == 0 ? 0d :
                                oltpLatencies.Length / (double)oltpMeasurements.Count,
             OlapSuccessRate  = olapMeasurements.Count == 0 ? 0d :
