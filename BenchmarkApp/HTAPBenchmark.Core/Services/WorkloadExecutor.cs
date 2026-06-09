@@ -115,6 +115,7 @@ public sealed class WorkloadExecutor
         }
     }
 
+
     /// <summary>
     /// Resetira SAMO aktivne postove (ctx.PostIds, ~20K) u in-memory tablici:
     /// DELETE → kratka pauza (GC) → INSERT iz cs.Posts.
