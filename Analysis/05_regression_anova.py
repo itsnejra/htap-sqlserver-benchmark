@@ -17,8 +17,7 @@ Analize:
 Izlaz:
   - Results/regression_oltp_throughput.csv
   - Results/regression_olap_latency.csv
-  - Results/anova_results.csv
-  - Results/regression_report.txt
+  - Results/regression_report.txt (uključuje ANOVA sažetak)
 """
 
 import sys
@@ -255,10 +254,9 @@ def main():
 
     # ================================================================
     # Pohrana rezultata
+    # ANOVA se prikazuje u konzoli i regression_report.txt; zaseban
+    # anova_results.csv se ne piše jer ANOVA nije korištena kao podatak u radu.
     # ================================================================
-    anova_df.to_csv(OUTPUT_DIR / "anova_results.csv", index=False)
-    log(f"\nANOVA rezultati:          {OUTPUT_DIR / 'anova_results.csv'}")
-
     if not oltp_reg.empty:
         oltp_reg.to_csv(OUTPUT_DIR / "regression_oltp_throughput.csv", index=False)
         log(f"Regresija OLTP:           {OUTPUT_DIR / 'regression_oltp_throughput.csv'}")
