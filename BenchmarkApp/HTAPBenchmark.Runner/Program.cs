@@ -21,6 +21,7 @@ Console.CancelKeyPress += (_, e) =>
 var configuration = new ConfigurationBuilder()
     .SetBasePath(AppContext.BaseDirectory)
     .AddJsonFile("appsettings.json", optional: false)
+    .AddEnvironmentVariables()   // npr. BenchmarkConfig__ConnectionString (Docker)
     .AddCommandLine(args)
     .Build();
 
