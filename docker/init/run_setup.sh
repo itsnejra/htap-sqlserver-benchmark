@@ -2,7 +2,7 @@
 # =============================================================================
 # HTAPBenchmark: run_setup.sh
 # Inicijalizacijska skripta za db-init Docker kontejner.
-# Restorira StackOverflow2010.bak, kreira HTAPBenchmark bazu i učitava podatke.
+# Podržava i MDF (attach) i BAK (restore) format StackOverflow2010 baze.
 # =============================================================================
 
 set -e
@@ -11,7 +11,6 @@ SERVER="${SQL_SERVER:-sqlserver}"
 PASSWORD="${SA_PASSWORD:-HTAPBenchmark_2024!}"
 SQLCMD="/opt/mssql-tools18/bin/sqlcmd"
 
-# Stariji mssql-tools nema -No flag i sqlcmd je na drugom putu
 if [ ! -f "$SQLCMD" ]; then
     SQLCMD="/opt/mssql-tools/bin/sqlcmd"
 fi
@@ -40,23 +39,52 @@ for i in $(seq 1 $MAX_TRIES); do
     sleep 5
 done
 
-# ─── 2. Restore StackOverflow2010 ────────────────────────────────────────────
-if [ ! -f "/backups/StackOverflow2010.bak" ]; then
+# ─── 2. StackOverflow2010 — MDF attach ili BAK restore ───────────────────────
+MDF_FILE=""
+BAK_FILE=""
+
+# Pretraži Backups folder za MDF i BAK fajlove
+for f in /backups/*.mdf /backups/*.MDF; do
+    [ -f "$f" ] && MDF_FILE="$f" && break
+done
+for f in /backups/*.bak /backups/*.BAK; do
+    [ -f "$f" ] && BAK_FILE="$f" && break
+done
+
+if [ -n "$MDF_FILE" ]; then
+    echo ""
+    echo "=== Pronađen MDF fajl: ${MDF_FILE} ==="
+    echo "    Kopiram u /var/opt/mssql/data/ ..."
+    cp "$MDF_FILE" /var/opt/mssql/data/StackOverflow2010.mdf
+
+    # Kopiraj LDF ako postoji (nije obavezno — ATTACH_REBUILD_LOG ga rekreira)
+    LDF_FILE="${MDF_FILE%.mdf}_log.ldf"
+    [ ! -f "$LDF_FILE" ] && LDF_FILE="${MDF_FILE%.MDF}_log.ldf"
+    if [ -f "$LDF_FILE" ]; then
+        echo "    Pronađen i LDF fajl — kopiram..."
+        cp "$LDF_FILE" /var/opt/mssql/data/StackOverflow2010_log.ldf
+    fi
+
+    run_sql "Attach StackOverflow2010 iz MDF fajla" \
+            "/init/01_attach_stackoverflow.sql"
+
+elif [ -n "$BAK_FILE" ]; then
+    echo ""
+    echo "=== Pronađen BAK fajl: ${BAK_FILE} ==="
+    run_sql "Restore StackOverflow2010 iz BAK fajla (može trajati 10-30 min)" \
+            "/init/01_restore_stackoverflow.sql"
+
+else
     echo ""
     echo "╔══════════════════════════════════════════════════════════════╗"
-    echo "║  GREŠKA: /backups/StackOverflow2010.bak nije pronađen!      ║"
+    echo "║  GREŠKA: Nije pronađen StackOverflow2010 fajl!              ║"
     echo "║                                                              ║"
-    echo "║  Preuzmi .bak fajl (~7-10 GB) i postavi ga u:               ║"
-    echo "║    HTAPBenchmark/Backups/StackOverflow2010.bak               ║"
-    echo "║                                                              ║"
-    echo "║  Izvor: https://www.brentozar.com/archive/2015/10/           ║"
-    echo "║         how-to-download-the-stack-overflow-database/         ║"
+    echo "║  Postavi jedan od ovih fajlova u HTAPBenchmark/Backups/:    ║"
+    echo "║    StackOverflow2010.mdf   (MDF format — brži attach)       ║"
+    echo "║    StackOverflow2010.bak   (BAK format — restore)           ║"
     echo "╚══════════════════════════════════════════════════════════════╝"
     exit 1
 fi
-
-run_sql "Restoriranje StackOverflow2010 (može trajati 10-30 min)" \
-        "/init/01_restore_stackoverflow.sql"
 
 # ─── 3. Kreiranje HTAPBenchmark baze ─────────────────────────────────────────
 run_sql "Kreiranje HTAPBenchmark baze (Linux putanje)" \

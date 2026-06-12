@@ -58,6 +58,7 @@ services:
     volumes:
       - ./Backups:/backups:ro
       - ./SQL:/sql:ro
+      - sqldata:/var/opt/mssql/data   # potrebno za MDF attach (kopiranje u data folder)
     restart: "no"
 
   # ── Benchmark aplikacija ──────────────────────────────────────────────────────
