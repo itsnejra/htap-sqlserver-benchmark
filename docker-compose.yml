@@ -1,0 +1,93 @@
+# =============================================================================
+# HTAPBenchmark — Docker Compose
+#
+# PREDUVJET: Postavi StackOverflow2010.bak u HTAPBenchmark/Backups/
+#   Preuzmi sa: https://www.brentozar.com/archive/2015/10/
+#               how-to-download-the-stack-overflow-database/
+#
+# Pokretanje (iz HTAPBenchmark/ foldera):
+#   docker compose up --build
+#
+# Samo SQL Server + init (bez benchmarka):
+#   docker compose up --build db-init
+#
+# Svi rezultati se pojavljuju u:
+#   HTAPBenchmark/Results/         — CSV mjerenja
+#   HTAPBenchmark/Results/figures/ — grafovi analize (PNG)
+# =============================================================================
+
+services:
+
+  # ── SQL Server 2022 ─────────────────────────────────────────────────────────
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: htap_sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "HTAPBenchmark_2024!"
+      MSSQL_PID: Developer
+      # RAM limit: In-Memory sheme zahtijevaju ~20 GB; preporučeno 32 GB
+      MSSQL_MEMORY_LIMIT_MB: 30720
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqldata:/var/opt/mssql/data
+      - ./Backups:/backups:ro
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd",
+             "-S", "localhost", "-U", "sa", "-P", "HTAPBenchmark_2024!",
+             "-Q", "SELECT 1", "-b", "-No"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    restart: "no"
+
+  # ── Init kontejner: restore + setup baze ─────────────────────────────────────
+  db-init:
+    build:
+      context: ./docker/init
+      dockerfile: Dockerfile
+    container_name: htap_db_init
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      SQL_SERVER: "sqlserver"
+      SA_PASSWORD: "HTAPBenchmark_2024!"
+    volumes:
+      - ./Backups:/backups:ro
+      - ./SQL:/sql:ro
+    restart: "no"
+
+  # ── Benchmark aplikacija ──────────────────────────────────────────────────────
+  benchmark:
+    build:
+      context: ./BenchmarkApp
+      dockerfile: Dockerfile
+    container_name: htap_benchmark
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      BenchmarkConfig__ConnectionString: "Server=sqlserver;Database=HTAPBenchmark;User Id=sa;Password=HTAPBenchmark_2024!;TrustServerCertificate=True;Max Pool Size=200;Connect Timeout=60;"
+    volumes:
+      - ./Results:/app/Results
+    restart: "no"
+
+  # ── Python analiza (pokreće se nakon benchmarka) ─────────────────────────────
+  analysis:
+    build:
+      context: ./Analysis
+      dockerfile: Dockerfile
+    container_name: htap_analysis
+    depends_on:
+      benchmark:
+        condition: service_completed_successfully
+    volumes:
+      - ./Results:/app/Results
+    restart: "no"
+
+volumes:
+  sqldata:
+    driver: local

@@ -1,0 +1,11 @@
+BenchmarkApp/bin/
+BenchmarkApp/obj/
+BenchmarkApp/**/.vs/
+Paper/
+Results/
+Figures/
+Backups/
+*.bak
+*.pdf
+*.log
+.git/
