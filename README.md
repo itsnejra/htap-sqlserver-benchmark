@@ -3,30 +3,7 @@
 
 Projekat iz Optimizacija baza podataka — Komparativna analiza četiri konfiguracijske strategije pohrane nad skupom podataka StackOverflow2010
 
-**UPOZORENJE:** Puni benchmark (1.080 runova) traje približno **21 sat**. Ako želite samo provjeriti ispravnost postavljanja, pokrenite kratki test opisan odmah ispod.
-
----
-
-## Brzi test — provjera ispravnosti postavljanja
-
-Prije pokretanja punog benchmarka preporučuje se pokrenuti kratki test koji provjerava ispravnost svih komponenti (SQL Server veza, stored procedure, .NET aplikacija, CSV izlaz):
-
-```bash
-dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release -- --dry-run
-```
-
-Kratki test pokreće 36 runova (1 run po kombinaciji, warmup=2s, mjerenje=5s) i završava za približno 7–12 minuta.
-Očekivani izlaz: `Results/summary.csv` s 36 redova, bez grešaka u konzoli.
-
-**Ako repo već sadrži `Results/summary.csv`** (npr. klonirani rezultati), benchmark će sve kombinacije preskočiti jer smatra da su već završene. Da bi dry-run zaista izmjerio, obrisati CSV fajlove prije pokretanja:
-
-```powershell
-del Results\summary.csv
-del Results\measurements.csv
-dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release -- --dry-run
-```
-
-**Napomena — HTAP konfiguracija:** Ako HTAP prikazuje `0 ops/s` i `Kontekst učitan: 0 postova`, SQL Server je bio restartovan i `htap.*` tablice su prazne (`DURABILITY = SCHEMA_ONLY`). Rješenje: pokrenuti `SQL/05b_LoadData_CS_HTAP_Only.sql` u SSMS (~5–10 min), a potom ponoviti dry-run. Baseline, CS i IM nisu pogođeni restartom.
+**Napomena:** Puni benchmark (1.080 runova) traje približno **21 sat**. Pogledati sekciju [Pokretanje benchmarka](#5-pokretanje-benchmarka) za kratki test kojim se može provjeriti ispravnost postavljanja za oko 10 minuta.
 
 ---
 
@@ -43,8 +20,6 @@ dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release -- --dry-run
 9. [Konfiguracijske strategije](#9-konfiguracijske-strategije)
 10. [Radna opterećenja](#10-radna-opterećenja)
 11. [Izlazni fajlovi](#11-izlazni-fajlovi)
-12. [Rješavanje problema](#12-rješavanje-problema)
-13. [Poznata ograničenja](#13-poznata-ograničenja)
 
 ---
 
@@ -605,112 +580,5 @@ Milioni redova za puni benchmark — koristiti za per-operacijsku analizu (`04_p
 
 ---
 
-## 12. Rješavanje problema
-
-### OLAP upiti blokirani >60s (CXSYNC_PORT wait)
-
-Uzrok: Prekomjerna paralelizacija (batch-mode columnstore) pri C=32 s više istovremenih analitičkih upita.
-Rješenje: Skripta `09_Fix_OLAP_MaxDop.sql` dodaje `OPTION(MAXDOP 2)` svim OLAP procedurama. Obavezno pokrenuti **prije** benchmarka pri C=32.
-
----
-
-### HTAP konfiguracija daje 0 ops/s (Kontekst učitan: 0 postova)
-
-Uzrok: SQL Server je bio restartovan. `htap.*` tablice koriste `DURABILITY = SCHEMA_ONLY` — svi podaci nestaju pri restartu.
-Rješenje: Pokrenuti `SQL/05b_LoadData_CS_HTAP_Only.sql` u SSMS (~5–10 min), a potom ponovo pokrenuti benchmark.
-
----
-
-### Timeout pri učitavanju konteksta (30s)
-
-Uzrok: `SELECT TOP 20000 ORDER BY NEWID()` na 3,7M redova — predugo za default 30s timeout.
-Rješenje: Ispravljeno u kodu — `commandTimeout: 300` u `WorkloadExecutor.cs`.
-
----
-
-### ORDER BY NEWID() stall na memory-optimized tablicama
-
-Uzrok: Paralelni plan izvršavanja na Hekaton tablicama uzrokuje `CXSYNC_PORT` čekanje.
-Rješenje: Dodan `OPTION(MAXDOP 1)` u context-loading upite za `im` i `htap` sheme.
-
----
-
-### OOM crash / SQL Server se gasi pri C=32 (IM ili HTAP konfiguracija)
-
-Uzrok: MVCC version chain akumulacija — svaki DELETE na memory-optimized tablici kreira ghost verzije koje GC mora počistiti. Brisanje svih 3,7M redova između kombinacija generira ~7,4M GC stavki po tranziciji.
-
-Rješenje implementirano u kodu:
-- `TruncateAndReloadPostsAsync` briše i puni samo 20.000 aktivnih postova (ne sve 3,7M)
-- Poziva se između kombinacija i između svakog od 30 runova
-- Rezultat: ~185× manje GC posla po kombinaciji
-
----
-
-### TRUNCATE TABLE nije podržana na memory-optimized tablicama (Error 10794)
-
-Greška: `Msg 10794: The statement 'TRUNCATE TABLE' is not supported with memory optimized tables.`
-Rješenje: Koristiti `DELETE FROM tablica` ili selektivni delete po ID-u.
-
----
-
-### Python ModuleNotFoundError
-
-```bash
-cd Analysis
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-```
-
----
-
-### SQL Server: memory-optimized tablice se ne mogu kreirati
-
-Uzrok: SQL Server Express Edition ne podržava In-Memory OLTP.
-Greška: `CREATE TABLE ... WITH (MEMORY_OPTIMIZED = ON)` ne uspijeva.
-Rješenje: Koristiti Developer, Standard ili Enterprise Edition.
-
----
-
-### Benchmark se ne nastavlja (resume) nakon prekida
-
-Rješenje: Resume je automatski — `BenchmarkOrchestrator.cs` čita `summary.csv` pri startu i preskače već završene kombinacije. Pokrenuti benchmark normalno bez ikakvih argumenata.
-
----
-
-## 13. Poznata ograničenja
-
-### SQL Server 2022 RTM — nema inline columnstore na memory-optimized tablicama
-
-SQL Server 2022 RTM ne podržava `NONCLUSTERED COLUMNSTORE INDEX` na memory-optimized tablicama:
-
-```
-Msg 12332: Columnstore indexes are not supported for memory optimized tables.
-```
-
-Zbog toga HTAP konfiguracija koristi dual-store pristup: `htap.*` za OLTP (in-memory), `cs.*` za OLAP (disk+columnstore). Ovo je namjeran dizajn koji odgovara komercijalnim HTAP implementacijama (TiDB/TiFlash, Oracle Dual-Format).
-
-### SCHEMA_ONLY durability — gubitak podataka pri restartu
-
-`im.*` i `htap.*` tablice koriste `DURABILITY = SCHEMA_ONLY` radi maksimalnih performansi. Svi podaci nestaju kada SQL Server stane. Pogledati sekciju 4.3 za upute o ponovnom punjenju.
-
-### Benchmark trajanje
-
-Puni benchmark (~1.080 runova × 70s po runu) traje ~21 sat na referentnom hardveru. Trajanje na sporijim mašinama može biti značajno duže.
-
-### Ograničenost na jedan server
-
-Benchmark ne testira distribuirane konfiguracije. Sva 4 konfiguracijska pristupa rade na jednoj instanci SQL Servera, što eliminira mrežni utjecaj ali ne odražava produkcijska distribuirana okruženja.
-
-### Workload je sintetički
-
-OLTP i OLAP operacije su reprezentativne za HTAP scenarije, ali nisu direktno prenosive na specifičnu domensku aplikaciju. Rezultati su indikativni za klasu opterećenja, ne za konkretan use-case.
-
-### Platforma
-
-Projekat je razvijen i testiran isključivo na Windows 11 s SQL Server 2022 Developer Edition. Memory-optimized tablice (Hekaton) nisu dostupne na Linux verziji SQL Servera (SQL Server on Linux ne podržava In-Memory OLTP u verziji 2022).
-
----
-
 *Projekat razvijen za potrebe akademskog istraživanja — evaluacija HTAP paradigme u SQL Serveru 2022*
-*Optimizacija baza podataka, Politehničke fakultet Zenica, juni 2026.*
+*Optimizacija baza podataka, Politehnički fakultet Zenica, juni 2026.*
