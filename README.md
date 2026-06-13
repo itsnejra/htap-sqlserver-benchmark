@@ -1,91 +1,94 @@
 # HTAPBenchmark
-## Evaluacija performansi hibridne transakcijsko-analiticke obrade (HTAP) u Microsoft SQL Serveru 2022
+## Evaluacija performansi hibridne transakcijsko-analitičke obrade (HTAP) u Microsoft SQL Serveru 2022
 
-Projekat iz Optimizacija baza podataka -- Komparativna analiza cetiri konfiguracijske strategije pohrane nad skupom podataka StackOverflow2010
+Projekat iz Optimizacija baza podataka — Komparativna analiza četiri konfiguracijske strategije pohrane nad skupom podataka StackOverflow2010
 
-UPOZORENJE: Puni benchmark (1.080 runova) traje priblizno 21 sat. Ako zelite samo provjeriti ispravnost postavljanja, pokrenite kratki test opisan odmah ispod.
+**UPOZORENJE:** Puni benchmark (1.080 runova) traje približno **21 sat**. Ako želite samo provjeriti ispravnost postavljanja, pokrenite kratki test opisan odmah ispod.
 
 ---
 
-## Brzi test -- provjera ispravnosti postavljanja
+## Brzi test — provjera ispravnosti postavljanja
 
-Prije pokretanja punog benchmarka preporucuje se pokrenuti kratki test koji provjerava ispravnost svih komponenti (SQL Server veza, stored procedure, .NET aplikacija, CSV izlaz):
+Prije pokretanja punog benchmarka preporučuje se pokrenuti kratki test koji provjerava ispravnost svih komponenti (SQL Server veza, stored procedure, .NET aplikacija, CSV izlaz):
 
 ```bash
 dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release -- --dry-run
 ```
 
-Kratki test pokrece 36 runova (1 run po kombinaciji, warmup=2s, mjerenje=5s) i zavrsava za priblizno 7 minuta. Ako se zavrsava bez gresaka i generise Results/summary.csv s 36 redova, okruzenje je ispravno postavljeno.
+Kratki test pokreće 36 runova (1 run po kombinaciji, warmup=2s, mjerenje=5s) i završava za približno 7–12 minuta.
+Očekivani izlaz: `Results/summary.csv` s 36 redova, bez grešaka u konzoli.
+
+**Napomena — HTAP konfiguracija:** Ako HTAP prikazuje `0 ops/s` i `Kontekst učitan: 0 postova`, SQL Server je bio restartovan i `htap.*` tablice su prazne (`DURABILITY = SCHEMA_ONLY`). Rješenje: pokrenuti `SQL/05b_LoadData_CS_HTAP_Only.sql` u SSMS (~5–10 min), a potom ponoviti dry-run. Baseline, CS i IM nisu pogođeni restartom.
 
 ---
 
-## Sadrzaj
+## Sadržaj
 
 1. [Pregled projekta](#1-pregled-projekta)
 2. [Preduvjeti i reproducibilnost](#2-preduvjeti-i-reproducibilnost)
 3. [Struktura projekta](#3-struktura-projekta)
-4. [Postavljanje okruzenja](#4-postavljanje-okruzenja)
+4. [Postavljanje okruženja](#4-postavljanje-okruženja)
 5. [Pokretanje benchmarka](#5-pokretanje-benchmarka)
-6. [Statisticka analiza i vizualizacije](#6-statisticka-analiza-i-vizualizacije)
+6. [Statistička analiza i vizualizacije](#6-statistička-analiza-i-vizualizacije)
 7. [Rezultati benchmarka](#7-rezultati-benchmarka)
 8. [Eksperimentalni dizajn](#8-eksperimentalni-dizajn)
 9. [Konfiguracijske strategije](#9-konfiguracijske-strategije)
-10. [Radna opterecenja](#10-radna-opterecenja)
+10. [Radna opterećenja](#10-radna-opterećenja)
 11. [Izlazni fajlovi](#11-izlazni-fajlovi)
-12. [Rjesavanje problema](#12-rjesavanje-problema)
-13. [Poznata ogranicenja](#13-poznata-ogranicenja)
+12. [Rješavanje problema](#12-rješavanje-problema)
+13. [Poznata ograničenja](#13-poznata-ograničenja)
 
 ---
 
 ## 1. Pregled projekta
 
-Ovaj projekat eksperimentalno evaluira cetiri konfiguracijske strategije pohrane podataka u Microsoft SQL Serveru 2022 kroz mjjesovito opterecenje OLTP i OLAP operacija nad skupom podataka StackOverflow2010 (priblizno 19,2 milijuna zapisa). Cilj je kvantificirati performansne razlike i statisticki testirati tri hipoteze o HTAP obradi.
+Ovaj projekat eksperimentalno evaluira četiri konfiguracijske strategije pohrane podataka u Microsoft SQL Serveru 2022 kroz mješovito opterećenje OLTP i OLAP operacija nad skupom podataka StackOverflow2010 (približno 19,2 milijuna zapisa). Cilj je kvantificirati performansne razlike i statistički testirati tri hipoteze o HTAP obradi.
 
-Puni benchmark obuhvata 1.080 mjerenja (4 konfiguracije x 3 omjera radnog opterecenja x 3 razine konkurentnosti x 30 runova) i traje priblizno 21 sat na referentnom hardveru (Intel Core i9-14900HX, 32 GB DDR5, 1 TB NVMe SSD). Trajanje moze biti duze na sporijim masinama.
+Puni benchmark obuhvata 1.080 mjerenja (4 konfiguracije × 3 omjera radnog opterećenja × 3 razine konkurentnosti × 30 runova) i traje približno 21 sat na referentnom hardveru (Intel Core i9-14900HX, 32 GB DDR5, 1 TB NVMe SSD). Trajanje može biti duže na sporijim mašinama.
 
-### Istrazivacke hipoteze
+### Istraživačke hipoteze
 
 | | Hipoteza |
 |-|----------|
-| H1 | Disk-zasnovana konfiguracija s columnstore indeksom (CS) ostvaruje usporedivu OLAP latenciju s hibridnom konfiguracijom (HTAP) pri niskim razinama konkurentnosti, ali razlika postaje statisticki znacajna pri visokim razinama |
-| H2 | Degradacija OLTP propusnosti uzrokovana istovremenim analitickim upitima veca je u CS konfiguraciji nego u HTAP konfiguraciji |
-| H3 | Pri transakcijski intenzivnom opterecenju HTAP konfiguracija ne ostvaruje statisticki znacajno vecu OLTP propusnost od cisto transakcijske konfiguracije (IM) |
+| H1 | Disk-zasnovana konfiguracija s columnstore indeksom (CS) ostvaruje usporedivu OLAP latenciju s hibridnom konfiguracijom (HTAP) pri niskim razinama konkurentnosti, ali razlika postaje statistički značajna pri visokim razinama |
+| H2 | Degradacija OLTP propusnosti uzrokovana istovremenim analitičkim upitima veća je u CS konfiguraciji nego u HTAP konfiguraciji |
+| H3 | Pri transakcijski intenzivnom opterećenju HTAP konfiguracija ne ostvaruje statistički značajno veću OLTP propusnost od čisto transakcijske konfiguracije (IM) |
 
 ---
 
 ## 2. Preduvjeti i reproducibilnost
 
-Projekat je dizajniran da bude reproducibilan na drugoj masini koja zadovoljava navedene zahtjeve. Svi preduvjeti moraju biti ispunjeni prije prvog pokretanja.
+Projekat je dizajniran da bude reproducibilan na drugoj mašini koja zadovoljava navedene zahtjeve. Svi preduvjeti moraju biti ispunjeni prije prvog pokretanja.
 
 ### Operativni sistem
 
-Projekat zahtijeva **Windows** (10 ili 11, 64-bit). Microsoft SQL Server In-Memory OLTP (Hekaton) i memory-optimized tablice dostupni su iskljucivo na Windows platformi u SQL Server 2022.
+Projekat zahtijeva **Windows** (10 ili 11, 64-bit). Microsoft SQL Server In-Memory OLTP (Hekaton) i memory-optimized tablice dostupni su isključivo na Windows platformi u SQL Server 2022.
 
 ### Obavezni softver
 
-| Komponenta | Preporucena verzija | Provjera instalacije |
+| Komponenta | Preporučena verzija | Provjera instalacije |
 |-----------|---------------------|----------------------|
 | Microsoft SQL Server 2022 | 16.x, Developer ili Enterprise Edition | `SELECT @@VERSION` u SSMS |
-| SQL Server Management Studio (SSMS) | 20.x ili noviji | Otvoriti SSMS i provjeriti Help > About |
+| SQL Server Management Studio (SSMS) | 20.x ili noviji | SSMS > Help > About |
 | .NET SDK | 8.0 ili noviji | `dotnet --version` |
 | Python | 3.11 ili noviji | `python --version` |
 
-Napomena: SQL Server Express Edition nije podrzana jer ne ukljucuje In-Memory OLTP. Koristiti Developer Edition (besplatna za neproizvodnu upotrebu).
+**Napomena:** SQL Server **Express Edition nije podržana** jer ne uključuje In-Memory OLTP. Koristiti Developer Edition (besplatna za neproizvodnu upotrebu).
 
 ### Hardver (minimalni i referentni)
 
-| Komponenta | Minimum | Referentni (koristeni) |
+| Komponenta | Minimum | Referentni (korišten) |
 |-----------|---------|------------------------|
 | RAM | 16 GB | 32 GB DDR5 |
 | CPU jezgre | 4 | 24 (Intel Core i9-14900HX) |
 | Slobodan disk | 60 GB SSD | 1 TB NVMe SSD |
 | OS | Windows 10 64-bit | Windows 11 Home |
 
-Napomena: im.* i htap.* konfiguracije koriste memory-optimized tablice koje traze priblizno 8 GB RAM po shemi (ukupno oko 16 GB samo za SQL Server in-memory podatke). Na masinama s manje od 16 GB RAM ove konfiguracije mogu uzrokovati OOM greske.
+**Napomena:** `im.*` i `htap.*` konfiguracije koriste memory-optimized tablice koje trebaju približno 8 GB RAM po shemi (~16 GB ukupno samo za SQL Server in-memory podatke). Na mašinama s manje od 16 GB RAM ove konfiguracije mogu uzrokovati OOM greške.
 
 ### Python paketi
 
-Sve zavisnosti su navedene u `Analysis/requirements.txt`. Instalirajte ih unutar virtualnog okruzenja:
+Sve zavisnosti su navedene u `Analysis/requirements.txt`. Instalirati ih unutar virtualnog okruženja:
 
 ```bash
 cd Analysis
@@ -94,18 +97,22 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Popis paketa s minimalnim verzijama:
-
 | Paket | Minimalna verzija | Svrha |
 |-------|-------------------|-------|
 | pandas | 2.2.0 | Obrada CSV rezultata |
-| numpy | 1.26.0 | Numericke operacije |
-| scipy | 1.13.0 | Statisticki testovi (Kruskal-Wallis, Mann-Whitney U) |
+| numpy | 1.26.0 | Numeričke operacije |
+| scipy | 1.13.0 | Statistički testovi (Kruskal-Wallis, Mann-Whitney U) |
 | matplotlib | 3.9.0 | Generisanje grafova |
 | seaborn | 0.13.2 | Violin grafovi i heatmap |
 | openpyxl | 3.1.2 | Izvoz u .xlsx format |
 | statsmodels | 0.14.0 | OLS regresija i ANOVA |
-| pyodbc | 5.0.0 | Direktna SQL Server veza (06_delete_update_benchmark.py) |
+| pyodbc | 5.0.0 | Direktna SQL Server veza |
+
+Provjera instalacije:
+
+```bash
+python -c "import pandas, numpy, scipy, matplotlib, seaborn, openpyxl, statsmodels, pyodbc; print('Sve zavisnosti instalirane')"
+```
 
 ### .NET zavisnosti (automatski preuzete)
 
@@ -113,29 +120,25 @@ Popis paketa s minimalnim verzijama:
 dotnet restore BenchmarkApp/HTAPBenchmark.sln
 ```
 
-Kljucne NuGet zavisnosti (definirane u .csproj fajlovima):
-
-| Paket | Svrha |
-|-------|-------|
-| Microsoft.Data.SqlClient | SQL Server konekcija i query izvrsavanje |
+| NuGet paket | Svrha |
+|-------------|-------|
+| Microsoft.Data.SqlClient | SQL Server konekcija i query izvršavanje |
 | Dapper | Lagani ORM za mapiranje rezultata |
-| Microsoft.Extensions.Configuration | Ucitavanje appsettings.json |
+| Microsoft.Extensions.Configuration | Učitavanje appsettings.json |
+| Microsoft.Extensions.Configuration.EnvironmentVariables | Podrška za env varijable (override connection stringa) |
 
 ### Konfiguracija SQL Servera
 
-Nakon instalacije SQL Servera preporucuje se podesiti maksimalnu kolicinu memorije kako bi ostalo dovoljno za OS i in-memory tablice:
+Nakon instalacije SQL Servera preporučuje se podesiti maksimalnu količinu memorije:
 
 ```sql
--- Preporuceno: ostaviti priblizno 4 GB OS-u, ostatak SQL Serveru
--- Primjer za 32 GB masinu:
+-- Preporučeno: ostaviti ~4 GB OS-u, ostatak SQL Serveru
+-- Primjer za 32 GB mašinu:
 EXEC sp_configure 'max server memory (MB)', 28000;
 RECONFIGURE;
-
--- Provjera trenutne konfiguracije
-EXEC sp_configure 'max server memory (MB)';
 ```
 
-SQL Server mora biti konfigurisan s Windows Authentication (Trusted_Connection=True). Ako koristite SQL Authentication, izmijeniti ConnectionString u `BenchmarkApp/HTAPBenchmark.Runner/appsettings.json`.
+SQL Server mora biti konfigurisan s Windows Authentication (`Trusted_Connection=True`). Za SQL Authentication izmijeniti `ConnectionString` u `BenchmarkApp/HTAPBenchmark.Runner/appsettings.json`.
 
 ---
 
@@ -143,60 +146,73 @@ SQL Server mora biti konfigurisan s Windows Authentication (Trusted_Connection=T
 
 ```
 HTAPBenchmark/
-|-- SQL/
-|   |-- 00_DatabaseSetup.sql               # Kreiranje baze i filegroupa
-|   |-- 01_Schema_Baseline.sql             # Baseline schema (B-tree)
-|   |-- 02_Schema_CS.sql                   # CS schema (columnstore)
-|   |-- 03_Schema_IM.sql                   # IM schema (memory-optimized)
-|   |-- 04_Schema_HTAP.sql                 # HTAP schema (memory-optimized, dual-store)
-|   |-- 05_LoadData.sql                    # Ucitavanje podataka (~30-60 min)
-|   |-- 05b_LoadData_CS_HTAP_Only.sql      # Obnova IM/HTAP tablica nakon restarta
-|   |-- 06_StoredProcs_OLTP.sql            # OLTP procedure: SELECT/INSERT/UPDATE x 4 sheme
-|   |-- 07_StoredProcs_OLAP.sql            # OLAP upiti Q1-Q5 x sve sheme
-|   |-- 07b_StoredProcs_OLAP_HTAP_DualStore.sql  # Override: HTAP OLAP cita iz cs.*
-|   |-- 08_ResultsSchema.sql               # (Opcionalno) DB-side log tablica
-|   |-- 09_Fix_OLAP_MaxDop.sql             # MAXDOP 2 za OLAP procedure (anti-CXSYNC)
-|   |-- 10_StoredProcs_DELETE.sql          # DELETE procedure: Simple/Complex x 4 sheme
-|   `-- 11_StoredProcs_ComplexUPDATE.sql   # Complex UPDATE: usp_UpdateUserReputation x 4 sheme
 |
-|-- BenchmarkApp/
+|-- SQL/                                      # SQL skripte za postavljanje okruženja
+|   |-- 00_DatabaseSetup.sql                  # Kreiranje baze, filegroup-a i shema
+|   |-- 01_Schema_Baseline.sql                # Baseline tablice: disk, B-tree indeksi
+|   |-- 02_Schema_CS.sql                      # CS tablice: disk + NONCLUSTERED COLUMNSTORE
+|   |-- 03_Schema_IM.sql                      # IM tablice: memory-optimized, Hekaton
+|   |-- 04_Schema_HTAP.sql                    # HTAP tablice: memory-optimized OLTP sloj
+|   |-- 05_LoadData.sql                       # Punjenje podataka iz StackOverflow2010 (~30-60 min)
+|   |-- 05b_LoadData_CS_HTAP_Only.sql         # Obnova im.* i htap.* nakon restarta SQL Servera
+|   |-- 06_StoredProcs_OLTP.sql               # OLTP procedure za sve 4 sheme (nativno kompajlirane za im/htap)
+|   |-- 07_StoredProcs_OLAP.sql               # OLAP upiti Q1-Q5 za sve sheme
+|   |-- 07b_StoredProcs_OLAP_HTAP_DualStore.sql  # Override: HTAP OLAP čita iz cs.* (pokrenuti NAKON 07)
+|   |-- 08_ResultsSchema.sql                  # (Opcionalno) DB-side log tablica za mjerenja
+|   |-- 09_Fix_OLAP_MaxDop.sql                # Dodaje OPTION(MAXDOP 2) OLAP procedurama (obavezno za C=32)
+|   `-- README.md                             # Upute za SQL skripte (na engleskom)
+|
+|-- BenchmarkApp/                             # .NET 8 benchmark aplikacija
 |   `-- HTAPBenchmark.sln
 |       |-- HTAPBenchmark.Core/
-|       |   |-- Models/           # BenchmarkConfig, MeasurementResult
-|       |   |-- Services/         # BenchmarkOrchestrator, WorkloadExecutor, ResultsWriter
-|       |   `-- Queries/          # OltpQueries, OlapQueries
+|       |   |-- Models/
+|       |   |   |-- BenchmarkConfig.cs        # Konfiguracija benchmarka (deserijalizira appsettings.json)
+|       |   |   `-- MeasurementResult.cs      # Model jednog mjerenja (latencija, propusnost, success)
+|       |   `-- Services/
+|       |       |-- BenchmarkOrchestrator.cs  # Glavna petlja: iteracija kroz kombinacije, resume logika
+|       |       |-- WorkloadExecutor.cs       # Paralelno izvršavanje OLTP/OLAP workloa-da, warmup, mjerenje
+|       |       |-- ResultsWriter.cs          # Streaming zapis rezultata u CSV (measurements + summary)
+|       |       |-- MetricsCalculator.cs      # Računanje P50/P95/P99 latencija i propusnosti
+|       |       |-- OltpQueries.cs            # Definicija 6 OLTP operacija i njihovog distribucijskog udjela
+|       |       `-- OlapQueries.cs            # Definicija 5 OLAP upita (Q1-Q5)
 |       `-- HTAPBenchmark.Runner/
-|           |-- Program.cs
-|           `-- appsettings.json  # Konfiguracija (connection string, broj runova itd.)
+|           |-- Program.cs                    # Entry point: parsiranje argumenata, DI, pokretanje
+|           `-- appsettings.json              # Konfiguracija: connection string, broj runova, concurrency, itd.
 |
-|-- Analysis/
-|   |-- requirements.txt                   # pip install -r requirements.txt
-|   |-- 00_merge_results.py                # -> Results/summary.csv
-|   |-- 01_descriptive_stats.py            # -> descriptive_summary.csv / .xlsx
-|   |-- 02_statistical_tests.py            # -> statistical_tests.csv, hypothesis_results.txt
-|   |-- 03_visualizations.py               # -> figures/*.png (6 grafova)
-|   |-- 04_per_operation_stats.py          # -> per_operation_stats.csv / .xlsx
-|   |-- 05_regression_anova.py             # -> regression_*.csv, anova_results.csv
-|   `-- 06_delete_update_benchmark.py      # DELETE + Complex UPDATE mini benchmark
+|-- Analysis/                                 # Python skripte za statističku analizu i vizualizacije
+|   |-- requirements.txt                      # Sve Python zavisnosti (pip install -r requirements.txt)
+|   |-- run_all.py                            # Pokreće sve analize sekvencijalno (00-06), s opcijama
+|   |-- 00_merge_results.py                   # Spaja measurements.csv u agregirani summary.csv
+|   |-- 01_descriptive_stats.py               # Deskriptivna statistika: mean, std, P50, P95 po kombinaciji
+|   |-- 02_statistical_tests.py               # Kruskal-Wallis, Mann-Whitney U + Bonferroni, Cohen's d
+|   |-- 03_visualizations.py                  # 6 grafova: violin, throughput-latency, degradacija, heatmap
+|   |-- 04_per_operation_stats.py             # Per-operacijska statistika (avg/P50/P95/P99 po tipu operacije)
+|   `-- 05_regression_anova.py                # OLS regresija i ANOVA analiza uticaja faktora
 |
-|-- Paper/
-|   |-- rad.tex                            # LaTeX master fajl rada
-|   |-- 00_sazetak.tex ... 06_zakljucak.tex  # Poglavlja rada
-|   |-- app_a_oltp.tex, app_b_olap.tex    # Dodaci
-|   `-- refs.bib                           # BibTeX bibliografija
+|-- Paper/                                    # LaTeX izvorni fajlovi akademskog rada
+|   |-- rad.tex                               # Master fajl: preamble, naslovna strana, input poglavlja
+|   |-- 00_sazetak.tex                        # Sažetak (BHS) i Abstract (EN)
+|   |-- 01_uvod.tex                           # Uvod: motivacija, istraživačka pitanja, pregled rada
+|   |-- 02_metodologija.tex                   # Metodologija: eksperimentalni dizajn, statistički testovi
+|   |-- 03_sistem.tex                         # Opis sistema: četiri arhitekturalne strategije, dataset
+|   |-- 04_eksperiment.tex                    # Opis eksperimenta: workload, metrike, implementacija
+|   |-- 05_rezultati.tex                      # Rezultati i diskusija: hipoteze, tabele, grafovi
+|   |-- 06_zakljucak.tex                      # Zaključak i smjernice za buduća istraživanja
+|   |-- app_a_oltp.tex                        # Dodatak A: implementacija OLTP pohranjenih procedura
+|   |-- app_b_olap.tex                        # Dodatak B: implementacija OLAP analitičkih upita
+|   `-- refs.bib                              # BibTeX bibliografija (IEEE format)
 |
-`-- Results/                               # Generirani izlazi (ne editovati rucno)
-    |-- summary.csv
-    |-- descriptive_summary.csv / .xlsx
-    |-- statistical_tests.csv
-    |-- hypothesis_results.txt
-    |-- per_operation_stats.csv / .xlsx
-    |-- delete_update_benchmark.csv
-    |-- anova_results.csv
-    |-- regression_oltp_throughput.csv
-    |-- regression_olap_latency.csv
-    |-- regression_report.txt
-    `-- figures/
+`-- Results/                                  # Generirani izlazi benchmarka i analize (ne editovati ručno)
+    |-- summary.csv                           # Agregirani rezultati po runu (1.080 redova za puni benchmark)
+    |-- measurements.csv                      # Sirova mjerenja po operaciji (milioni redova)
+    |-- descriptive_summary.csv / .xlsx       # Deskriptivna statistika po kombinaciji
+    |-- statistical_tests.csv                 # Rezultati statističkih testova (p-vrijednosti, effect size)
+    |-- hypothesis_results.txt                # Zaključci za H1, H2 i H3 u čitljivom formatu
+    |-- per_operation_stats.csv / .xlsx       # P50/P95/P99 po tipu operacije i konfiguraciji
+    |-- regression_oltp_throughput.csv        # OLS regresija: faktori koji utječu na OLTP propusnost
+    |-- regression_olap_latency.csv           # OLS regresija: faktori koji utječu na OLAP latenciju
+    |-- regression_report.txt                 # Sažetak regresijske analize u čitljivom formatu
+    `-- figures/                              # Generirani grafovi (PNG, 6 fajlova)
         |-- 01_oltp_latency_violin.png
         |-- 02_olap_latency_violin.png
         |-- 03_oltp_throughput_latency.png
@@ -207,40 +223,34 @@ HTAPBenchmark/
 
 ---
 
-## 4. Postavljanje okruzenja
+## 4. Postavljanje okruženja
 
 ### 4.1 StackOverflow2010 dataset
 
-Preuzimanje gotovog SQL Server backup-a:
+- Preuzeti sa: https://www.brentozar.com/archive/2015/10/how-to-download-the-stack-overflow-database-via-bittorrent/
+- Odabrati verziju **2010** (~10 GB download, ~25 GB nakon restore-a)
+- Restore u SSMS: desni klik na Databases > Restore Database > From Device > odabrati `.bak` fajl
 
-- Brent Ozar: https://www.brentozar.com/archive/2015/10/how-to-download-the-stack-overflow-database-via-bittorrent/
-- Odabrati verziju **2010** (priblizno 10 GB download, priblizno 25 GB nakon restore-a)
-- Restore u SSMS: desni klik na Databases > Restore Database > From Device > odabrati .bak fajl
-
-### 4.2 SQL skripte -- pokrenuti redom u SSMS
+### 4.2 SQL skripte — pokrenuti redom u SSMS
 
 Otvoriti svaki fajl u SSMS i pokrenuti redom (F5 ili Execute):
 
-```
- 1. 00_DatabaseSetup.sql                      -- baza, filegroups, sheme
- 2. 01_Schema_Baseline.sql                    -- disk B-tree tablice
- 3. 02_Schema_CS.sql                          -- disk + columnstore tablice
- 4. 03_Schema_IM.sql                          -- memory-optimized tablice (IM)
- 5. 04_Schema_HTAP.sql                        -- memory-optimized tablice (HTAP/OLTP sloj)
- 6. 05_LoadData.sql                           -- punjenje podataka (~30-60 min)
- 7. 06_StoredProcs_OLTP.sql                   -- OLTP procedure: SELECT/INSERT/UPDATE (sve 4 sheme)
- 8. 07_StoredProcs_OLAP.sql                   -- OLAP upiti Q1-Q5 (sve sheme)
- 9. 07b_StoredProcs_OLAP_HTAP_DualStore.sql   -- OVERRIDE: HTAP OLAP cita iz cs.*
-10. 09_Fix_OLAP_MaxDop.sql                    -- dodaje MAXDOP 2 svim OLAP procedurama
-11. 10_StoredProcs_DELETE.sql                 -- DELETE procedure: Simple/Complex (sve 4 sheme)
-12. 11_StoredProcs_ComplexUPDATE.sql          -- Complex UPDATE: usp_UpdateUserReputation (sve 4 sheme)
-```
+| # | Skripta | Šta radi |
+|---|---------|----------|
+| 1 | `00_DatabaseSetup.sql` | Kreira bazu `HTAPBenchmark`, filegroup-e (uključujući `MEMORY_OPTIMIZED_DATA`) i četiri sheme (`baseline`, `cs`, `im`, `htap`) |
+| 2 | `01_Schema_Baseline.sql` | Kreira disk-zasnovane tablice s clustered B-tree indeksima — kontrolna grupa |
+| 3 | `02_Schema_CS.sql` | Kreira disk-zasnovane tablice s dodatnim `NONCLUSTERED COLUMNSTORE` indeksima za batch-mode OLAP |
+| 4 | `03_Schema_IM.sql` | Kreira memory-optimized tablice s hash i range indeksima; sve OLTP procedure nativno kompajlirane |
+| 5 | `04_Schema_HTAP.sql` | Kreira memory-optimized tablice za OLTP sloj (`htap.*`); OLAP čita iz `cs.*` (dual-store) |
+| 6 | `05_LoadData.sql` | Puni sve četiri sheme podacima iz StackOverflow2010 (~30–60 min, ~76M redova ukupno) |
+| 7 | `06_StoredProcs_OLTP.sql` | Kreira 6 OLTP procedura za sve 4 sheme: INSERT glas, UPDATE skor, INSERT komentar, SELECT postovi/korisnik/ID (disk varijante s `CREATE OR ALTER`, memory varijante s `NATIVE_COMPILATION`) |
+| 8 | `07_StoredProcs_OLAP.sql` | Kreira 5 OLAP upita (Q1–Q5) za sve sheme: agregatna analiza aktivnosti, angažiranosti, tagova, vremena odgovora i top korisnika |
+| 9 | `07b_StoredProcs_OLAP_HTAP_DualStore.sql` | **Override:** prepisuje HTAP OLAP procedure da čitaju iz `cs.*` (columnstore) umjesto iz `htap.*` (memory). Mora se pokrenuti **nakon skripte 8** |
+| 10 | `09_Fix_OLAP_MaxDop.sql` | Dodaje `OPTION(MAXDOP 2)` svim OLAP procedurama — sprječava `CXSYNC_PORT` čekanje pri C=32 s više istovremenih batch-mode skenova. **Obavezno pokrenuti prije benchmarka** |
 
-Vazno: Skript 07b mora se pokrenuti NAKON 07 -- on prepisuje HTAP OLAP procedure da citaju iz cs.* (columnstore) umjesto iz htap.* (memory-optimized). Redoslijed je obavezan.
+**Opcionalno:** `08_ResultsSchema.sql` kreira tablicu za DB-side logging mjerenja — benchmark aplikacija to ne koristi (rezultati idu u CSV), ali može biti korisno za ručno testiranje pojedinih procedura.
 
-Opcionalno: 08_ResultsSchema.sql kreira tablicu za DB-side logging rezultata -- benchmark aplikacija ovo ne koristi (rezultati idu u CSV), ali moze biti korisno za rucno testiranje.
-
-**Provjera ucitanih podataka:**
+**Provjera učitanih podataka:**
 
 ```sql
 USE HTAPBenchmark;
@@ -251,24 +261,40 @@ JOIN sys.partitions p ON t.object_id = p.object_id
 WHERE s.name IN ('baseline','cs','im','htap') AND p.index_id IN (0,1)
 GROUP BY s.name, t.name
 ORDER BY s.name, t.name;
--- Svih 20 tablica moraju imati iste brojeve redova:
--- Posts priblizno 3.729.195 | Users priblizno 299.398 | Votes priblizno 10.143.364
--- Comments priblizno 3.875.183 | Badges priblizno 1.102.019
 ```
+
+Sve četiri sheme moraju imati identičan broj redova po tablici:
+
+| Tablica | Očekivani broj redova |
+|---------|----------------------|
+| Badges | ~1.102.019 |
+| Comments | ~3.875.183 |
+| Posts | ~3.729.195 |
+| Users | ~299.398 |
+| Votes | ~10.143.364 |
+
+Ako `im.*` ili `htap.*` pokazuju 0 redova, SQL Server je bio restartovan — pokrenuti `05b_LoadData_CS_HTAP_Only.sql`.
 
 ### 4.3 Nakon restarta SQL Servera
 
-im.* i htap.* tablice koriste DURABILITY = SCHEMA_ONLY -- svi podaci se gube kada SQL Server stane. Sheme i indeksi ostaju, ali redovi nestaju.
+`im.*` i `htap.*` tablice koriste `DURABILITY = SCHEMA_ONLY` — svi podaci se gube kada SQL Server stane. Sheme i indeksi ostaju, ali redovi nestaju.
 
-Nakon svakog restarta SQL Servera pokrenuti:
+| Shema | Pohrana | Preživljava restart? |
+|-------|---------|----------------------|
+| baseline.* | Disk (B-tree) | Da |
+| cs.* | Disk (columnstore) | Da |
+| im.* | RAM (Hekaton, SCHEMA_ONLY) | Ne — redovi se brišu |
+| htap.* | RAM (Hekaton, SCHEMA_ONLY) | Ne — redovi se brišu |
+
+Nakon svakog restarta SQL Servera pokrenuti u SSMS:
 
 ```
 SQL/05b_LoadData_CS_HTAP_Only.sql
 ```
 
-Ovaj skript puni samo im.* i htap.* tablice iz cs.* (koja je disk-zasnovana i prezivljava restart). Traje priblizno 5-10 minuta (samo 2 sheme umjesto 4).
+Ova skripta puni samo `im.*` i `htap.*` tablice iz `cs.*` (koja je disk-zasnovana i preživljava restart). Traje ~5–10 minuta.
 
-baseline.* i cs.* su disk-zasnovane -- ne trebaju ponovnog punjenja.
+**Napomena o potpunosti podataka:** `05b` učitava `TOP 500.000` redova za `htap.Votes` i `htap.Comments` (umjesto punih ~10M i ~3,9M) kako bi se spriječile OOM greške Hekaton GC-a pri ponovnom punjenju. Ovo ne utječe na validnost mjerenja — skripta je namijenjena isključivo kao alat za oporavak od restarta. Puni benchmark je proveden nakon inicijalnog punjenja s `05_LoadData.sql`, s identičnim brojem redova u svim četirima shemama.
 
 ### 4.4 .NET aplikacija
 
@@ -277,8 +303,7 @@ dotnet restore BenchmarkApp/HTAPBenchmark.sln
 dotnet build BenchmarkApp/HTAPBenchmark.sln -c Release
 ```
 
-Ako je SQL Server na drugoj adresi (ne localhost), izmijeniti ConnectionString u:
-`BenchmarkApp/HTAPBenchmark.Runner/appsettings.json`
+Ako je SQL Server na drugoj adresi, izmijeniti `ConnectionString` u `BenchmarkApp/HTAPBenchmark.Runner/appsettings.json`:
 
 ```json
 {
@@ -296,13 +321,13 @@ Ako je SQL Server na drugoj adresi (ne localhost), izmijeniti ConnectionString u
 }
 ```
 
-Za SQL Authentication umjesto Windows Authentication:
+Za SQL Authentication (umjesto Windows Authentication):
 
-```json
-"ConnectionString": "Server=.;Database=HTAPBenchmark;User Id=korisnik;Password=lozinka;TrustServerCertificate=True;Max Pool Size=200;"
+```
+Server=.;Database=HTAPBenchmark;User Id=korisnik;Password=lozinka;TrustServerCertificate=True;Max Pool Size=200;
 ```
 
-### 4.5 Python okruzenje
+### 4.5 Python okruženje
 
 ```bash
 cd Analysis
@@ -311,27 +336,25 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Provjera instalacije:
-
-```bash
-python -c "import pandas, numpy, scipy, matplotlib, seaborn, openpyxl, statsmodels, pyodbc; print('Sve zavisnosti instalirane')"
-```
-
 ---
 
 ## 5. Pokretanje benchmarka
 
-### Kratki test (provjera ispravnosti -- pokrenuti prvi)
+### Kratki test (provjera ispravnosti — pokrenuti prvi)
 
 ```bash
 dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release -- --dry-run
 ```
 
-Parametri kratkog testa: warmup=2s, mjerenje=5s, 1 run po kombinaciji = 36 runova ukupno.
-Ocekivano trajanje: priblizno 7 minuta.
-Ocekivani izlaz: Results/summary.csv s 36 redova, bez gresaka u konzoli.
+| Parametar | Vrijednost |
+|-----------|-----------|
+| Warmup | 2 s |
+| Mjerenje | 5 s |
+| Runova po kombinaciji | 1 |
+| Ukupno runova | 36 |
+| Trajanje | ~7–12 minuta |
 
-### Puni benchmark (za istrazivacke rezultate)
+### Puni benchmark (za istraživačke rezultate)
 
 ```bash
 dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release
@@ -346,124 +369,135 @@ dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release
 | Ukupno runova | 1.080 |
 | Warmup po runu | 10 s |
 | Mjerenje po runu | 60 s |
-| Procijenjeno trajanje | priblizno 21 sat |
+| Procijenjeno trajanje | ~21 sat |
 
 ### Opcije komandne linije
 
 | Opcija | Opis |
 |--------|------|
-| `--dry-run` | Warmup=2s, mjerenje=5s, 1 run/kombinacija -- 36 runova, ~7 min |
-| `--quick` | Warmup=5s, mjerenje=30s, 3 runa/kombinacija |
-| `--only cs,htap` | Filtrira samo navedene konfiguracije |
+| `--dry-run` | Warmup=2s, mjerenje=5s, 1 run/kombinacija — ukupno 36 runova (~7–12 min) |
+| `--quick` | Warmup=5s, mjerenje=30s, 3 runa/kombinacija — brza provjera rezultata |
+| `--only cs,htap` | Filtrira samo navedene konfiguracije (korisno za parcijalno ponavljanje) |
 
-Ctrl+C pokrece graceful prekid -- zavrsava tekuci run i potom staje.
+Ctrl+C pokreće graceful prekid — završava tekući run i potom staje.
 
-### Resume (nastavak nakon prekida)
+### Resume — nastavak nakon prekida
 
-Benchmark automatski nastavlja od zadnjeg zavrsenog runa. Cita Results/summary.csv pri startu i preskace kombinacije koje su vec zavrsene. Bezbjedno je prekinuti (Ctrl+C) i ponovo pokrenuti.
+Benchmark automatski nastavlja od zadnjeg završenog runa. Pri startu čita `Results/summary.csv` i preskače sve kombinacije koje su već zabilježene. Sigurno je prekinuti (Ctrl+C) i ponovo pokrenuti — niti jedan završeni run neće se ponoviti.
 
 ---
 
-## 6. Statisticka analiza i vizualizacije
+## 6. Statistička analiza i vizualizacije
 
-Pokrenuti redom iz Analysis/ direktorija nakon zavrsenog benchmarka:
+### Automatsko pokretanje svih analiza
+
+Najjednostavniji način je `run_all.py` koji pokreće sve skripte sekvencijalno:
+
+```bash
+cd Analysis
+venv\Scripts\activate
+python run_all.py
+```
+
+Opcije:
+
+| Opcija | Opis |
+|--------|------|
+| `--skip-merge` | Preskoči `00_merge_results.py` (ako je `summary.csv` već ažuran) |
+| `--input PATH` | Eksplicitni path do summary CSV-a (default: `../Results/summary.csv`) |
+
+### Ručno pokretanje pojedinih skripti
 
 ```bash
 cd Analysis
 venv\Scripts\activate
 
 python 00_merge_results.py
-# Spaja results/measurements.csv u summary.csv (agregira po runu)
+# Spaja sirova mjerenja iz measurements.csv u agregirani summary.csv (jedan red po runu)
 # Izlaz: ../Results/summary.csv
 
 python 01_descriptive_stats.py
-# Deskriptivna statistika: mean, std, P50, P95 po kombinaciji
+# Deskriptivna statistika po konfiguraciji i kombinaciji: mean, std, P50, P95, min, max
 # Izlaz: ../Results/descriptive_summary.csv i .xlsx
 
 python 02_statistical_tests.py
-# Kruskal-Wallis, Mann-Whitney U + Bonferroni, Cohen's d
-# Izlaz: ../Results/statistical_tests.csv, hypothesis_results.txt
+# Kruskal-Wallis H test (globalne razlike), Mann-Whitney U s Bonferroni korekcijom, Cohen's d
+# Izlaz: ../Results/statistical_tests.csv, ../Results/hypothesis_results.txt
 
 python 03_visualizations.py
-# 6 grafova: violin, throughput-latency, degradacija, heatmap
+# Generiše 6 grafova: violin distribucije, throughput-latency krivulje, degradacija, heatmap
 # Izlaz: ../Results/figures/*.png
 
 python 04_per_operation_stats.py
-# Per-operacijska statistika iz sirovih mjerenja (measurements.csv)
-# avg/min/max/total/P50/P95/P99 za svaku od 9 kategorija x 4 konfiguracije
-# Izlaz: ../Results/per_operation_stats.csv / .xlsx
+# Per-operacijska statistika: P50/P95/P99 latencija za svaki od 6 OLTP i 5 OLAP tipova
+# Izlaz: ../Results/per_operation_stats.csv i .xlsx
 
 python 05_regression_anova.py
-# OLS regresija + ANOVA analiza
-# Izlaz: ../Results/regression_*.csv, anova_results.csv, regression_report.txt
-
-python 06_delete_update_benchmark.py
-# Mini benchmark za DELETE (Simple/Complex) i Complex UPDATE operacije
-# Zahtijeva: aktivnu SQL Server instancu s procedurama iz SQL/10 i SQL/11
-# Izlaz: ../Results/delete_update_benchmark.csv
+# OLS regresija i ANOVA: kvantificira uticaj konfiguracije, omjera i konkurentnosti na metrike
+# Izlaz: ../Results/regression_oltp_throughput.csv, regression_olap_latency.csv, regression_report.txt
 ```
 
 ### Generirani grafovi
 
-| Fajl | Sadrzaj |
-|------|---------|
-| 01_oltp_latency_violin.png | Violin distribucije OLTP latencije po konfiguraciji |
-| 02_olap_latency_violin.png | Violin distribucije OLAP latencije (H1 vizualizacija) |
-| 03_oltp_throughput_latency.png | OLTP Throughput-Latency krivulje |
-| 04_olap_throughput_latency.png | OLAP Throughput-Latency krivulje (H2 vizualizacija) |
-| 05_oltp_degradation.png | Degradacija OLTP pri mjjesovitom opterecenju (H2 vizualizacija) |
-| 06_latency_heatmap.png | Heatmap svih 36 kombinacija -- opci pregled |
+| Fajl | Sadržaj | Hipoteza |
+|------|---------|----------|
+| `01_oltp_latency_violin.png` | Violin distribucije OLTP latencije po konfiguraciji | — |
+| `02_olap_latency_violin.png` | Violin distribucije OLAP latencije po konfiguraciji | H1 |
+| `03_oltp_throughput_latency.png` | OLTP propusnost vs. latencija po razini konkurentnosti | — |
+| `04_olap_throughput_latency.png` | OLAP propusnost vs. latencija po razini konkurentnosti | H2 |
+| `05_oltp_degradation.png` | Pad OLTP propusnosti pri povećanju udjela OLAP u workloadu | H2 |
+| `06_latency_heatmap.png` | Heatmap latencija za svih 36 kombinacija | Opći pregled |
 
 ---
 
 ## 7. Rezultati benchmarka
 
-### OLTP propusnost po konfiguraciji (C=32, 80/20 workload)
+### OLTP propusnost po konfiguraciji (C=32, omjer 80/20)
 
 | Konfiguracija | Median ops/s | Std | vs Baseline |
 |--------------|-------------|-----|-------------|
-| Baseline | 2.432 | +/-2.375 | -- |
-| CS | 3.618 | +/-2.681 | +49% |
-| IM | 28.764 | +/-13.260 | +11.8x |
-| HTAP | 21.920 | +/-17.130 | +9.0x |
+| Baseline | 2.432 | ±2.375 | — |
+| CS | 3.618 | ±2.681 | +49% |
+| IM | 28.764 | ±13.260 | +11,8× |
+| HTAP | 21.920 | ±17.130 | +9,0× |
 
 ### OLAP propusnost po konfiguraciji (C=32)
 
 | Konfiguracija | Median q/s | vs Baseline |
 |--------------|-----------|-------------|
-| Baseline | 0.85 | -- |
-| CS | 6.10 | +7.2x |
-| IM | 0.77 | -9% |
-| HTAP | 6.84 | +8.0x |
+| Baseline | 0,85 | — |
+| CS | 6,10 | +7,2× |
+| IM | 0,77 | −9% |
+| HTAP | 6,84 | +8,0× |
 
-### Zakljucci hipoteza
+### Zaključci hipoteza
 
 | Hipoteza | Ishod | Cohen's d |
 |---------|-------|-----------|
-| H1: CS priblizno jednako HTAP pri niskom C, razlika pri visokom C | DJELIMICNO POTVRDJENA | d=+1.61 (C=32) |
-| H2: CS degradira vise od HTAP pri mjjesovitom opterecenju | POTVRDJENA | d=2.32 |
-| H3: HTAP priblizno jednako IM pri OLTP-intenzivnom opterecenju | ODBACENA | d=-4.4 do -11.9 |
+| H1: CS ≈ HTAP pri niskom C, razlika pri visokom C | Djelimično potvrđena | d = +1,61 (C=32) |
+| H2: CS degradira više od HTAP pri mješovitom opterećenju | Potvrđena | d = 2,32 |
+| H3: HTAP ≈ IM pri OLTP-intenzivnom opterećenju | Odbačena | d = −4,4 do −11,9 |
 
-Detalji u Results/hypothesis_results.txt.
+Detalji u `Results/hypothesis_results.txt`.
 
 ---
 
 ## 8. Eksperimentalni dizajn
 
-### Faktorijalni plan 4 x 3 x 3
+### Faktorijalni plan 4 × 3 × 3
 
 ```
-4 konfiguracije  x  3 OLTP/OLAP omjera  x  3 razine konkurentnosti
-     = 36 kombinacija x 30 runova = 1.080 mjerenja
+4 konfiguracije  ×  3 OLTP/OLAP omjera  ×  3 razine konkurentnosti
+     = 36 kombinacija × 30 runova = 1.080 mjerenja
 ```
 
-### Statisticke metode
+### Statističke metode
 
 | Test | Primjena |
 |------|----------|
-| Kruskal-Wallis H | Globalne razlike izmedju 4 konfiguracije (neparametarski ANOVA) |
-| Mann-Whitney U | Parne usporedbe s Bonferroni korekcijom (alfa = 0.05) |
-| Cohen's d | Velicina efekta: trivijalan <0.2 / mali 0.2-0.5 / srednji 0.5-0.8 / veliki >0.8 |
+| Kruskal-Wallis H | Globalne razlike između 4 konfiguracije (neparametarski ANOVA) |
+| Mann-Whitney U | Parne usporedbe s Bonferroni korekcijom (α = 0,05) |
+| Cohen's d | Veličina efekta: trivijalan <0,2 / mali 0,2–0,5 / srednji 0,5–0,8 / veliki >0,8 |
 
 ### Mjerene metrike
 
@@ -480,66 +514,66 @@ Detalji u Results/hypothesis_results.txt.
 
 | Tablica | Redova | Napomena |
 |---------|--------|---------|
-| Posts | priblizno 3.729.195 | Pitanja i odgovori |
-| Users | priblizno 299.398 | Korisnicki profili |
-| Votes | priblizno 10.143.364 | Glasovi (up/down/close...) |
-| Comments | priblizno 3.875.183 | Komentari |
-| Badges | priblizno 1.102.019 | Badge dodjele |
-| Ukupno po shemi | priblizno 19.149.159 | |
-| Ukupno (4 sheme) | priblizno 76.600.000 | |
+| Posts | ~3.729.195 | Pitanja i odgovori |
+| Users | ~299.398 | Korisnički profili |
+| Votes | ~10.143.364 | Glasovi (up/down/close...) |
+| Comments | ~3.875.183 | Komentari na postove |
+| Badges | ~1.102.019 | Dodjele bedževa |
+| **Ukupno po shemi** | **~19.149.159** | |
+| **Ukupno (4 sheme)** | **~76.600.000** | |
 
 ### Disk i memorija
 
-| Shema | Pohrana | Velicina (priblizno) |
+| Shema | Pohrana | Veličina (približno) |
 |-------|---------|---------------------|
-| baseline | Disk (HDD/SSD) | ~15 GB |
-| cs | Disk (HDD/SSD) | ~17 GB (columnstore kompresija) |
-| im | RAM | ~8 GB |
-| htap | RAM | ~8 GB |
+| baseline.* | Disk (HDD/SSD) | ~15 GB |
+| cs.* | Disk (HDD/SSD) | ~17 GB (columnstore kompresija) |
+| im.* | RAM | ~8 GB |
+| htap.* | RAM | ~8 GB |
 
 ---
 
 ## 9. Konfiguracijske strategije
 
-| Konfiguracija | Pohrana | Indeksiranje | OLAP engine | Ocekivano ponasanje |
+| Konfiguracija | Pohrana | Indeksiranje | OLAP engine | Očekivano ponašanje |
 |--------------|---------|-------------|-------------|---------------------|
 | Baseline | Disk (row-store) | B-tree (clustered + nonclustered) | Row-mode | Visok OLTP, nizak OLAP |
 | CS | Disk (row-store) | B-tree + NONCLUSTERED COLUMNSTORE | Batch-mode | Umjeren OLTP, visok OLAP |
 | IM | Memorija (Hekaton) | Hash + Range (memory-optimized) | Row-mode | Visok OLTP, nizak OLAP |
-| HTAP | OLTP->Memorija / OLAP->Disk+CS | Dual-store (IM za pisanje, CS za citanje) | Batch-mode (OLAP) | Visok OLTP + visok OLAP |
+| HTAP | OLTP→Memorija / OLAP→Disk+CS | Dual-store (IM za pisanje, CS za čitanje) | Batch-mode (OLAP) | Visok OLTP + visok OLAP |
 
 ---
 
-## 10. Radna opterecenja
+## 10. Radna opterećenja
 
-### OLTP operacije (6 tipova, nasumicna selekcija)
+### OLTP operacije (6 tipova, nasumična selekcija)
 
 | Procedura | Tip | Udio |
 |-----------|-----|------|
-| usp_InsertVote | INSERT | 35% |
-| usp_UpdatePostScore | UPDATE | 25% |
-| usp_InsertComment | INSERT | 15% |
-| usp_GetRecentUserPosts | SELECT (raspon) | 10% |
-| usp_GetPostById | SELECT (tockacno) | 10% |
-| usp_GetUserById | SELECT (tockacno) | 5% |
+| `usp_InsertVote` | INSERT (2 tabele, atomarno) | 35% |
+| `usp_UpdatePostScore` | UPDATE | 25% |
+| `usp_InsertComment` | INSERT | 15% |
+| `usp_GetRecentUserPosts` | SELECT (range scan, TOP 10) | 10% |
+| `usp_GetPostById` | SELECT (točkačno, PK) | 10% |
+| `usp_GetUserById` | SELECT (točkačno, PK) | 5% |
 
-Write-heavy workload: 75% pisanja / 25% citanja.
+Write-heavy workload: 75% pisanja / 25% čitanja. Distribucija definirana u `OltpQueries.cs`.
 
-### OLAP upiti (5 tipova, nasumicna selekcija)
+### OLAP upiti (5 tipova, nasumična selekcija)
 
 | Procedura | Opis | Vrsta operacije |
 |-----------|------|-----------------|
-| usp_OLAP_Q1_MonthlyActivity | Godisnja/mjjesecna aktivnost | GROUP BY + agregacija |
-| usp_OLAP_Q2_UserEngagement | Angaziranost korisnika | JOIN + GROUP BY |
-| usp_OLAP_Q3_TagAnalysis | Analiza popularnosti tagova | JOIN + GROUP BY |
-| usp_OLAP_Q4_TimeToAnswer | Prosjecno vrijeme odgovora | Self-JOIN + agregacija |
-| usp_OLAP_Q5_TopContributors | Top korisnici po utjecaju | CTE + GROUP BY |
+| `usp_OLAP_Q1_MonthlyActivity` | Godišnja/månačna aktivnost po periodu | GROUP BY + agregacija |
+| `usp_OLAP_Q2_UserEngagement` | Angažiranost korisnika (odgovori, komentari) | JOIN + GROUP BY |
+| `usp_OLAP_Q3_TagAnalysis` | Analiza popularnosti tagova | JOIN + GROUP BY |
+| `usp_OLAP_Q4_TimeToAnswer` | Prosječno vrijeme do prvog odgovora | Self-JOIN + agregacija |
+| `usp_OLAP_Q5_TopContributors` | Top korisnici po ukupnom utjecaju | CTE + GROUP BY |
 
 ---
 
 ## 11. Izlazni fajlovi
 
-### summary.csv (1.080 redova za puni benchmark, 36 za dry-run)
+### `Results/summary.csv` — agregirani rezultati (1 red po runu)
 
 ```
 Configuration, OltpOlapRatio, ConcurrencyLevel, RunNumber,
@@ -549,7 +583,9 @@ OlapLatencyP50, OlapLatencyP95, OlapLatencyP99,
 OltpSuccessRate, OlapSuccessRate
 ```
 
-### measurements.csv (sirova mjerenja, milioni redova za puni benchmark)
+1.080 redova za puni benchmark, 36 redova za dry-run.
+
+### `Results/measurements.csv` — sirova mjerenja (1 red po operaciji)
 
 ```
 Configuration, OltpOlapRatio, ConcurrencyLevel, RunNumber,
@@ -557,54 +593,55 @@ OperationType, OperationName, StartTimestamp, LatencyMs,
 Success, ErrorMessage
 ```
 
+Milioni redova za puni benchmark — koristiti za per-operacijsku analizu (`04_per_operation_stats.py`).
+
 ---
 
-## 12. Rjesavanje problema
+## 12. Rješavanje problema
 
 ### OLAP upiti blokirani >60s (CXSYNC_PORT wait)
 
-Uzrok: Prekomjerna paralelizacija (batch-mode columnstore) pri visokoj konkurentnosti.
-Rjesenje: Skript 09_Fix_OLAP_MaxDop.sql dodaje OPTION(MAXDOP 2) svim OLAP procedurama.
-Obavezno pokrenuti ovaj skript PRIJE pokretanja benchmarka pri C=32.
+Uzrok: Prekomjerna paralelizacija (batch-mode columnstore) pri C=32 s više istovremenih analitičkih upita.
+Rješenje: Skripta `09_Fix_OLAP_MaxDop.sql` dodaje `OPTION(MAXDOP 2)` svim OLAP procedurama. Obavezno pokrenuti **prije** benchmarka pri C=32.
 
 ---
 
-### Timeout pri ucitavanju konteksta (30s)
+### HTAP konfiguracija daje 0 ops/s (Kontekst učitan: 0 postova)
 
-Uzrok: SELECT TOP 20000 ORDER BY NEWID() na 3.7M redova -- predugo za default 30s timeout.
-Rjesenje: Ispravljeno u kodu -- commandTimeout: 300 u WorkloadExecutor.cs.
+Uzrok: SQL Server je bio restartovan. `htap.*` tablice koriste `DURABILITY = SCHEMA_ONLY` — svi podaci nestaju pri restartu.
+Rješenje: Pokrenuti `SQL/05b_LoadData_CS_HTAP_Only.sql` u SSMS (~5–10 min), a potom ponovo pokrenuti benchmark.
+
+---
+
+### Timeout pri učitavanju konteksta (30s)
+
+Uzrok: `SELECT TOP 20000 ORDER BY NEWID()` na 3,7M redova — predugo za default 30s timeout.
+Rješenje: Ispravljeno u kodu — `commandTimeout: 300` u `WorkloadExecutor.cs`.
 
 ---
 
 ### ORDER BY NEWID() stall na memory-optimized tablicama
 
-Uzrok: Paralelni plan izvrsavanja na Hekaton tablicama uzrokuje CXSYNC_PORT wait.
-Rjesenje: Dodan OPTION(MAXDOP 1) u context-loading upite za im i htap sheme.
+Uzrok: Paralelni plan izvršavanja na Hekaton tablicama uzrokuje `CXSYNC_PORT` čekanje.
+Rješenje: Dodan `OPTION(MAXDOP 1)` u context-loading upite za `im` i `htap` sheme.
 
 ---
 
 ### OOM crash / SQL Server se gasi pri C=32 (IM ili HTAP konfiguracija)
 
-Uzrok: MVCC version chain akumulacija -- svaki DELETE na memory-optimized tablici kreira ghost verzije koje GC mora procistiti. Brisanje svih 3.7M redova izmedju kombinacija generira priblizno 7.4M GC stavki po tranziciji, sto pri C=32 preopterecuje in-memory GC.
+Uzrok: MVCC version chain akumulacija — svaki DELETE na memory-optimized tablici kreira ghost verzije koje GC mora počistiti. Brisanje svih 3,7M redova između kombinacija generira ~7,4M GC stavki po tranziciji.
 
-Rjesenje implementirano u kodu:
-- TruncateAndReloadPostsAsync brise i puni samo 20.000 aktivnih postova (ne sve 3.7M)
-- Poziva se i izmedju kombinacija i izmedju svakog od 30 runova (da GC ne akumulira)
-- Ukupno: 185x manje GC posla po kombinaciji
-
-```
-Simptom: SQL Server se gasi ili app crashi s OutOfMemoryException
-         nakon 2-3 kombinacije pri C=32
-Rjesenje: Koristiti trenutnu verziju koda (problem rijesen u WorkloadExecutor.cs)
-```
+Rješenje implementirano u kodu:
+- `TruncateAndReloadPostsAsync` briše i puni samo 20.000 aktivnih postova (ne sve 3,7M)
+- Poziva se između kombinacija i između svakog od 30 runova
+- Rezultat: ~185× manje GC posla po kombinaciji
 
 ---
 
-### TRUNCATE TABLE nije podrzana na memory-optimized tablicama (Error 10794)
+### TRUNCATE TABLE nije podržana na memory-optimized tablicama (Error 10794)
 
-Uzrok: SQL Server In-Memory OLTP ne podrzava TRUNCATE TABLE.
-Greska: Msg 10794, Level 16: The statement 'TRUNCATE TABLE' is not supported with memory optimized tables.
-Rjesenje: Koristiti DELETE FROM tablica ili selektivni delete po ID-u.
+Greška: `Msg 10794: The statement 'TRUNCATE TABLE' is not supported with memory optimized tables.`
+Rješenje: Koristiti `DELETE FROM tablica` ili selektivni delete po ID-u.
 
 ---
 
@@ -621,53 +658,51 @@ pip install -r requirements.txt
 
 ### SQL Server: memory-optimized tablice se ne mogu kreirati
 
-Uzrok: SQL Server Express ne podrzava In-Memory OLTP.
-Greska: CREATE TABLE ... WITH (MEMORY_OPTIMIZED = ON) ne uspijeva.
-Rjesenje: Koristiti Developer, Standard ili Enterprise Edition.
+Uzrok: SQL Server Express Edition ne podržava In-Memory OLTP.
+Greška: `CREATE TABLE ... WITH (MEMORY_OPTIMIZED = ON)` ne uspijeva.
+Rješenje: Koristiti Developer, Standard ili Enterprise Edition.
 
 ---
 
 ### Benchmark se ne nastavlja (resume) nakon prekida
 
-Uzrok: ResultsWriter otvara fajlove za pisanje (truncate mode) prije nego sto se provjeri koje kombinacije su vec zavrsene.
-Rjesenje: Implementirano u BenchmarkOrchestrator.cs -- _resumeMap se cita iz summary.csv u konstruktoru, PRIJE otvaranja ResultsWriter.
-Pokretati benchmark normalno -- automatski nastavlja od gdje je stao.
+Rješenje: Resume je automatski — `BenchmarkOrchestrator.cs` čita `summary.csv` pri startu i preskače već završene kombinacije. Pokrenuti benchmark normalno bez ikakvih argumenata.
 
 ---
 
-## 13. Poznata ogranicenja
+## 13. Poznata ograničenja
 
-### SQL Server 2022 RTM -- nema inline columnstore na memory-optimized tablicama
+### SQL Server 2022 RTM — nema inline columnstore na memory-optimized tablicama
 
-SQL Server 2022 RTM ne podrzava NONCLUSTERED COLUMNSTORE INDEX direktno na memory-optimized tablicama. Poruka greske:
+SQL Server 2022 RTM ne podržava `NONCLUSTERED COLUMNSTORE INDEX` na memory-optimized tablicama:
 
 ```
 Msg 12332: Columnstore indexes are not supported for memory optimized tables.
 ```
 
-Zbog toga HTAP konfiguracija koristi dual-store pristup: htap.* za OLTP (in-memory), cs.* za OLAP (disk+columnstore). Ovo je namjeran dizajn koji odgovara komercijalnim HTAP implementacijama (TiDB/TiFlash, Oracle Dual-Format).
+Zbog toga HTAP konfiguracija koristi dual-store pristup: `htap.*` za OLTP (in-memory), `cs.*` za OLAP (disk+columnstore). Ovo je namjeran dizajn koji odgovara komercijalnim HTAP implementacijama (TiDB/TiFlash, Oracle Dual-Format).
 
-### SCHEMA_ONLY durability -- gubitak podataka pri restartu
+### SCHEMA_ONLY durability — gubitak podataka pri restartu
 
-im.* i htap.* tablice koriste DURABILITY = SCHEMA_ONLY radi maksimalnih performansi. Svi podaci nestaju kada SQL Server stane. Pogledati sekciju 4.3 za upute o ponovnom punjenju.
+`im.*` i `htap.*` tablice koriste `DURABILITY = SCHEMA_ONLY` radi maksimalnih performansi. Svi podaci nestaju kada SQL Server stane. Pogledati sekciju 4.3 za upute o ponovnom punjenju.
 
 ### Benchmark trajanje
 
-Puni benchmark (1.080 runova x 70s po runu) traje priblizno 21 sat na referentnom hardveru. Trajanje na sporijim masinama moze biti znacajno duze. Statisticka valjanost zahtijeva minimum 30 runova po kombinaciji za neparametarsku analizu.
+Puni benchmark (~1.080 runova × 70s po runu) traje ~21 sat na referentnom hardveru. Trajanje na sporijim mašinama može biti značajno duže.
 
-### Ograniczenost na jedan server
+### Ograničenost na jedan server
 
-Benchmark ne testira distribuirane konfiguracije. Sva 4 konfiguracijska pristupa rade na jednoj instanci SQL Servera, sto eliminira mrezni utjecaj ali ne odrazava produkcijska distribuirana okruzenja.
+Benchmark ne testira distribuirane konfiguracije. Sva 4 konfiguracijska pristupa rade na jednoj instanci SQL Servera, što eliminira mrežni utjecaj ali ne odražava produkcijska distribuirana okruženja.
 
-### Workload je sinteticki
+### Workload je sintetički
 
-OLTP i OLAP operacije su reprezentativne za HTAP scenarije, ali nisu direktno prenosivi na specificnu domensku aplikaciju. Rezultati su indikativni za klasu opterecenja, ne za konkretan use-case.
+OLTP i OLAP operacije su reprezentativne za HTAP scenarije, ali nisu direktno prenosive na specifičnu domensku aplikaciju. Rezultati su indikativni za klasu opterećenja, ne za konkretan use-case.
 
 ### Platforma
 
-Projekat je razvijen i testiran iskljucivo na Windows 11 s SQL Server 2022 Developer Edition. Memory-optimized tablice (Hekaton) nisu dostupne na Linux verziji SQL Servera (SQL Server on Linux ne podrzava In-Memory OLTP u verziji 2022).
+Projekat je razvijen i testiran isključivo na Windows 11 s SQL Server 2022 Developer Edition. Memory-optimized tablice (Hekaton) nisu dostupne na Linux verziji SQL Servera (SQL Server on Linux ne podržava In-Memory OLTP u verziji 2022).
 
 ---
 
-*Projekat razvijen za potrebe akademskog istrazivanja -- evaluacija HTAP paradigme u SQL Serveru 2022*
-*Optimizacija baza podataka, Politechnicki fakultet Zenica, juni 2026.*
+*Projekat razvijen za potrebe akademskog istraživanja — evaluacija HTAP paradigme u SQL Serveru 2022*
+*Optimizacija baza podataka, Politehničke fakultet Zenica, juni 2026.*
