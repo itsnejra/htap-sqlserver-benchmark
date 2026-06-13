@@ -1,0 +1,55 @@
+% ======================================================================
+% POGLAVLJE 1: METODOLOGIJA ISTRAŽIVANJA
+% ======================================================================
+\chapter{Metodologija istraživanja}
+\label{ch:metodologija}
+
+Ovo poglavlje uspostavlja cjeloviti istraživački okvir: iznosi predmet i ciljeve istraživanja, pruža sistematski pregled relevantne literature, te formalizira hipoteze i primijenjene metode. Detaljna operacionalizacija eksperimenta -- dizajn, okruženje, radna opterećenja i statistički postupci -- izložena je u Poglavlju~\ref{ch:eksperiment}.
+
+\section{Predmet istraživanja}
+\label{sec:predmet}
+
+Predmet istraživanja je uticaj arhitekturalne strategije pohrane podataka na performanse hibridne transakcijsko-analitičke obrade (HTAP) u sistemu Microsoft SQL Server 2022. Ispituju se četiri konfiguracijske strategije, implementirane nad identičnom logičkom shemom i identičnim skupom podataka: disk-zasnovana s B-tree indeksima (\textit{Baseline}), disk-zasnovana s columnstore indeksom (\textit{CS}), memorijsko-optimizirana putem Hekaton engine-a (\textit{IM}) te hibridna dual-store konfiguracija koja memorijsko-optimizirani OLTP sloj kombinira s columnstore analitičkim slojem (\textit{HTAP}). Posmatraju se OLTP i OLAP performanse tih konfiguracija pri mješovitim opterećenjima različitih intenziteta i razina konkurentnosti.
+
+\section{Dosadašnja istraživanja}
+\label{ch:literatura}
+
+HTAP paradigma nastala je kao odgovor na rastuću potrebu organizacija da transakcijsku i analitičku obradu podataka objedine unutar jednog sistema. Özcan i drugi \cite{ozcan2017htap} podsjećaju da je termin skovao Gartner kako bi opisao klasu sistema koji teže eliminaciji ETL posrednika između OLTP i OLAP sloja; isti rad nudi i sveobuhvatan pregled prvih komercijalnih pokušaja unifikacije ta dva radna toka. Na tom tragu, Zhang i drugi \cite{zhang2024htap} sistematiziraju oblast, klasificirajući savremene HTAP sisteme prema arhitekturi pohrane u četiri kategorije: sisteme s primarnom rednom pohranom i in-memory stupčastim indeksom, distribuirane sisteme s replikacijom između rednog i stupčastog sloja, hibridne sisteme s distribuiranom in-memory stupčastom pohranom te sisteme s primarnom stupčastom pohranom i delta rednim slojem. Song i drugi \cite{song2024survey} predlažu komplementarnu taksonomiju, razdvajajući monolitne arhitekture, u kojima jedan engine obrađuje oba radna toka, od hibridnih, u kojima su transakcijski i analitički engine fizički odvojeni; njihov ključni zaključak jeste da je sposobnost sistema da održi stabilne OLTP performanse pod analitičkim opterećenjem primarna mjera arhitekturalne kvalitete -- značajnija od vršne propusnosti.
+
+Vodeće komercijalne implementacije ilustruju raspon mogućih projektnih odluka. SAP HANA \cite{farber2012hana} oslanja se na jedinstven in-memory engine koji u istom procesnom prostoru podržava rednu i stupčastu pohranu, čime izbjegava troškove replikacije, ali uvodi kompromise u dizajnu samog motora. Oracle Database In-Memory \cite{lahiri2015oracle} primjenjuje srodan dual-format pristup, držeći istovremeno rednu (za OLTP) i stupčastu (za OLAP) kopiju podataka u memoriji. TiDB \cite{huang2020tidb} bira suprotan put: transakcijski sloj TiKV i analitički sloj TiFlash fizički su razdvojeni, a podaci se sinhroniziraju asinhronom Raft replikacijom, čime se postiže visoka izolacija, ali po cijenu mrežne latencije inherentne distribuiranom pristupu. Google F1 Lightning \cite{yang2020f1} isti problem rješava delta-store arhitekturom u kojoj OLTP promjene kontinuirano teku u višerazinske delta strukture, dok ih periodična kompakcija prepisuje u optimalan analitički format. Naspram tih distribuiranih rješenja, Microsoft SQL Server 2022 implementira in-process varijantu dual-store pristupa koji Hekaton memorijsko-optimizirani OLTP engine kombinira s columnstore indeksima u istom procesnom prostoru, eliminirajući mrežnu latenciju svojstvenu distribuiranim sistemima.
+
+Hekaton engine, uveden u SQL Server 2014, opisan je u originalnom radu Diaconu i drugi \cite{diaconu2013hekaton} kao potpuno redizajnirani OLTP engine s tri temeljne inovacije: optimistično upravljanje konkurentnošću zasnovano na MVCC mehanizmu (svaka transakcija vidi konzistentni snapshot bez ekskluzivnih brava), memorijsko-optimizirane strukture koje zaobilaze buffer pool u cijelosti uz točkačni pristup hash indeksa u $O(1)$ te nativno kompajlirane pohranjene procedure koje eliminiraju interpretativni overhead T-SQL executora. Originalni rad dokumentira ubrzanja od 10 do 30 puta za točkačne OLTP upite \cite{diaconu2013hekaton}. Hekaton je, međutim, suboptimalan za analitičke upite: hash indeksi nisu dizajnirani za rasponska skeniranja, engine ne podržava batch-mode izvršavanje, a MVCC \textit{version chain} strukture arhitekturalno su nespojive s columnstore pohranom koja operira nad nepromjenjivim, kompresiranim segmentima. Ovaj temeljni konflikt direktno motivira fizičku separaciju transakcijskog i analitičkog sloja, isti princip koji primjenjuju TiDB \cite{huang2020tidb} i F1 Lightning \cite{yang2020f1}.
+
+Columnstore indeksi u SQL Serveru opisani su u radu Larson i drugi \cite{larson2013columnstore} koji dokumentira stupčastu pohranu kao strukturu u kojoj se vrijednosti istog stupca pohranjuju zajedno u kompresiranim segmentima. Ključna performansna prednost dolazi od batch-mode executora koji obrađuje oko 1000 redova istovremeno koristeći vektorizirane instrukcije modernih procesora; Larson i drugi \cite{larson2013columnstore} navode ubrzanja od 10 do 100 puta za tipične data warehouse upite u odnosu na standardni row-mode execution plan. Empirijsko istraživanje Zeng i drugi \cite{zeng2023empirical} o karakteristikama otvorenih stupčastih formata pohrane (Parquet i ORC) dodatno potvrđuje prednosti stupčaste pohrane za analitička opterećenja, ali uz tradeoff u troškovima ažuriranja. Kombinaciju Hekaton in-memory OLTP engine-a i columnstore indeksa za analitiku u realnom vremenu unutar SQL Servera opisuju Larson i drugi \cite{larson2015realtime}; taj rad, međutim, predstavlja dizajn i interne mikro-benchmarkove autora samog sistema, dok nezavisna, statistički rigorozna evaluacija nad stvarnim skupom podataka izostaje.
+
+Posebnu liniju istraživanja čini metodologija benchmarkinga HTAP sistema. Zhang i drugi \cite{zhang2024hybench} razvijaju okvir HyBench, koji TPC-C transakcije kombinuje s analitičkim upitima u specijaliziranom HTAP benchmarku. Wu i drugi \cite{wu2025htap} empirijski potvrđuju da porast broja analitičkih klijenata izaziva mjerljiv pad OLTP propusnosti koji se pojačava s razinom konkurentnosti. Zhao i drugi \cite{zhao2023benchmarking} evaluaciju HTAP sistema postavljaju oko pojma performansne izolacije, tvrdeći da sposobnost održavanja stabilnih transakcijskih performansi pod analitičkim opterećenjem treba biti primarna mjera kvalitete. Najnovija istraživanja -- PUSHtap \cite{zhao2025pushtap}, SynchroStore \cite{zhang2025synchro} i veDB-HTAP \cite{zhan2025vedb} -- pokazuju da optimalna HTAP konfiguracija ovisi o interakciji profila opterećenja i razine konkurentnosti, što neposredno motivira faktorijalni eksperimentalni dizajn primijenjen u ovom radu.
+
+\label{sec:praznina}
+Iz ovog pregleda izranjaju tri istraživačke praznine. Prvo, dostupne benchmarking studije \cite{zhang2024hybench, wu2025htap, zhao2023benchmarking} pretežno počivaju na sintetičkim skupovima podataka koji ne reprodukuju asimetrične distribucije stvarnih aplikacija; ovaj rad koristi StackOverflow2010 dump s prirodnom Pareto distribucijom \cite{zhang2024htap}. Drugo, nezavisne empirijske evaluacije specifičnih mehanizama SQL Servera (Hekaton + columnstore) u HTAP kontekstu rijetke su u akademskoj literaturi. Treće, ne postoje studije koje istovremeno obuhvataju tri razine konkurentnosti i tri omjera opterećenja uz statistički rigoroznu neparametarsku analizu na platformi SQL Server.
+
+\section{Ciljevi istraživanja}
+\label{sec:ciljevi}
+
+Osnovni cilj rada jeste empirijski utvrditi i kvantificirati kako odabir konfiguracijske strategije pohrane utiče na transakcijske i analitičke performanse pod mješovitim opterećenjem. Iz njega proizlaze sljedeći specifični ciljevi:
+\begin{enumerate}[noitemsep, topsep=2pt]
+    \item komparativno izmjeriti OLTP i OLAP propusnost te latenciju četiri konfiguracije kroz tri omjera opterećenja i tri razine konkurentnosti;
+    \item kvantificirati degradaciju OLTP propusnosti uzrokovanu istovremenim analitičkim opterećenjem za svaku konfiguraciju;
+    \item identificirati arhitekturalni mehanizam koji objašnjava uočene razlike, s posebnim osvrtom na izolaciju radnih opterećenja;
+    \item formulirati praktične smjernice za odabir konfiguracije u ovisnosti o profilu opterećenja i razini konkurentnosti.
+\end{enumerate}
+
+\section{Hipoteze istraživanja}
+\label{sec:hipoteze}
+
+Na osnovu identificirane istraživačke praznine (odjeljak~\ref{sec:praznina}) i teorijskog okvira izloženog u odjeljku~\ref{ch:literatura} formulirane su tri istraživačke hipoteze:
+
+\textbf{H1:} Disk-zasnovana konfiguracija s columnstore indeksom ostvaruje usporedivu latenciju analitičkih upita s hibridnom konfiguracijom pri niskim razinama konkurentnosti, dok razlika postaje statistički značajna pri visokim razinama konkurentnih korisnika.
+
+\textbf{H2:} Degradacija propusnosti transakcijskih operacija uzrokovana istovremenim izvođenjem analitičkih upita veća je u disk-zasnovanoj konfiguraciji s columnstore indeksom nego u hibridnoj konfiguraciji.
+
+\textbf{H3:} Pri transakcijski intenzivnom opterećenju hibridna konfiguracija ne ostvaruje statistički značajno veću propusnost od čisto transakcijske konfiguracije (In-Memory bez columnstore).
+
+\section{Metode istraživanja}
+\label{sec:metode}
+
+Istraživanje je kvantitativno i eksperimentalno. Primijenjen je puni faktorijalni dizajn $4\times3\times3$ (konfiguracija $\times$ omjer OLTP/OLAP $\times$ razina konkurentnosti) s 30 ponavljanja po kombinaciji, realiziran namjenskom benchmark aplikacijom razvijenom u .NET 8 okruženju, nad stvarnim skupom podataka StackOverflow2010. Budući da su distribucije latencije izrazito desno-asimetrične, statistička analiza počiva na neparametarskim metodama: Kruskal-Wallis H-testu za globalne razlike među konfiguracijama, Mann-Whitney U testu s Bonferroni korekcijom za parne usporedbe te Cohenovom $d$ za procjenu veličine efekta. Dopunski je izgrađen log-linearni regresijski model radi kvantifikacije doprinosa pojedinih faktora. Potpuna metodološka razrada data je u Poglavlju~\ref{ch:eksperiment}.

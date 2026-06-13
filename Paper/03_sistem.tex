@@ -1,0 +1,79 @@
+% ======================================================================
+% POGLAVLJE 2: OPIS POSMATRANOG SISTEMA
+% ======================================================================
+\chapter{Opis posmatranog sistema}
+\label{ch:sistem}
+
+Eksperimentalni sistem gradi se na Microsoft SQL Serveru 2022 s četiri arhitekturalne strategije pohrane realizirane kao zasebne sheme unutar jedne instance. Skup podataka StackOverflow2010 s $\sim$19,2 miliona zapisa osigurava realnu Pareto distribuciju aktivnosti kao osnovu za evaluaciju. U nastavku su opisane arhitekturalne karakteristike svake konfiguracije i struktura skupa podataka.
+
+\section{Arhitekturalne konfiguracijske strategije}
+\label{sec:konfiguracije}
+
+Posmatrani sistem obuhvata četiri arhitekturalne konfiguracijske strategije pohrane implementirane u Microsoft SQL Serveru 2022. Svaka konfiguracija zauzima zasebnu shemu baze podataka (\texttt{baseline.*}, \texttt{cs.*}, \texttt{im.*}, \texttt{htap.*})\footnote{Notacija \texttt{.*} označava skup svih tabela unutar navedene sheme baze podataka; npr.\ \texttt{cs.*} obuhvata sve tabele sheme \texttt{cs} (columnstore konfiguracija).} s identičnom logičkom shemom tabela, ali fundamentalno različitim fizičkim mehanizmima pohrane i indeksiranja. Ovakva organizacija osigurava apsolutnu konzistentnost polaznih podataka između konfiguracija i omogućava izoliranu evaluaciju uticaja arhitekturalne strategije pohrane na performansne karakteristike.
+
+\subsection{Baseline -- disk-zasnovane tabele s B-tree indeksima}
+
+Baseline konfiguracija implementira standardni SQL Server pristup pohrani s row-store tabelama smještenim na disku, koja predstavlja kontrolnu grupu u eksperimentalnom dizajnu. Svaka tabela ima clustered B-tree indeks na primarnom ključu i dodatne nonclustered indekse za ubrzanje upita koji se pojavljuju u OLTP radnom toku. OLTP i OLAP operacije izvršavaju se putem row-mode executora koji obrađuje jedan red po koraku plana izvršavanja. Ova konfiguracija odražava tradicionalni pristup pohrani koji je zastupljen u apsolutnoj većini postojećih SQL Server instalacija i služi kao referentna tačka za kvantifikaciju poboljšanja naprednijih strategija.
+
+\subsection{CS -- disk-zasnovane tabele s nonclustered columnstore indeksom}
+
+CS konfiguracija zadržava identičnu fizičku shemu kao Baseline, s dodatkom NONCLUSTERED COLUMNSTORE indeksa na svakoj tabeli (covering columnstore, bez LOB stupaca). SQL Server optimizator upita automatski bira columnstore skeniranje i batch-mode execution plan za analitičke upite, u skladu s mehanizmom opisanim kod Larson i drugi \cite{larson2013columnstore}. OLTP operacije i dalje koriste clustered B-tree indeks i row-mode execution. Problem saturacije CPU resursa pri $C=32$ sa 6 i više istovremenih batch-mode upita adresiran je dodavanjem \texttt{OPTION(MAXDOP 2)} u sve analitičke procedure, čime se sprječava \texttt{RESOURCE\_SEMAPHORE} čekanje.
+
+\subsection{IM -- memorijsko-optimizirane tabele (Hekaton)}
+
+IM konfiguracija koristi Hekaton engine s opcijama \texttt{MEMORY\_OPTIMIZED = ON} i \texttt{DURABILITY = SCHEMA\_ONLY}. Hash indeksi osiguravaju $O(1)$ točkačni pristup, a nonclustered range indeksi rasponske upite. Sve OLTP procedure su nativno kompajlirane. Analitički upiti rade u row-mode jer Hekaton ne podržava batch-mode. Dodan je \texttt{OPTION(MAXDOP 1)} za analitičke procedure zbog \texttt{CXSYNC\_PORT} čekanja pri paralelnim planovima na memorijsko-optimiziranim tabelama.
+
+Parametar \texttt{DURABILITY = SCHEMA\_ONLY} odabran je jer eliminira overhead pisanja u transakcijski log karakterističan za \mbox{\texttt{SCHEMA\_AND\_DATA}}, što je relevantno za reprezentativnost OLTP mjerenja. U produkcijskim scenarijima gdje je trajnost potrebna, preporučuje se \texttt{SCHEMA\_AND\_DATA}.
+
+\subsection{HTAP -- dual-store hibridna konfiguracija}
+
+\looseness=-1
+HTAP konfiguracija implementira dual-store arhitekturalni obrazac inspirisan TiDB/TiFlash pristupom \cite{huang2020tidb}, prilagođen SQL Server-ovom in-process modelu. OLTP pisanja i točkačna čitanja usmjeravaju se na memorijsko-optimizirane tabele u shemi \texttt{htap.*}, koristeći Hekaton engine i nativno kompajlirane procedure, dok se analitički upiti izvršavaju nad columnstore tabelama u shemi \texttt{cs.*}, koristeći batch-mode executor i columnstore kompresiju.
+
+Ovo arhitekturalno odvajanje osigurava da analitički batch-mode skenovi ne ometaju OLTP operacije na razini dijeljenih resursa. Važno je napomenuti implementacijsku posebnost: postoji konzistentnosna razlika između \texttt{htap.*} i \texttt{cs.*} shema -- analitički upiti ne vide upravo unesene OLTP zapise dok se podaci eksplicitno ne sinhroniziraju s \texttt{cs.*} kopijom. U kontekstu benchmarka, gdje je svaka kombinacija zasebna izolirana sesija s unaprijed učitanim podacima, ova razlika ne utiče na mjerene metrike. U produkcijskim scenarijima, međutim, ovo arhitekturalno ograničenje mora biti uzeto u obzir pri dizajnu aplikacije.
+
+\begin{table}[htbp]
+\centering
+\caption{Pregled arhitekturalnih karakteristika četiri konfiguracijske strategije}
+\label{tab:konfiguracije}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccc}
+\toprule
+\textbf{Konfiguracija} & \textbf{Pohrana} & \textbf{Indeksiranje} & \textbf{OLAP} \\
+\midrule
+Baseline & Disk (row-store) & B-tree (clustered + nonclustered) & Row-mode \\
+CS & Disk (row-store) & B-tree + columnstore & Batch-mode \\
+IM & Memorija (Hekaton) & Hash + Range & Row-mode \\
+HTAP & OLTP$\to$Memorija / OLAP$\to$Disk+CS & Dual-store & Batch-mode \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\section{Skup podataka -- StackOverflow2010}
+\label{sec:skup_podataka}
+
+StackOverflow2010 je javno dostupan dump produkcijske baze platforme Stack Overflow koji obuhvata zapise od osnivanja 2008. do kraja 2010. godine. Ovaj skup podataka odabran je umjesto sintetičkih alternativa (TPC-C, TPC-H) jer odražava stvarnu distribuciju korisničke aktivnosti karakterističnu za web aplikacije. Za razliku od sintetičkih skupova koji proizvode uniformne distribucije, StackOverflow2010 prirodno sadrži Pareto distribuciju gdje mali postotak korisnika generira najveći dio sadržaja \cite{zhang2024htap}.
+\begin{table}[htbp]
+\centering
+\caption{Veličine tabela u skupu podataka StackOverflow2010}
+\label{tab:podaci}
+\small
+\begin{tabular}{lrr}
+\toprule
+\textbf{Tabela} & \textbf{Opis} & \textbf{Broj redova} \\
+\midrule
+Posts & Pitanja i odgovori & 3.729.195 \\
+Users & Korisnički profili & 299.398 \\
+Votes & Glasovi na postovima & 10.143.364 \\
+Comments & Komentari na postove & 3.875.183 \\
+Badges & Bedževi korisnika & 1.102.019 \\
+\midrule
+Ukupno po shemi & & $\approx$ 19.149.159 \\
+Ukupno (4 sheme) & & $\approx$ 76.596.636 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Svaka od četiri konfiguracijske sheme (\texttt{baseline.*}, \texttt{cs.*}, \texttt{im.*}, \texttt{htap.*}) sadrži identičan skup podataka. Podaci su inicijalno učitani u Baseline i CS sheme (disk-zasnovane, $>15$\,GB), a zatim kopirani u IM i HTAP sheme (memorijsko-optimizirane, $\sim$8\,GB po shemi). Ovaj postupak osigurava apsolutnu konzistentnost polaznih podataka između konfiguracija i garantira da razlike u izmjerenim performansama reflektiraju isključivo arhitekturalne razlike, a ne razlike u polaznom stanju podataka.

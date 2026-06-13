@@ -1,0 +1,141 @@
+% ======================================================================
+% POGLAVLJE 3: OPIS EKSPERIMENTA I OKRUŽENJA
+% ======================================================================
+\chapter{Opis eksperimenta i okruženja}
+\label{ch:eksperiment}
+
+Cilj eksperimenta je utvrditi kako arhitekturalna strategija pohrane u SQL Serveru 2022 utiče na OLTP i OLAP performanse pri mješovitim opterećenjima različitih intenziteta i razina konkurentnosti. Osnovna pretpostavka je da dual-store arhitektura, koja fizički odvaja OLTP i OLAP sloj pohrane, pruža bolju performansnu izolaciju od konfiguracija s dijeljenim resursima, te da columnstore ubrzanje OLAP upita indirektno poboljšava i OLTP propusnost pri mješovitom opterećenju.
+
+\section{Eksperimentalni dizajn i okruženje}
+\label{sec:eksperimentalni_dizajn}
+\label{sec:hardver}
+
+Istraživanje je provedeno kao 4$\times$3$\times$3 puni faktorijalni dizajn s 30 ponavljanja po eksperimentalnoj kombinaciji:
+
+\[
+\begin{aligned}
+4\text{ konfiguracije} \times 3\text{ OLTP/OLAP omjera} &\times 3\text{ razine konkurentnosti} \\
+&\times 30\text{ runova} = 1.080\text{ mjernih serija}
+\end{aligned}
+\]
+
+Puni faktorijalni dizajn odabran je jer omogućava procjenu interakcijskih efekata između faktora -- posebno kritične interakcije konfiguracija $\times$ razina konkurentnosti -- te osigurava ortogonalnost efekata koja pojednostavljuje interpretaciju rezultata \cite{zhang2024hybench}. Broj od 30 ponavljanja po kombinaciji osigurava statističku snagu dostatnu za neparametarsku analizu čak i pri izrazito asimetričnim distribucijama latencije.
+
+Nezavisne varijable eksperimenta obuhvataju: konfiguraciju pohrane (Baseline, CS, IM, HTAP), omjer OLTP/OLAP opterećenja (80/20, 50/50, 20/80) i razinu konkurentnosti ($C\in\{4,16,32\}$). Zavisne varijable su OLTP propusnost (ops/s), OLAP propusnost (q/s), latencije na percentilima $P_{50}$, $P_{95}$ i $P_{99}$ za oba tipa opterećenja te stopa uspješnosti operacija. Kontrolirane varijable su identična hardverska konfiguracija, identičan broj redova u svim shemama, warmup faza od 10\,s i mjerna faza od 60\,s po runu.
+
+Svi eksperimenti provedeni su na identičnoj hardversko-softverskoj konfiguraciji bez ikakvih izmjena između mjernih sesija, čime je osigurana reproducibilnost rezultata. Detalji konfiguracije prikazani su u Tabeli~\ref{tab:hardver}.
+
+\begin{table}[htbp]
+\centering
+\caption{Hardverska i softverska konfiguracija eksperimenta}
+\label{tab:hardver}
+\small
+\begin{tabular}{lp{8cm}}
+\toprule
+\textbf{Komponenta} & \textbf{Specifikacija} \\
+\midrule
+Procesor & Intel Core i9-14900HX (24 jezgara / 32 logičke niti; max 5{,}8\,GHz) \\
+RAM & 32 GB DDR5 (5600 MHz) \\
+Pohrana (Baseline, CS) & NVMe SSD (SK Hynix HFS001TEJ9X115N, 1\,TB; seq.\ čit.\ 6.500\,MB/s, seq.\ pis.\ 4.500\,MB/s) \\
+Pohrana (IM, HTAP OLTP) & RAM (memorijsko-optimizirane tabele) \\
+Operativni sistem & Windows 11 Home (24H2) \\
+DBMS & SQL Server 2022 Developer Ed. (16.x) \\
+.NET runtime & .NET 8.0 \\
+Python & 3.11 (za analitičku obradu) \\
+Benchmark aplikacija & HTAPBenchmark v1.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Disk-zasnovane konfiguracije (Baseline, CS) pohranjuju podatke na NVMe SSD-u, dok memorijsko-optimizirane konfiguracije (IM, HTAP) čitaju isključivo iz RAM-a. Ovakvo okruženje odražava savremene serverske i laptop konfiguracije; prednosti memorijsko-optimiziranih konfiguracija bile bi još izraženije u HDD okruženju.
+
+\section{Implementacija benchmark sistema}
+\label{sec:implementacija}
+
+Benchmark aplikacija\footnote{Kompletan izvorni kod, SQL skripte i mjerni rezultati javno su dostupni u repozitoriju: \url{https://github.com/itsnejra/htap-sqlserver-benchmark}.} razvijena je u .NET 8 (C\#), koristeći \texttt{async/await} model za istovremeno izvršavanje OLTP i OLAP radnih niti. Aplikacija se na SQL Server povezuje putem \mbox{\texttt{Microsoft.Data.SqlClient}} drajvera, a upiti se izvršavaju preko Dapper micro-ORM-a radi minimalnog overhead-a.
+
+Arhitektura aplikacije organizovana je u četiri komponente s jasno razdvojenim odgovornostima. \texttt{BenchmarkOrchestrator} koordinira slijed izvršavanja kroz sve kombinacije konfiguracija, omjera i razina konkurentnosti, implementirajući resume logiku za nastavak od mjesta prekida u slučaju dugotrajnih sesija. \texttt{WorkloadExecutor} kreira OLTP i OLAP workere, upravlja warmup i mjernom fazom i implementira MVCC garbage collection za memorijsko-optimizirane tabele. \texttt{MetricsCalculator} računa deskriptivne statistike -- propusnost i percentile latencije -- iz sirovih mjerenja u realnom vremenu. \texttt{ResultsWriter} atomarno upisuje rezultate u CSV datoteke uz thread-safe \texttt{FileStream} mehanizam zaključavanja koji sprječava gubitak podataka pri istovremenom pisanju iz više niti.
+
+Svaki run prolazi kroz warmup fazu od 10\,s (rezultati se odbacuju) i mjernu fazu od 60\,s. OLTP latencija mjeri se za svaku operaciju korištenjem \mbox{\texttt{Stopwatch.Elapsed}}. OLAP latencija mjeri se za svaki cijeli upit od slanja do primanja prvog paketa rezultata.
+
+Za svaku operaciju bilježe se isključivo latencija i ishod (uspjeh/neuspjeh), iz kojih \texttt{MetricsCalculator} izvodi propusnost, percentile latencije i stopu uspješnosti. Iskorištenost procesora i memorije nije instrumentirana na razini benchmark aplikacije; mehanizam CPU saturacije o kojem se raspravlja u odjeljku~\ref{sec:interpretacija} izveden je iz modela izvršavanja upita (row-mode naspram batch-mode), a ne iz direktnog mjerenja, što je navedeno među ograničenjima istraživanja.
+
+\section{Radna opterećenja i priprema podataka}
+\label{sec:radna_opterecenja}
+
+\subsection{OLTP radni tok}
+
+OLTP radni tok sastoji se od šest operacija koje se biraju prema težinskoj distribuciji koja odražava tipično opterećenje web aplikacije s visokim udjelom upisnih operacija (Tabela~\ref{tab:oltp_operacije}). Operacije se izvršavaju sekvencijalno od strane svakog OLTP workera bez pauza između upita, čime se simulira kontinuirani tok transakcija. Odabir težinske distribucije sa 75\% upisnih operacija motiviran je karakteristikama stvarnih web aplikacija gdje su operacije poput glasanja, dodavanja komentara i ažuriranja rezultata dominantne u odnosu na čitanje pojedinačnih zapisa. Implementacija reprezentativnih pohranjenih procedura za disk-zasnovane i memorijsko-optimizirane konfiguracije prikazana je u Prilogu~\ref{app:oltp}.
+
+\begin{table}[htbp]
+\centering
+\caption{OLTP operacije -- težinska distribucija}
+\label{tab:oltp_operacije}
+\small
+\begin{tabular}{lcc}
+\toprule
+\textbf{Procedura} & \textbf{Tip} & \textbf{Udio} \\
+\midrule
+\texttt{usp\_InsertVote} & INSERT & 35\% \\
+\texttt{usp\_UpdatePostScore} & UPDATE & 25\% \\
+\texttt{usp\_InsertComment} & INSERT & 15\% \\
+\texttt{usp\_GetRecentUserPosts} & SELECT (raspon) & 10\% \\
+\texttt{usp\_GetPostById} & SELECT (točkačno) & 10\% \\
+\texttt{usp\_GetUserById} & SELECT (točkačno) & 5\% \\
+\midrule
+\multicolumn{2}{l}{Ukupno pisanja (INSERT + UPDATE)} & 75\% \\
+\multicolumn{2}{l}{Ukupno čitanja (SELECT)} & 25\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\subsection{OLAP radni tok}
+
+Pet analitičkih upita bira se uniformno nasumično (Tabela~\ref{tab:olap_upiti}). Svi upiti su agregacijske prirode s full-scan operacijama koje maksimalno opterećuju I/O i CPU podsistem, čime se testira sposobnost svake konfiguracije da efikasno obradi analitičko opterećenje. Implementacija reprezentativnih analitičkih upita prikazana je u Prilogu~\ref{app:olap}.
+
+\begin{table}[htbp]
+\centering
+\caption{OLAP upiti -- opis i ključne operacije}
+\label{tab:olap_upiti}
+\small
+\begin{tabular}{ll}
+\toprule
+\textbf{Upit} & \textbf{Ključne operacije} \\
+\midrule
+Q1 -- MonthlyActivity & GROUP BY, COUNT, AVG, SUM \\
+Q2 -- TopContributors & JOIN (Users--Posts), GROUP BY, TOP 50 \\
+Q3 -- VoteDistribution & JOIN, CASE WHEN, GROUP BY \\
+Q4 -- TimeToAnswer & Self-JOIN, DATEDIFF, GROUP BY \\
+Q5 -- UserCohortActivity & CTE, GROUP BY, ORDER BY \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Priprema podataka i kontekst učitavanja}
+\label{sec:priprema_podataka}
+
+Prije svake mjerne sesije učitava se radni kontekst koji definiše skup entiteta s kojima će workeri operirati. Kontekst obuhvata 20.000 nasumičnih ID-ova postova iz aktivne sheme -- odabir koji osigurava statističku varijabilnost bez pretjeranog opterećenja MVCC garbage collector-a -- zatim 5.000 nasumičnih ID-ova korisnika i maksimalne ID-ove glasova i komentara za generiranje novih jedinstvenih identifikatora pri INSERT operacijama.
+
+Nasumično uzorkovanje putem \texttt{ORDER BY NEWID()} osigurava realnu distribuciju pristupa podacima. Za memorijsko-optimizirane tabele korišten je \texttt{OPTION(MAXDOP 1)} u upitima za učitavanje konteksta kako bi se izbjeglo \texttt{CXSYNC\_PORT} čekanje karakteristično za paralelne planove na Hekaton tabelama.
+
+\section{Statistička metodologija}
+\label{sec:statistika}
+
+Distribucije latencija u benchmarking eksperimentima tipično su desno-asimetrične s izraženim repovima, zbog garbage collection pauza, context switch-eva operativnog sistema i varijabilnosti u I/O vremenima. Shapiro-Wilk testom normalnosti potvrđeno je statistički značajno odstupanje od normalne distribucije za sve mjerne metrike ($p < 0,001$), pa su primijenjene sljedeće statističke metode:
+
+\begin{itemize}[noitemsep, topsep=4pt]
+  \item \textbf{Kruskal-Wallis H-test} -- neparametarska alternativa jednosmjernoj ANOVA-i; testira da li sve četiri konfiguracije dolaze iz iste distribucije, primijenjen za svaku kombinaciju mjerne metrike i razine konkurentnosti (6 metrika $\times$ 3 razine = 18 testova, $\alpha = 0,05$).
+
+  \item \textbf{Mann-Whitney U test s Bonferroni korekcijom} -- korišten za parne usporedbe između konfiguracija; budući da se testira $C(4,2) = 6$ parova, primijenjena je Bonferroni korekcija: $\alpha' = \alpha/6 \approx 0,0083$.
+
+  \item \textbf{Cohenov $d$ (veličina efekta)} -- kvantificira standardizovanu razliku između sredina:
+  \begin{equation}
+  d = \frac{\bar{x}_1 - \bar{x}_2}{s_p}, \quad
+  s_p = \sqrt{\frac{(n_1-1)s_1^2 + (n_2-1)s_2^2}{n_1 + n_2 - 2}}
+  \label{eq:cohen_d}
+  \end{equation}
+  Interpretacija: $|d| < 0,2$ trivijalan efekt, $0,2$--$0,5$ mali, $0,5$--$0,8$ srednji, $> 0,8$ veliki efekt; vrijednost $> 0,8$ indicira razliku praktično relevantnu za arhitekturalne odluke.
+
+  \item \textbf{OLS regresijska analiza} -- dopunski log-linearni model za kvantifikaciju doprinosa pojedinih faktora (konfiguracija, omjer, konkurentnost) i izgradnju prediktivnog modela performansi.
+\end{itemize}

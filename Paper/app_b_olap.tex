@@ -1,0 +1,103 @@
+% ======================================================================
+% DODATAK B: OLAP ANALITIČKI UPITI
+% ======================================================================
+\chapter{OLAP analitički upiti}
+\label{app:olap}
+
+Ovaj prilog sadrži implementaciju tri reprezentativna OLAP analitička upita od ukupno pet korištenih u benchmarku. Odabrani su upiti koji ilustruju raspon SQL konstrukcija i time pokazuju zašto columnstore indeksi i in-memory pohrana imaju različit uticaj ovisno o tipu analitičke operacije. Za svaku od četiri konfiguracije postoje zasebne procedure -- \texttt{baseline.*}, \texttt{cs.*} i \texttt{im.*} su strukturno identične, ali upiti čitaju iz različitih storage slojeva (disk B-tree, disk columnstore, RAM). Iznimka je HTAP konfiguracija gdje su procedure registrirane u \texttt{htap.*} shemi ali čitaju iz \texttt{cs.*} sloja, što je ilustrirano u odjeljku~\ref{sec:b3}.
+
+\section{Q1 -- Aktivnost postova po mjesecu (full-scan agregacija)}
+
+Upit Q1 agregira sve postove po godini, mjesecu i tipu, računajući broj postova, prosječan score i ukupan broj pregleda. Skenira kompletnih $\sim$3,7 miliona redova tabele \texttt{Posts} bez filtera, što ga čini idealnim stresom za columnstore batch-mode izvršavanje. Na \texttt{baseline.*} konfiguraciji upit ide u row-mode i troši znatno više CPU ciklusa po redu; na \texttt{cs.*} i \texttt{htap.*} konfiguracijama columnstore indeks omogućava batch-mode obradu kolona, reducirajući broj instrukcija po redu za faktor 5--8.
+
+\begin{lstlisting}[language=SQL, caption={baseline.usp\_OLAP\_Q1\_MonthlyActivity -- GROUP BY full-scan nad $\sim$3,7M redova}, label=lst:b1]
+CREATE OR ALTER PROCEDURE baseline.usp_OLAP_Q1_MonthlyActivity AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT
+        YEAR(CreationDate)             AS Godina,
+        MONTH(CreationDate)            AS Mjesec,
+        PostTypeId,
+        COUNT(*)                       AS BrojPostova,
+        AVG(CAST(Score AS FLOAT))      AS ProsjekScore,
+        SUM(CAST(ViewCount AS BIGINT)) AS UkupnoPregleda,
+        SUM(AnswerCount)               AS UkupnoOdgovora
+    FROM baseline.Posts
+    GROUP BY YEAR(CreationDate), MONTH(CreationDate), PostTypeId
+    ORDER BY Godina, Mjesec, PostTypeId;
+END;
+\end{lstlisting}
+
+\section{Q3 -- Distribucija glasova po score bucketu (JOIN + CASE WHEN)}
+
+Upit Q3 spaja tabele \texttt{Votes} ($\sim$10,1 miliona redova) i \texttt{Posts} ($\sim$3,7 miliona redova) putem \texttt{INNER JOIN}-a, grupira glasove prema score bucketu posta koristeći \texttt{CASE WHEN} logiku i broji glasove i jedinstvene postove po grupi. Ovakav JOIN s dvije velike tabele i naknadnom agregacijom predstavlja karakteristično BI opterećenje koje maksimalno koristi columnstore batch-mode koji može obraditi cijele stupce podataka u SIMD registrima, za razliku od row-mode koji obrađuje red po red.
+
+\begin{lstlisting}[language=SQL, caption={baseline.usp\_OLAP\_Q3\_VoteDistribution -- JOIN Votes--Posts s CASE WHEN bucketingom}, label=lst:b2]
+CREATE OR ALTER PROCEDURE baseline.usp_OLAP_Q3_VoteDistribution AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT
+        CASE
+            WHEN p.Score < 0    THEN 'Negativan'
+            WHEN p.Score = 0    THEN 'Nula'
+            WHEN p.Score <= 5   THEN '1-5'
+            WHEN p.Score <= 20  THEN '6-20'
+            WHEN p.Score <= 100 THEN '21-100'
+            ELSE                     '100+'
+        END                      AS ScoreBucket,
+        v.VoteTypeId,
+        COUNT(*)                 AS BrojGlasova,
+        COUNT(DISTINCT v.PostId) AS BrojPostova
+    FROM baseline.Votes v
+    INNER JOIN baseline.Posts p ON v.PostId = p.Id
+    GROUP BY
+        CASE WHEN p.Score < 0    THEN 'Negativan'
+             WHEN p.Score = 0    THEN 'Nula'
+             WHEN p.Score <= 5   THEN '1-5'
+             WHEN p.Score <= 20  THEN '6-20'
+             WHEN p.Score <= 100 THEN '21-100'
+             ELSE '100+' END,
+        v.VoteTypeId
+    ORDER BY ScoreBucket, v.VoteTypeId;
+END;
+\end{lstlisting}
+
+\section{Q5 -- Kohort aktivnost korisnika (CTE + dvostruka agregacija)}
+\label{sec:b3}
+
+Upit Q5 je najsloženiji u skupu: koristi CTE (\textit{Common Table Expression}) za izračun aktivnosti po korisniku i kvartalu, zatim agregira rezultate CTE-a u finalnu tabelu po kvartalima. Dvostruka agregacija (unutar CTE-a i nad CTE-om) tipičan je obrazac BI upita koji istovremeno testira sposobnost optimizatora da materijalizira privremene rezultate i izvrši naknadnu agregaciju. Upravo ovaj tip upita pokazuje najveći raspon performansi između konfiguracija: HTAP koji čita iz columnstore sloja (\texttt{cs.*}) izvršava batch-mode agregaciju u oba koraka, dok IM čita identičan upit iz RAM-a bez columnstore prednosti.
+
+\begin{lstlisting}[language=SQL, caption={baseline.usp\_OLAP\_Q5\_UserCohortActivity -- CTE s dvostrukom agregacijom po kvartalu}, label=lst:b3]
+CREATE OR ALTER PROCEDURE baseline.usp_OLAP_Q5_UserCohortActivity AS
+BEGIN
+    SET NOCOUNT ON;
+    WITH UserQuarterActivity AS (
+        SELECT
+            OwnerUserId,
+            YEAR(CreationDate)              AS Godina,
+            DATEPART(QUARTER, CreationDate) AS Kvartal,
+            COUNT(*)                        AS BrojPostova,
+            SUM(Score)                      AS UkupniScore,
+            SUM(CASE WHEN PostTypeId = 1 THEN 1 ELSE 0 END) AS BrojPitanja,
+            SUM(CASE WHEN PostTypeId = 2 THEN 1 ELSE 0 END) AS BrojOdgovora
+        FROM baseline.Posts
+        WHERE OwnerUserId IS NOT NULL
+        GROUP BY OwnerUserId, YEAR(CreationDate),
+                 DATEPART(QUARTER, CreationDate)
+    )
+    SELECT
+        Godina,
+        Kvartal,
+        COUNT(DISTINCT OwnerUserId)         AS AktivniKorisnici,
+        SUM(BrojPostova)                    AS UkupnoPostova,
+        AVG(CAST(BrojPostova AS FLOAT))     AS ProsjecnoPostovaPoKorisniku,
+        SUM(UkupniScore)                    AS UkupniScore,
+        SUM(BrojPitanja)                    AS UkupnoPitanja,
+        SUM(BrojOdgovora)                   AS UkupnoOdgovora
+    FROM UserQuarterActivity
+    GROUP BY Godina, Kvartal
+    ORDER BY Godina, Kvartal;
+END;
+\end{lstlisting}
+
+\noindent\textit{Napomena o HTAP dual-store varijanti:} procedure Q1--Q5 za \texttt{htap.*} shemu su strukturno identične prikazanim, ali je svaka referenca na \texttt{baseline.*} tabelu zamijenjena odgovarajućom \texttt{cs.*} tablicom (\texttt{cs.Posts}, \texttt{cs.Users}, \texttt{cs.Votes}) -- čime OLAP workload čita iz disk-based columnstore sloja dok OLTP istovremeno piše u \texttt{htap.*} memorijsko-optimizirani sloj, ostvarujući fizičku izolaciju radnih tokova.

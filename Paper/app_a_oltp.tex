@@ -1,0 +1,69 @@
+% ======================================================================
+% DODATAK A: OLTP POHRANJENE PROCEDURE
+% ======================================================================
+\chapter{OLTP pohranjene procedure}
+\label{app:oltp}
+
+Ovaj prilog sadrži implementaciju tri reprezentativne OLTP pohranjene procedure korištene u benchmarku. Odabrane su procedure koje najjasnije ilustruju arhitekturalne razlike između ispitivanih konfiguracija: najzahtjevnija transakcijska operacija (\texttt{usp\_InsertVote}), njena nativno kompajlirana varijanta za memorijsko-optimizirane sheme, te reprezentativna operacija čitanja (\texttt{usp\_GetRecentUserPosts}). Preostale tri procedure (\texttt{usp\_GetPostById}, \texttt{usp\_GetUserById}, \texttt{usp\_UpdatePostScore}) slijede identičan strukturni obrazac. Procedure za \texttt{baseline.*} i \texttt{cs.*} shemu su logički identične -- razlikuju se isključivo po prefiksu sheme.
+
+\section{usp\_InsertVote -- disk-zasnovane konfiguracije (Baseline, CS)}
+
+Procedura \texttt{usp\_InsertVote} predstavlja najzahtjevniju OLTP operaciju (35\% workloada) jer kombinuje dvije atomarne operacije: INSERT zapisa u tabelu \texttt{Votes} i uslovni UPDATE polja \texttt{Score} u tabeli \texttt{Posts}. Ovakav obrazac pisanja u dvije tabele unutar jednog poziva testira sposobnost storage engina da koordinira kratke, visokofrekventne transakcije. Na disk-zasnovanim konfiguracijama obe operacije zahtijevaju I/O pristup i ekskluzivno zaključavanje redova.
+
+\begin{lstlisting}[language=SQL, caption={baseline.usp\_InsertVote -- INSERT glasa s uslovnim UPDATE score-a (35\,\% workloada)}, label=lst:a1]
+CREATE OR ALTER PROCEDURE baseline.usp_InsertVote
+    @Id INT, @PostId INT, @VoteTypeId TINYINT,
+    @CreationDate DATE, @UserId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO baseline.Votes (Id, PostId, VoteTypeId, CreationDate, UserId)
+    VALUES (@Id, @PostId, @VoteTypeId, @CreationDate, @UserId);
+    -- UpVote (+1) ili DownVote (-1)
+    IF @VoteTypeId = 1
+        UPDATE baseline.Posts SET Score = Score + 1 WHERE Id = @PostId;
+    ELSE IF @VoteTypeId = 2
+        UPDATE baseline.Posts SET Score = Score - 1 WHERE Id = @PostId;
+END;
+\end{lstlisting}
+
+\section{im.usp\_InsertVote -- memorijsko-optimizirane konfiguracije (IM, HTAP)}
+
+Za memorijsko-optimizirane sheme (\texttt{im.*}, \texttt{htap.*}) ista procedura deklarira se s klauzulama \texttt{WITH NATIVE\_COMPILATION, SCHEMABINDING}. Nativna kompilacija prevodi T-SQL u strojni kod u trenutku kreiranja procedure, eliminirajući T-SQL interpretacijski overhead pri svakom pozivu. \texttt{BEGIN ATOMIC} blok garantira atomarnost bez potrebe za eksplicitnim \texttt{BEGIN TRANSACTION}/\texttt{COMMIT}, a \texttt{TRANSACTION ISOLATION LEVEL = SNAPSHOT} osigurava optimistički MVCC bez zaključavanja čitatelja. Logika procedure identična je disk-zasnovanoj varijanti -- razlika je isključivo u načinu izvršavanja.
+
+\begin{lstlisting}[language=SQL, caption={im.usp\_InsertVote -- ista logika, nativno kompajlirana s ATOMIC blokom}, label=lst:a2]
+IF OBJECT_ID('im.usp_InsertVote', 'P') IS NOT NULL
+    DROP PROCEDURE im.usp_InsertVote;
+GO
+CREATE PROCEDURE im.usp_InsertVote
+    @Id INT, @PostId INT, @VoteTypeId TINYINT,
+    @CreationDate DATE, @UserId INT
+WITH NATIVE_COMPILATION, SCHEMABINDING
+AS BEGIN ATOMIC WITH
+    (TRANSACTION ISOLATION LEVEL = SNAPSHOT, LANGUAGE = N'English')
+    INSERT INTO im.Votes (Id, PostId, VoteTypeId, CreationDate, UserId)
+    VALUES (@Id, @PostId, @VoteTypeId, @CreationDate, @UserId);
+    IF @VoteTypeId = 1
+        UPDATE im.Posts SET Score = Score + 1 WHERE Id = @PostId;
+    ELSE IF @VoteTypeId = 2
+        UPDATE im.Posts SET Score = Score - 1 WHERE Id = @PostId;
+END;
+\end{lstlisting}
+
+\section{usp\_GetRecentUserPosts -- range scan s TOP/ORDER BY}
+
+Procedura \texttt{usp\_GetRecentUserPosts} (10\% workloada) predstavlja tipičnu read operaciju na web platformi: dohvaćanje zadnjih 10 postova određenog korisnika sortirano po datumu. Za razliku od point lookup-a, ova operacija izvodi \textit{range scan} -- filtrira po \texttt{OwnerUserId} (ne-PK stupac) i sortira rezultat, što zahtijeva nonclustered indeks na disk-zasnovanim konfiguracijama, a na memorijsko-optimiziranim tabelama podrazumijeva sekvencijalni prolaz kroz hash indeks.
+
+\begin{lstlisting}[language=SQL, caption={baseline.usp\_GetRecentUserPosts -- range scan s TOP 10 i ORDER BY (10\,\% workloada)}, label=lst:a3]
+CREATE OR ALTER PROCEDURE baseline.usp_GetRecentUserPosts
+    @UserId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT TOP 10 Id, PostTypeId, CreationDate, Score,
+                  Title, AnswerCount, CommentCount
+    FROM baseline.Posts
+    WHERE OwnerUserId = @UserId
+    ORDER BY CreationDate DESC;
+END;
+\end{lstlisting}

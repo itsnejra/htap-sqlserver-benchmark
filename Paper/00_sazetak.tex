@@ -1,0 +1,24 @@
+% ======================================================================
+% SAŽETAK I ABSTRACT
+% ======================================================================
+\begin{spacing}{1.2}
+{\small
+\phantomsection
+\addcontentsline{toc}{chapter}{Sažetak}
+\section*{Sažetak}
+
+Organizacije koje istovremeno obrađuju transakcijske i analitičke upite suočavaju se s problemom arhitekturalne podjele na OLTP i OLAP sisteme, premošćene ETL procesom koji uvodi kašnjenje i operativnu složenost. Ovaj rad ispituje četiri konfiguracijske strategije pohrane u Microsoft SQL Serveru 2022: disk-zasnovanu s B-tree indeksima (\textit{Baseline}), disk-zasnovanu s columnstore indeksom (\textit{CS}), memorijski optimiziranu bez columnstore (\textit{IM}) i hibridnu dual-store konfiguraciju (\textit{HTAP}). Eksperiment je proveden kao puni faktorijalni dizajn 4$\times$3$\times$3 (4 konfiguracije $\times$ 3 OLTP/OLAP omjera $\times$ 3 razine konkurentnosti), s 30 serija po kombinaciji, nad skupom podataka StackOverflow2010 ($\sim$19,2 miliona zapisa). Za statističku obradu korišteni su Kruskal-Wallis H-test, Mann-Whitney U test s Bonferroni korekcijom i Cohenov \textit{d}. Rezultati pokazuju da HTAP dual-store konfiguracija dominira u svim ispitanim scenarijima: ostvaruje 3,3--6,9$\times$ veću OLTP propusnost od IM i 8,0$\times$ bolji OLAP od Baseline, uz najniže OLAP latencije ($P_{50}=924$\,ms pri 80/20 opterećenju). Budući da ispitana dual-store konfiguracija fizički odvaja slojeve bez kontinuirane sinhronizacije tokom mjerenja, ovi rezultati predstavljaju gornju granicu prednosti pristupa.
+
+\vspace{0.2cm}
+\noindent\textbf{Ključne riječi:} HTAP, In-Memory OLTP, columnstore indeks, SQL Server 2022, Hekaton, benchmark, dual-store arhitektura
+
+\vspace{0.3cm}
+
+\section*{Abstract}
+
+Organizations that simultaneously process transactional and analytical queries face the challenge of architectural separation between OLTP and OLAP systems, bridged by ETL processes that introduce latency and operational complexity. This paper examines four storage configuration strategies in Microsoft SQL Server 2022: disk-based with B-tree indexes (\textit{Baseline}), disk-based with a columnstore index (\textit{CS}), memory-optimized via the Hekaton engine (\textit{IM}), and a hybrid dual-store configuration (\textit{HTAP}). The experiment was conducted as a full factorial design 4$\times$3$\times$3 (4 configurations $\times$ 3 OLTP/OLAP ratios $\times$ 3 concurrency levels), with 30 runs per combination, over the StackOverflow2010 dataset ($\sim$19.2 million records). Statistical analysis employed the Kruskal-Wallis H-test, Mann-Whitney U test with Bonferroni correction, and Cohen's \textit{d}. Results show that the HTAP dual-store configuration dominates across all tested scenarios: achieving 3.3--6.9$\times$ greater OLTP throughput than IM and 8.0$\times$ better OLAP performance than Baseline, with the lowest OLAP latencies ($P_{50}=924$\,ms at 80/20 workload). Since the tested dual-store configuration physically separates layers without continuous synchronization during measurement, these results represent an upper bound on the benefits of this approach.
+
+\vspace{0.2cm}
+\noindent\textbf{Keywords:} HTAP, In-Memory OLTP, columnstore index, SQL Server 2022, Hekaton, benchmark, dual-store architecture
+}
+\end{spacing}
