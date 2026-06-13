@@ -18,6 +18,14 @@ dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release -- --dry-run
 Kratki test pokreće 36 runova (1 run po kombinaciji, warmup=2s, mjerenje=5s) i završava za približno 7–12 minuta.
 Očekivani izlaz: `Results/summary.csv` s 36 redova, bez grešaka u konzoli.
 
+**Ako repo već sadrži `Results/summary.csv`** (npr. klonirani rezultati), benchmark će sve kombinacije preskočiti jer smatra da su već završene. Da bi dry-run zaista izmjerio, obrisati CSV fajlove prije pokretanja:
+
+```powershell
+del Results\summary.csv
+del Results\measurements.csv
+dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release -- --dry-run
+```
+
 **Napomena — HTAP konfiguracija:** Ako HTAP prikazuje `0 ops/s` i `Kontekst učitan: 0 postova`, SQL Server je bio restartovan i `htap.*` tablice su prazne (`DURABILITY = SCHEMA_ONLY`). Rješenje: pokrenuti `SQL/05b_LoadData_CS_HTAP_Only.sql` u SSMS (~5–10 min), a potom ponoviti dry-run. Baseline, CS i IM nisu pogođeni restartom.
 
 ---
