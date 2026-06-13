@@ -12,7 +12,6 @@ UPOZORENJE: Puni benchmark (1.080 runova) traje priblizno 21 sat. Ako zelite sam
 Prije pokretanja punog benchmarka preporucuje se pokrenuti kratki test koji provjerava ispravnost svih komponenti (SQL Server veza, stored procedure, .NET aplikacija, CSV izlaz):
 
 ```bash
-cd HTAPBenchmark
 dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release -- --dry-run
 ```
 
@@ -274,7 +273,6 @@ baseline.* i cs.* su disk-zasnovane -- ne trebaju ponovnog punjenja.
 ### 4.4 .NET aplikacija
 
 ```bash
-cd HTAPBenchmark
 dotnet restore BenchmarkApp/HTAPBenchmark.sln
 dotnet build BenchmarkApp/HTAPBenchmark.sln -c Release
 ```
@@ -307,7 +305,7 @@ Za SQL Authentication umjesto Windows Authentication:
 ### 4.5 Python okruzenje
 
 ```bash
-cd HTAPBenchmark/Analysis
+cd Analysis
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
@@ -326,7 +324,6 @@ python -c "import pandas, numpy, scipy, matplotlib, seaborn, openpyxl, statsmode
 ### Kratki test (provjera ispravnosti -- pokrenuti prvi)
 
 ```bash
-cd HTAPBenchmark
 dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release -- --dry-run
 ```
 
@@ -337,7 +334,6 @@ Ocekivani izlaz: Results/summary.csv s 36 redova, bez gresaka u konzoli.
 ### Puni benchmark (za istrazivacke rezultate)
 
 ```bash
-cd HTAPBenchmark
 dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release
 ```
 
@@ -373,7 +369,7 @@ Benchmark automatski nastavlja od zadnjeg zavrsenog runa. Cita Results/summary.c
 Pokrenuti redom iz Analysis/ direktorija nakon zavrsenog benchmarka:
 
 ```bash
-cd HTAPBenchmark/Analysis
+cd Analysis
 venv\Scripts\activate
 
 python 00_merge_results.py
