@@ -325,6 +325,15 @@ pip install -r requirements.txt
 
 ### Kratki test (provjera ispravnosti — pokrenuti prvi)
 
+Ako `Results/summary.csv` već postoji (npr. iz kloniranog repoa), benchmark će sve kombinacije preskočiti jer smatra da su završene. Prije pokretanja obrisati oba CSV fajla:
+
+```powershell
+del Results\summary.csv
+del Results\measurements.csv
+```
+
+Zatim pokrenuti kratki test:
+
 ```bash
 dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release -- --dry-run
 ```
@@ -336,6 +345,8 @@ dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release -- --dry-run
 | Runova po kombinaciji | 1 |
 | Ukupno runova | 36 |
 | Trajanje | ~7–12 minuta |
+
+Očekivani izlaz: `Results/summary.csv` s 36 redova, bez grešaka u konzoli.
 
 ### Puni benchmark (za istraživačke rezultate)
 
@@ -577,8 +588,3 @@ Success, ErrorMessage
 ```
 
 Milioni redova za puni benchmark — koristiti za per-operacijsku analizu (`04_per_operation_stats.py`).
-
----
-
-*Projekat razvijen za potrebe akademskog istraživanja — evaluacija HTAP paradigme u SQL Serveru 2022*
-*Optimizacija baza podataka, Politehnički fakultet Zenica, juni 2026.*
