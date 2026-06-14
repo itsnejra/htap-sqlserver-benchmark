@@ -3,8 +3,7 @@
 
 Projekat iz Optimizacija baza podataka — Komparativna analiza četiri konfiguracijske strategije pohrane nad skupom podataka StackOverflow2010
 
-**Napomena:** Puni benchmark (1.080 runova) traje približno **21 sat**. Kratki test ispravnosti (`--dry-run`) traje oko 10 minuta, ali pretpostavlja da su prethodno preuzeta i restorirana baza StackOverflow2010 te pokrenute sve SQL skripte iz `SQL/` foldera (sekcija 4). Bez toga pokretanje nije moguće.
-
+**Napomena:** Puni benchmark (1.080 runova) traje približno **21 sat**.
 ---
 
 ## Sadržaj
