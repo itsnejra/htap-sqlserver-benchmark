@@ -115,7 +115,7 @@ public sealed class WorkloadExecutor
         {
             try
             {
-                // CHECKPOINT oslobаđa delta store fajlove; GC čisti MVCC version chains.
+                // CHECKPOINT oslobađa delta store fajlove; GC čisti MVCC version chains.
                 await conn.ExecuteAsync("CHECKPOINT;", commandTimeout: 30);
                 await conn.ExecuteAsync(
                     "EXEC sys.sp_xtp_checkpoint_force_garbage_collection;",
