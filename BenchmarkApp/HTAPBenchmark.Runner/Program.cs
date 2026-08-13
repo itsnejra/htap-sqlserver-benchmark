@@ -56,6 +56,33 @@ if (args.Contains("--dry-run"))
     logger.LogWarning("DRY RUN MODE: warmup=2s, measurement=5s, runs=1");
 }
 
+// MAXDOP kontrolni eksperiment (SQL/10_MaxDopControl.sql):
+//   --arm d2  → IM analitika s MAXDOP 2 (izjednačeno s HTAP)
+//   --arm d1  → HTAP analitika s MAXDOP 1 (izjednačeno s IM)
+// Rezultati se pišu pod Configuration "im@d2" / "htap@d1" i ne miješaju se
+// s glavnim setom ni u CSV-u ni u resume logici.
+var armArg = args.SkipWhile(a => a != "--arm").Skip(1).FirstOrDefault()?.ToLowerInvariant();
+if (armArg is not null)
+{
+    benchmarkConfig.OlapProcSuffix = armArg switch
+    {
+        "d2" => "_D2",
+        "d1" => "_D1",
+        _ => throw new ArgumentException($"Nepoznata ruka '{armArg}'. Dozvoljeno: d1, d2.")
+    };
+    benchmarkConfig.ArmLabel = armArg;
+
+    // Kontrolne ruke pišu u zasebne CSV fajlove. Glavni Results/summary.csv je
+    // nastao prije uvođenja kolona sa serverskim brojačima, pa bi dopisivanje
+    // širih redova u njega proizvelo neispravan CSV. Analysis/06_maxdop_control.py
+    // spaja glavni set i sve summary_arm_*.csv fajlove.
+    benchmarkConfig.ResultsCsvPath = $"Results/measurements_arm_{armArg}.csv";
+    benchmarkConfig.SummaryCsvPath = $"Results/summary_arm_{armArg}.csv";
+
+    logger.LogWarning("KONTROLNA RUKA '{Arm}': OLAP procedure sa sufiksom {Suffix}, izlaz {Path}",
+        armArg, benchmarkConfig.OlapProcSuffix, benchmarkConfig.SummaryCsvPath);
+}
+
 // Opcionalni filter po konfiguraciji (--only baseline,cs)
 var onlyArg = args.SkipWhile(a => a != "--only").Skip(1).FirstOrDefault();
 if (onlyArg is not null)
@@ -67,9 +94,9 @@ if (onlyArg is not null)
     logger.LogInformation("Filter: samo konfiguracije {Configs}", string.Join(", ", filter));
 }
 
-logger.LogInformation("╔══════════════════════════════════════════════════════════╗");
+logger.LogInformation("╔═══════════════════════════════════════════════════════╗");
 logger.LogInformation("║   HTAPBenchmark - Evaluacija performansi HTAP paradigme  ║");
-logger.LogInformation("╚══════════════════════════════════════════════════════════╝");
+logger.LogInformation("╚═══════════════════════════════════════════════════════╝");
 logger.LogInformation("Connection: {CS}", benchmarkConfig.ConnectionString[..Math.Min(60, benchmarkConfig.ConnectionString.Length)] + "...");
 logger.LogInformation("Konfiguracije: {Configs}", string.Join(", ", benchmarkConfig.Configurations));
 logger.LogInformation("Ratio-i:       {Ratios}", string.Join(", ", benchmarkConfig.WorkloadRatios));
@@ -105,9 +132,9 @@ try
     stopwatch.Stop();
 
     logger.LogInformation("");
-    logger.LogInformation("╔══════════════════════════════════════════════════════════╗");
+    logger.LogInformation("╔═══════════════════════════════════════════════════════╗");
     logger.LogInformation("║                    BENCHMARK ZAVRŠEN                     ║");
-    logger.LogInformation("╚══════════════════════════════════════════════════════════╝");
+    logger.LogInformation("╚═══════════════════════════════════════════════════════╝");
     logger.LogInformation("Ukupno trajanje:    {Time}", stopwatch.Elapsed.ToString(@"hh\:mm\:ss"));
     logger.LogInformation("Mjerenja CSV:       {Path}", Path.GetFullPath(benchmarkConfig.ResultsCsvPath));
     logger.LogInformation("Summary CSV:        {Path}", Path.GetFullPath(benchmarkConfig.SummaryCsvPath));
