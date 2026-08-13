@@ -94,9 +94,9 @@ if (onlyArg is not null)
     logger.LogInformation("Filter: samo konfiguracije {Configs}", string.Join(", ", filter));
 }
 
-logger.LogInformation("╔═══════════════════════════════════════════════════════╗");
+logger.LogInformation("╔══════════════════════════════════════════════════════════╗");
 logger.LogInformation("║   HTAPBenchmark - Evaluacija performansi HTAP paradigme  ║");
-logger.LogInformation("╚═══════════════════════════════════════════════════════╝");
+logger.LogInformation("╚══════════════════════════════════════════════════════════╝");
 logger.LogInformation("Connection: {CS}", benchmarkConfig.ConnectionString[..Math.Min(60, benchmarkConfig.ConnectionString.Length)] + "...");
 logger.LogInformation("Konfiguracije: {Configs}", string.Join(", ", benchmarkConfig.Configurations));
 logger.LogInformation("Ratio-i:       {Ratios}", string.Join(", ", benchmarkConfig.WorkloadRatios));
@@ -132,9 +132,9 @@ try
     stopwatch.Stop();
 
     logger.LogInformation("");
-    logger.LogInformation("╔═══════════════════════════════════════════════════════╗");
+    logger.LogInformation("╔══════════════════════════════════════════════════════════╗");
     logger.LogInformation("║                    BENCHMARK ZAVRŠEN                     ║");
-    logger.LogInformation("╚═══════════════════════════════════════════════════════╝");
+    logger.LogInformation("╚══════════════════════════════════════════════════════════╝");
     logger.LogInformation("Ukupno trajanje:    {Time}", stopwatch.Elapsed.ToString(@"hh\:mm\:ss"));
     logger.LogInformation("Mjerenja CSV:       {Path}", Path.GetFullPath(benchmarkConfig.ResultsCsvPath));
     logger.LogInformation("Summary CSV:        {Path}", Path.GetFullPath(benchmarkConfig.SummaryCsvPath));
