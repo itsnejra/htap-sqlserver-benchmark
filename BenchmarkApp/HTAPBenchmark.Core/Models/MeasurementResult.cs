@@ -39,6 +39,16 @@ public class RunSummary
 
     public int OltpTotalOps { get; set; }
     public int OlapTotalOps { get; set; }
+
+    /// <summary>Serverski brojači za ovaj run; null ako prikupljanje nije uključeno.</summary>
+    public ServerMetrics? ServerMetrics { get; set; }
+}
+
+/// <summary>Rezultat jednog runa: sirova mjerenja klijenta + serverski brojači.</summary>
+public sealed class RunOutcome
+{
+    public List<MeasurementResult> Measurements { get; set; } = [];
+    public ServerMetrics? ServerMetrics { get; set; }
 }
 
 public class WorkloadContext

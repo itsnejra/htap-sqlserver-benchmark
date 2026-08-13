@@ -34,6 +34,23 @@ public class BenchmarkConfig
     public string ResultsCsvPath { get; set; } = "Results/measurements.csv";
 
     public string SummaryCsvPath { get; set; } = "Results/summary.csv";
+
+    /// <summary>
+    /// Sufiks imena OLAP pohranjenih procedura (npr. "_D2" → im.usp_OLAP_Q1_..._D2).
+    /// Koristi se za MAXDOP kontrolni eksperiment (SQL/10_MaxDopControl.sql).
+    /// Prazno = standardne procedure iz glavnog eksperimenta.
+    /// </summary>
+    public string OlapProcSuffix { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Oznaka eksperimentalne ruke koja se dopisuje na Configuration u rezultatima
+    /// (npr. "d2" → "im@d2"). Drži kontrolne runove odvojenima od glavnog seta
+    /// u istom CSV-u i u resume logici.
+    /// </summary>
+    public string ArmLabel { get; set; } = string.Empty;
+
+    /// <summary>Snimaj serverske brojače (CPU po tipu niti, wait statistika) oko mjerne faze.</summary>
+    public bool CollectServerMetrics { get; set; } = true;
 }
 
 public static class WorkloadRatioExtensions
