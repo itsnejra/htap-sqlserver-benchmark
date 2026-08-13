@@ -63,9 +63,14 @@ public sealed class ResultsWriter : IDisposable
                     "OltpThroughput,OlapThroughput," +
                     "OltpLatencyP50,OltpLatencyP95,OltpLatencyP99," +
                     "OlapLatencyP50,OlapLatencyP95,OlapLatencyP99," +
-                    "OltpSuccessRate,OlapSuccessRate,OltpTotalOps,OlapTotalOps");
+                    "OltpSuccessRate,OlapSuccessRate,OltpTotalOps,OlapTotalOps," +
+                    "OltpCpuMs,OlapCpuMs,CpuUtilizationPct,OlapCpuShare," +
+                    "SchedulerYieldMs,ParallelismWaitMs,CxSyncPortMs," +
+                    "ResourceSemaphoreMs,PageIoLatchMs,WriteLogMs");
                 _summaryHeaderWritten = true;
             }
+
+            var sm = summary.ServerMetrics;
 
             _summaryWriter.WriteLine(string.Create(CultureInfo.InvariantCulture,
                 $"{summary.Configuration},{summary.OltpOlapRatio},{summary.ConcurrencyLevel},{summary.RunNumber}," +
@@ -73,7 +78,11 @@ public sealed class ResultsWriter : IDisposable
                 $"{summary.OltpLatencyP50:F4},{summary.OltpLatencyP95:F4},{summary.OltpLatencyP99:F4}," +
                 $"{summary.OlapLatencyP50:F4},{summary.OlapLatencyP95:F4},{summary.OlapLatencyP99:F4}," +
                 $"{summary.OltpSuccessRate:F4},{summary.OlapSuccessRate:F4}," +
-                $"{summary.OltpTotalOps},{summary.OlapTotalOps}"));
+                $"{summary.OltpTotalOps},{summary.OlapTotalOps}," +
+                $"{(sm?.OltpCpuMs ?? 0):F1},{(sm?.OlapCpuMs ?? 0):F1}," +
+                $"{(sm?.CpuUtilizationPct ?? 0):F3},{(sm?.OlapCpuShare ?? 0):F4}," +
+                $"{(sm?.SchedulerYieldMs ?? 0):F1},{(sm?.ParallelismWaitMs ?? 0):F1},{(sm?.CxSyncPortMs ?? 0):F1}," +
+                $"{(sm?.ResourceSemaphoreMs ?? 0):F1},{(sm?.PageIoLatchMs ?? 0):F1},{(sm?.WriteLogMs ?? 0):F1}"));
 
             _summaryWriter.Flush();
         }

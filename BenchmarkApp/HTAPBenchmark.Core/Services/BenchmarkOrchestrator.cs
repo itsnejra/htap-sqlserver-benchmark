@@ -27,7 +27,8 @@ public sealed class BenchmarkOrchestrator
         ILogger<BenchmarkOrchestrator> logger)
     {
         _config   = config;
-        _executor = new WorkloadExecutor(config.ConnectionString);
+        _executor = new WorkloadExecutor(
+            config.ConnectionString, config.OlapProcSuffix, config.CollectServerMetrics);
         _logger   = logger;
         // VAŽNO: pročitaj resume stanje PRIJE nego ResultsWriter otvori fajlove.
         // ResultsWriter koristi append:true ali drži file handle koji može spriječiti
@@ -53,7 +54,10 @@ public sealed class BenchmarkOrchestrator
         foreach (var config in _config.Configurations)
         {
             string schema = config.ToLabel();
-            _logger.LogInformation("=== Konfiguracija: {Config} ===", schema.ToUpper());
+            // Oznaka ruke odvaja kontrolne runove (npr. "im@d2") od glavnog seta
+            // u rezultatima i u resume logici; SQL i dalje cilja izvornu shemu.
+            string armed = string.IsNullOrEmpty(_config.ArmLabel) ? schema : $"{schema}@{_config.ArmLabel}";
+            _logger.LogInformation("=== Konfiguracija: {Config} ===", armed.ToUpper());
 
             WorkloadContext ctx;
             try
@@ -74,7 +78,7 @@ public sealed class BenchmarkOrchestrator
                 foreach (int concurrency in _config.ConcurrencyLevels)
                 {
                     // Provjeri koliko runova postoji za ovu kombinaciju (resume podrška)
-                    var comboKey = (schema, ratio.ToLabel(), concurrency);
+                    var comboKey = (armed, ratio.ToLabel(), concurrency);
                     int startRun = 1;
                     if (resumeMap.TryGetValue(comboKey, out int alreadyDone))
                     {
@@ -117,17 +121,23 @@ public sealed class BenchmarkOrchestrator
 
                         try
                         {
-                            var measurements = await _executor.ExecuteRunAsync(
+                            var outcome = await _executor.ExecuteRunAsync(
                                 config, ratio, concurrency, run,
                                 _config.WarmupSeconds, _config.MeasurementSeconds,
                                 ctx, globalRunId: runId, cancellationToken);
 
+                            var measurements = outcome.Measurements;
                             var summary = MetricsCalculator.Calculate(runId, measurements, _config.MeasurementSeconds);
                             summary.RunId = runId;
+                            summary.ServerMetrics = outcome.ServerMetrics;
+                            summary.Configuration = armed;
 
                             // Spremi sirova mjerenja i summary
                             foreach (var m in measurements)
+                            {
                                 m.RunId = runId;
+                                m.Configuration = armed;
+                            }
 
                             _writer.WriteMeasurements(measurements);
                             _writer.WriteSummary(summary);
