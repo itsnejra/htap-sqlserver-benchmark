@@ -11,9 +11,21 @@ public sealed class WorkloadExecutor
 {
     private readonly string _connectionString;
 
-    public WorkloadExecutor(string connectionString)
+    // Radne veze nose Application Name da bi se CPU vrijeme moglo atribuirati
+    // OLTP odnosno OLAP nitima preko sys.dm_exec_sessions (v. ServerMetricsCollector).
+    private readonly string _oltpConnectionString;
+    private readonly string _olapConnectionString;
+
+    private readonly string _olapProcSuffix;
+    private readonly ServerMetricsCollector? _metrics;
+
+    public WorkloadExecutor(string connectionString, string olapProcSuffix = "", bool collectServerMetrics = false)
     {
-        _connectionString = connectionString;
+        _connectionString     = connectionString;
+        _oltpConnectionString = ServerMetricsCollector.Tag(connectionString, ServerMetricsCollector.OltpAppName);
+        _olapConnectionString = ServerMetricsCollector.Tag(connectionString, ServerMetricsCollector.OlapAppName);
+        _olapProcSuffix       = olapProcSuffix;
+        _metrics              = collectServerMetrics ? new ServerMetricsCollector(connectionString) : null;
     }
 
     public async Task<WorkloadContext> LoadWorkloadContextAsync(string schema)
@@ -103,7 +115,7 @@ public sealed class WorkloadExecutor
         {
             try
             {
-                // CHECKPOINT oslobađa delta store fajlove; GC čisti MVCC version chains.
+                // CHECKPOINT oslobаđa delta store fajlove; GC čisti MVCC version chains.
                 await conn.ExecuteAsync("CHECKPOINT;", commandTimeout: 30);
                 await conn.ExecuteAsync(
                     "EXEC sys.sp_xtp_checkpoint_force_garbage_collection;",
@@ -209,7 +221,7 @@ public sealed class WorkloadExecutor
         }
     }
 
-    public async Task<List<MeasurementResult>> ExecuteRunAsync(
+    public async Task<RunOutcome> ExecuteRunAsync(
         DbConfiguration config,
         WorkloadRatio ratio,
         int concurrencyLevel,
@@ -248,9 +260,38 @@ public sealed class WorkloadExecutor
                 runNumber, config, ratio, concurrencyLevel, cancellationToken)))
             .ToList();
 
+        // Serverski brojači se snimaju na granici warmup→mjerenje i na kraju mjerenja,
+        // tako da delta pokriva točno mjernu fazu (warmup je isključen kao i kod
+        // klijentskih metrika). Snimanje ide preko zasebne monitor veze.
+        ServerSnapshot? before = null;
+
+        if (_metrics is not null)
+        {
+            var delay = warmupEnd - DateTime.UtcNow;
+            if (delay > TimeSpan.Zero)
+            {
+                try { await Task.Delay(delay, cancellationToken); } catch (OperationCanceledException) { }
+            }
+            try { before = await _metrics.SnapshotAsync(cancellationToken); } catch { /* mjerenje se nastavlja */ }
+        }
+
         await Task.WhenAll(allTasks);
 
-        return measurements.ToList();
+        ServerMetrics? serverMetrics = null;
+        if (_metrics is not null && before is not null)
+        {
+            try
+            {
+                var after = await _metrics.SnapshotAsync(CancellationToken.None);
+                serverMetrics = ServerMetricsCollector.Delta(before, after, measurementSeconds);
+            }
+            catch { /* mjerenje se nastavlja bez serverskih brojača */ }
+        }
+        return new RunOutcome
+        {
+            Measurements  = measurements.ToList(),
+            ServerMetrics = serverMetrics
+        };
     }
 
     private async Task RunOltpWorkerAsync(
@@ -268,7 +309,7 @@ public sealed class WorkloadExecutor
         CancellationToken ct)
     {
         var rng = new Random(Guid.NewGuid().GetHashCode());
-        await using var conn = new SqlConnection(_connectionString);
+        await using var conn = new SqlConnection(_oltpConnectionString);
         await conn.OpenAsync(ct);
 
         var sw = new Stopwatch();
@@ -396,7 +437,7 @@ public sealed class WorkloadExecutor
     {
         var rng = new Random(Guid.NewGuid().GetHashCode());
 
-        var builder = new SqlConnectionStringBuilder(_connectionString)
+        var builder = new SqlConnectionStringBuilder(_olapConnectionString)
         {
             CommandTimeout = 300
         };
@@ -409,7 +450,7 @@ public sealed class WorkloadExecutor
         {
             bool inWarmup = DateTime.UtcNow < warmupEnd;
             string queryName = OlapQueries.SelectQueryName(rng);
-            string sql = OlapQueries.GetQuery(schema, queryName);
+            string sql = OlapQueries.GetQuery(schema, queryName, _olapProcSuffix);
 
             // Per-query deadline: cancel the SQL command 5 s after measurement window ends.
             // This prevents slow baseline/im queries from blocking the entire run.
