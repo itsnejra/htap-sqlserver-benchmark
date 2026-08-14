@@ -36,6 +36,19 @@ e-mail adrese autora.
 grep -o '\\todonum{[^}]*}' Paper/Telfor2026/telfor2026.tex | wc -l   # trenutno 2
 ```
 
+### Prijevod u citljiv format
+
+`prijevod_rada.md` se cita i takav, ali za PDF ili Word:
+
+```bash
+cd Paper/Telfor2026
+pandoc prijevod_rada.md -o prijevod_rada.docx --toc --toc-depth=2
+```
+
+Za PDF preko `pdflatex` prvo treba zamijeniti znakove koje taj engine nema
+(emoji, `×`, `→`, `∈`) ili koristiti `--pdf-engine=xelatex` uz font koji ih
+pokriva. Oba izlaza su generisana i nisu u git-u.
+
 ## Kako se rad kompajlira
 
 Figure 1 i 3 traže podatke kontrolne ruke `im@d2`, koji **nisu u repou** (nastaju

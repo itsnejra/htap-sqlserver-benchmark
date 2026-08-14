@@ -55,3 +55,6 @@ Paper/*_nacrt.*
 # ── Junk / stale result files ────────────────────────────────────
 Results/per_operation_stats_detailed_new.csv
 null
+
+# ── Citljive konverzije prijevoda (nastaju iz prijevod_rada.md) ───
+Paper/Telfor2026/*.docx
