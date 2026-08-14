@@ -274,7 +274,10 @@ def write_report(comp: pd.DataFrame, contrib: pd.DataFrame, server: pd.DataFrame
     ]
 
     for label, *_ in PAIRS:
-        sub = comp[comp["Poredjenje"] == label]
+        # comp je prazan DataFrame bez kolona ako nijedna usporedba nije izvediva
+        # (npr. nedostaje i glavni set i ruke) — tada indeksiranje po imenu kolone
+        # baca KeyError umjesto da vrati prazan rezultat.
+        sub = comp[comp["Poredjenje"] == label] if "Poredjenje" in comp.columns else comp
         if sub.empty:
             lines.append(f"  {label}: nema podataka (ruka nije izmjerena).")
             continue
