@@ -39,82 +39,7 @@ var logger = services.GetRequiredService<ILogger<BenchmarkOrchestrator>>();
 var benchmarkConfig = configuration.GetSection("BenchmarkConfig").Get<BenchmarkConfig>()
     ?? new BenchmarkConfig();
 
-// ============================================================
-// Kontrolni eksperimenti (--experiment maxdop|sync|waits)
-//
-// Svaki preset piše u vlastite izlazne datoteke da ne bi pomiješao rezultate s
-// glavnim faktorijalom u Results/summary.csv. Eksperimentalni uvjet se kodira u
-// vrijednost kolone Configuration (npr. htap_md1, htap_sync5).
-// ============================================================
-var experimentArg = args.SkipWhile(a => a != "--experiment").Skip(1).FirstOrDefault();
-if (experimentArg is not null)
-{
-    switch (experimentArg.ToLowerInvariant())
-    {
-        // MAXDOP kontrola: izolira confounding varijablu stepena paralelizma u
-        // usporedbi HTAP naspram IM. Pun 2×2 faktorijal (konfiguracija × MAXDOP).
-        // Preduvjet: SQL/10_MaxDop_Control_Variants.sql.
-        case "maxdop":
-            benchmarkConfig.ExperimentTag          = "maxdop_control";
-            benchmarkConfig.Configurations         = [DbConfiguration.IM, DbConfiguration.HTAP];
-            benchmarkConfig.WorkloadRatios         = [WorkloadRatio.OLTP80_OLAP20, WorkloadRatio.OLTP50_OLAP50];
-            benchmarkConfig.ConcurrencyLevels      = [16, 32];
-            benchmarkConfig.OlapMaxDopVariants     = [1, 2];
-            benchmarkConfig.SyncIntervalsSeconds   = [0];
-            benchmarkConfig.RunsPerCombination     = 10;
-            benchmarkConfig.CollectResourceMetrics = true;
-            benchmarkConfig.ResultsCsvPath         = "Results/maxdop_measurements.csv";
-            benchmarkConfig.SummaryCsvPath         = "Results/maxdop_summary.csv";
-            benchmarkConfig.ResourceUsageCsvPath   = "Results/maxdop_resource_usage.csv";
-            benchmarkConfig.WaitStatsCsvPath       = "Results/maxdop_wait_stats.csv";
-            logger.LogWarning("EKSPERIMENT: MAXDOP kontrola (IM/HTAP × MAXDOP 1/2, 2 omjera × 2 razine × 10 runova)");
-            break;
-
-        // Cijena sinhronizacije dual-store slojeva: OLTP propusnost i svježina
-        // analitičkih podataka kao funkcija intervala propagacije.
-        // Preduvjet: SQL/11_DualStore_Sync.sql.
-        case "sync":
-            benchmarkConfig.ExperimentTag          = "sync_cost";
-            benchmarkConfig.Configurations         = [DbConfiguration.HTAP];
-            benchmarkConfig.WorkloadRatios         = [WorkloadRatio.OLTP80_OLAP20, WorkloadRatio.OLTP50_OLAP50];
-            benchmarkConfig.ConcurrencyLevels      = [16];
-            benchmarkConfig.OlapMaxDopVariants     = [0];
-            benchmarkConfig.SyncIntervalsSeconds   = [0, 1, 5, 30];
-            benchmarkConfig.RunsPerCombination     = 10;
-            benchmarkConfig.CollectResourceMetrics = true;
-            benchmarkConfig.ResultsCsvPath         = "Results/sync_measurements.csv";
-            benchmarkConfig.SummaryCsvPath         = "Results/sync_summary.csv";
-            benchmarkConfig.ResourceUsageCsvPath   = "Results/sync_resource_usage.csv";
-            benchmarkConfig.WaitStatsCsvPath       = "Results/sync_wait_stats.csv";
-            benchmarkConfig.SyncCyclesCsvPath      = "Results/sync_cycles.csv";
-            logger.LogWarning("EKSPERIMENT: cijena sinhronizacije (HTAP × interval 0/1/5/30 s, 2 omjera × 10 runova)");
-            break;
-
-        // Mjerenje CPU-a i čekanja nad podskupom glavnog dizajna. Daje direktan
-        // dokaz za mehanizam CPU saturacije koji je u radu dosad bio samo izveden
-        // iz modela izvršavanja upita.
-        case "waits":
-            benchmarkConfig.ExperimentTag          = "resource_profile";
-            benchmarkConfig.Configurations         = [DbConfiguration.CS, DbConfiguration.IM, DbConfiguration.HTAP];
-            benchmarkConfig.ConcurrencyLevels      = [4, 16, 32];
-            benchmarkConfig.RunsPerCombination     = 10;
-            benchmarkConfig.CollectResourceMetrics = true;
-            benchmarkConfig.ResultsCsvPath         = "Results/profile_measurements.csv";
-            benchmarkConfig.SummaryCsvPath         = "Results/profile_summary.csv";
-            benchmarkConfig.ResourceUsageCsvPath   = "Results/profile_resource_usage.csv";
-            benchmarkConfig.WaitStatsCsvPath       = "Results/profile_wait_stats.csv";
-            logger.LogWarning("EKSPERIMENT: profil resursa (CS/IM/HTAP × 3 omjera × 3 razine × 10 runova)");
-            break;
-
-        default:
-            logger.LogError("Nepoznat eksperiment '{Exp}'. Podržano: maxdop, sync, waits.", experimentArg);
-            return;
-    }
-}
-
-// Provjeri command-line override-ove (za parcijalno pokretanje).
-// Namjerno DOLAZE POSLIJE preseta eksperimenata, da --quick i --dry-run mogu
-// skratiti i kontrolne eksperimente pri provjeri postavke.
+// Provjeri command-line override-ove (za parcijalno pokretanje)
 if (args.Contains("--quick"))
 {
     benchmarkConfig.WarmupSeconds      = 5;
@@ -129,6 +54,97 @@ if (args.Contains("--dry-run"))
     benchmarkConfig.MeasurementSeconds = 5;
     benchmarkConfig.RunsPerCombination = 1;
     logger.LogWarning("DRY RUN MODE: warmup=2s, measurement=5s, runs=1");
+}
+
+// MAXDOP kontrolni eksperiment (SQL/10_MaxDopControl.sql):
+//   --arm d2      → IM analitika s MAXDOP 2 (izjednačeno s HTAP)
+//   --arm d1      → HTAP analitika s MAXDOP 1 (izjednačeno s IM)
+//   --arm d1base  → IM s izvornim procedurama (MAXDOP 1), ali instrumentirano
+//   --arm d1base2 → ponovljeni d1base, za ABA raspored (v. nize)
+//
+// d1base postoji zato što je glavni `im` set izmjeren prije nego je dodana
+// serverska instrumentacija, i u zasebnoj mjernoj sesiji. Usporedba d1base
+// protiv d2 mjeri isključivo MAXDOP, jer obje ruke idu u istoj sesiji, nad
+// istim stanjem baze i s istim brojačima. Bez toga se efekt paralelizma ne
+// može odvojiti od razlike između mjernih sesija.
+//
+// Rezultati se pišu pod Configuration "im@d2" / "htap@d1" / "im@d1base" i ne
+// miješaju se s glavnim setom ni u CSV-u ni u resume logici.
+var armArg = args.SkipWhile(a => a != "--arm").Skip(1).FirstOrDefault()?.ToLowerInvariant();
+if (armArg is not null)
+{
+    // Prefiks odredjuje koje se procedure pozivaju; ostatak imena je slobodan,
+    // pa se ista ruka moze izmjeriti vise puta u razlicitim trenucima sesije
+    // (npr. d1base, pa d1base2 poslije d2) bez izmjene koda. To je nuzno za
+    // ABA raspored, kojim se odvaja efekt postavke od pomaka kroz vrijeme.
+    benchmarkConfig.OlapProcSuffix = armArg switch
+    {
+        // Izvorne procedure — im.usp_OLAP_* vec nose OPTION(MAXDOP 1);
+        // mijenja se samo gdje se pise i pod kojom oznakom.
+        var a when a.StartsWith("d1base") => "",
+        var a when a.StartsWith("d2")     => "_D2",
+        var a when a.StartsWith("d1")     => "_D1",
+        _ => throw new ArgumentException(
+            $"Nepoznata ruka '{armArg}'. Ime mora poceti s d1base, d2 ili d1.")
+    };
+    benchmarkConfig.ArmLabel = armArg;
+
+    // Kontrolne ruke pišu u zasebne CSV fajlove. Glavni Results/summary.csv je
+    // nastao prije uvođenja kolona sa serverskim brojačima, pa bi dopisivanje
+    // širih redova u njega proizvelo neispravan CSV. Analysis/06_maxdop_control.py
+    // spaja glavni set i sve summary_arm_*.csv fajlove.
+    benchmarkConfig.ResultsCsvPath = $"Results/measurements_arm_{armArg}.csv";
+    benchmarkConfig.SummaryCsvPath = $"Results/summary_arm_{armArg}.csv";
+
+    logger.LogWarning("KONTROLNA RUKA '{Arm}': OLAP procedure sa sufiksom {Suffix}, izlaz {Path}",
+        armArg, benchmarkConfig.OlapProcSuffix, benchmarkConfig.SummaryCsvPath);
+}
+
+// Cijena sinhronizacije dual-store slojeva (SQL/11_DualStore_Sync.sql):
+//   --sync 5   → htap.* se propagira u cs.* svakih 5 s tokom mjerenja
+//
+// Glavni eksperiment mjeri HTAP bez ijedne propagacije: analitički sloj čita
+// statičan snapshot i izolacija radnih tokova dolazi besplatno. Produkcijski
+// dual-store sistemi tu cijenu plaćaju stalno (TiDB Raft replikacija, F1
+// Lightning Changepump). Mjerenjem pri više intervala prednost dual-store
+// pristupa prestaje biti gornja granica i postaje funkcija tražene svježine.
+//
+// Ruka se označava kao "htap@sync5", pa se ne miješa s glavnim setom.
+// Interval 0 (bez sinhronizacije) mjeriti kao "--arm sync0" u ISTOJ sesiji —
+// bez toga se cijena sinhronizacije ne može odvojiti od razlike među sesijama.
+var syncArg = args.SkipWhile(a => a != "--sync").Skip(1).FirstOrDefault();
+if (syncArg is not null)
+{
+    if (!int.TryParse(syncArg, out int syncSeconds) || syncSeconds < 0)
+    {
+        logger.LogError("Neispravan interval '{Arg}'. Očekuje se broj sekundi (npr. --sync 5).", syncArg);
+        return;
+    }
+
+    benchmarkConfig.SyncIntervalSeconds = syncSeconds;
+    benchmarkConfig.Configurations      = [DbConfiguration.HTAP];
+
+    if (string.IsNullOrEmpty(benchmarkConfig.ArmLabel))
+    {
+        benchmarkConfig.ArmLabel       = $"sync{syncSeconds}";
+        benchmarkConfig.ResultsCsvPath = $"Results/measurements_arm_sync{syncSeconds}.csv";
+        benchmarkConfig.SummaryCsvPath = $"Results/summary_arm_sync{syncSeconds}.csv";
+    }
+
+    benchmarkConfig.SyncCyclesCsvPath = $"Results/sync_cycles_{syncSeconds}s.csv";
+
+    logger.LogWarning(
+        "SINHRONIZACIJA htap.* -> cs.* svakih {N} s (ruka '{Arm}', izlaz {Path})",
+        syncSeconds, benchmarkConfig.ArmLabel, benchmarkConfig.SummaryCsvPath);
+}
+
+// Provjera skupa podataka prije mjerenja je uključena po defaultu. Isključiti samo
+// svjesno — npr. pri radu nad namjerno smanjenim skupom. Rezultati iz runa bez
+// provjere nisu usporedivi s ostatkom eksperimenta ako je shema bila nepotpuna.
+if (args.Contains("--skip-verify"))
+{
+    benchmarkConfig.VerifyDatasetBeforeRun = false;
+    logger.LogWarning("PROVJERA SKUPA PODATAKA ISKLJUČENA (--skip-verify).");
 }
 
 // Opcionalni filter po konfiguraciji (--only baseline,cs)
@@ -156,8 +172,6 @@ logger.LogInformation("Output:        {Path}", Path.GetFullPath(benchmarkConfig.
 int totalRuns = benchmarkConfig.Configurations.Length *
                 benchmarkConfig.WorkloadRatios.Length *
                 benchmarkConfig.ConcurrencyLevels.Length *
-                Math.Max(1, benchmarkConfig.OlapMaxDopVariants.Length) *
-                Math.Max(1, benchmarkConfig.SyncIntervalsSeconds.Length) *
                 benchmarkConfig.RunsPerCombination;
 
 double estHours = totalRuns * (benchmarkConfig.WarmupSeconds + benchmarkConfig.MeasurementSeconds) / 3600.0;

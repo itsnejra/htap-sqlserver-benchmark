@@ -11,14 +11,22 @@ SVRHA
     između svježine analitičkih podataka i OLTP propusnosti.
 
 ULAZ
-    Results/sync_summary.csv    (propusnost i latencija po intervalu)
-    Results/sync_cycles.csv     (trajanje ciklusa, propagirani redovi, kašnjenje)
-    Generiše: dotnet run --project HTAPBenchmark.Runner -- --experiment sync
+    Results/summary_arm_sync*.csv   (propusnost i latencija po intervalu)
+    Results/sync_cycles_*s.csv      (trajanje ciklusa, propagirani redovi, kašnjenje)
+
+    Generiše se po jednom pokretanju za svaki interval, SVE U ISTOJ SESIJI:
+        dotnet run --project HTAPBenchmark.Runner -- --sync 0
+        dotnet run --project HTAPBenchmark.Runner -- --sync 1
+        dotnet run --project HTAPBenchmark.Runner -- --sync 5
+        dotnet run --project HTAPBenchmark.Runner -- --sync 30
+
+    Interval 0 je kontrolna ruka i mora biti izmjeren u istoj sesiji kao ostali;
+    inače se cijena sinhronizacije ne može odvojiti od razlike među sesijama.
 
 IZLAZ
     Results/sync_cost_report.txt
     Results/sync_cost_summary.csv
-    Results/figures/17_sync_cost_tradeoff.png
+    Results/figures/15_sync_cost_tradeoff.png
 """
 
 from pathlib import Path
@@ -34,8 +42,8 @@ ROOT        = Path(__file__).resolve().parent.parent
 RESULTS_DIR = ROOT / "Results"
 FIGURES_DIR = RESULTS_DIR / "figures"
 
-SUMMARY_CSV = RESULTS_DIR / "sync_summary.csv"
-CYCLES_CSV  = RESULTS_DIR / "sync_cycles.csv"
+SUMMARY_GLOB = "summary_arm_sync*.csv"
+CYCLES_GLOB  = "sync_cycles_*s.csv"
 
 HTAP_COLOR = "#2E86AB"
 
@@ -49,18 +57,22 @@ def cohens_d(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def parse_interval(label: str) -> int:
-    """'htap' -> 0; 'htap_sync5' -> 5"""
-    return int(label.split("_sync")[1]) if "_sync" in label else 0
+    """'htap@sync5' -> 5; 'htap@sync0' -> 0; 'htap' -> 0"""
+    return int(label.split("@sync")[1]) if "@sync" in label else 0
 
 
 def load() -> tuple[pd.DataFrame, pd.DataFrame]:
-    if not SUMMARY_CSV.exists():
+    summary_files = sorted(RESULTS_DIR.glob(SUMMARY_GLOB))
+    if not summary_files:
         raise SystemExit(
-            f"Nedostaje {SUMMARY_CSV.name}\n"
-            "Pokrenite prvo: dotnet run --project HTAPBenchmark.Runner -- --experiment sync"
+            f"Nema nijedne datoteke {SUMMARY_GLOB} u Results/\n"
+            "Pokrenite mjerenje za svaki interval u istoj sesiji, npr.:\n"
+            "  dotnet run --project HTAPBenchmark.Runner -- --sync 0\n"
+            "  dotnet run --project HTAPBenchmark.Runner -- --sync 5"
         )
 
-    df = pd.read_csv(SUMMARY_CSV)
+    print(f"  Ulazne datoteke: {', '.join(f.name for f in summary_files)}")
+    df = pd.concat([pd.read_csv(f) for f in summary_files], ignore_index=True)
     df["SyncInterval"] = df["Configuration"].map(parse_interval)
 
     before = len(df)
@@ -68,7 +80,9 @@ def load() -> tuple[pd.DataFrame, pd.DataFrame]:
     if before != len(df):
         print(f"  Isključeno {before - len(df)} runova (OLTP success rate < 90%).")
 
-    cycles = pd.read_csv(CYCLES_CSV) if CYCLES_CSV.exists() else pd.DataFrame()
+    cycle_files = sorted(RESULTS_DIR.glob(CYCLES_GLOB))
+    cycles = (pd.concat([pd.read_csv(f) for f in cycle_files], ignore_index=True)
+              if cycle_files else pd.DataFrame())
     return df, cycles
 
 
@@ -187,7 +201,7 @@ def plot(summary: pd.DataFrame) -> None:
     fig.tight_layout()
 
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-    path = FIGURES_DIR / "17_sync_cost_tradeoff.png"
+    path = FIGURES_DIR / "15_sync_cost_tradeoff.png"
     fig.savefig(path, dpi=300, bbox_inches="tight")
     plt.close(fig)
     print(f"  Figura: {path.relative_to(ROOT)}")
@@ -265,7 +279,7 @@ def write_report(summary: pd.DataFrame, cycles: pd.DataFrame) -> None:
 
 def main() -> None:
     print("=" * 78)
-    print("08: Cijena sinhronizacije dual-store slojeva")
+    print("10: Cijena sinhronizacije dual-store slojeva")
     print("=" * 78)
 
     df, cycles = load()

@@ -15,16 +15,11 @@ public sealed class BenchmarkOrchestrator
     // Resume mapa pročitana PRIJE nego ResultsWriter otvori (i potencijalno zareze) fajlove.
     private readonly Dictionary<(string, string, int), int> _resumeMap;
 
-    // Ukupan broj kombinacija: config × ratio × concurrency × runs,
-    // pomnoženo dimenzijama kontrolnih eksperimenata (MAXDOP varijante, sync intervali).
-    // U glavnom eksperimentu obje dodatne dimenzije imaju po jedan element, pa je
-    // ukupan broj kao i prije: 4 × 3 × 3 × 30 = 1080.
+    // Ukupan broj kombinacija: 4 config × 3 ratio × 3 concurrency × 30 runs = 1080
     public int TotalRuns =>
         _config.Configurations.Length *
         _config.WorkloadRatios.Length *
         _config.ConcurrencyLevels.Length *
-        Math.Max(1, _config.OlapMaxDopVariants.Length) *
-        Math.Max(1, _config.SyncIntervalsSeconds.Length) *
         _config.RunsPerCombination;
 
     public BenchmarkOrchestrator(
@@ -32,18 +27,17 @@ public sealed class BenchmarkOrchestrator
         ILogger<BenchmarkOrchestrator> logger)
     {
         _config   = config;
-        _executor = new WorkloadExecutor(config.ConnectionString, config.CollectResourceMetrics);
+        _executor = new WorkloadExecutor(
+            config.ConnectionString, config.OlapProcSuffix, config.CollectServerMetrics,
+            config.SyncIntervalSeconds);
         _logger   = logger;
         // VAŽNO: pročitaj resume stanje PRIJE nego ResultsWriter otvori fajlove.
         // ResultsWriter koristi append:true ali drži file handle koji može spriječiti
         // konkurentno čitanje u nekim scenarijima. Čitanjem prvo garantiramo konzistentnost.
         _resumeMap = BuildResumeMap(config.SummaryCsvPath);
         _writer   = new ResultsWriter(
-            config.ResultsCsvPath,
-            config.SummaryCsvPath,
-            config.CollectResourceMetrics ? config.ResourceUsageCsvPath : null,
-            config.CollectResourceMetrics ? config.WaitStatsCsvPath : null,
-            config.SyncIntervalsSeconds.Any(s => s > 0) ? config.SyncCyclesCsvPath : null);
+            config.ResultsCsvPath, config.SummaryCsvPath,
+            config.SyncIntervalSeconds > 0 ? config.SyncCyclesCsvPath : null);
     }
 
     public async Task RunAllAsync(CancellationToken cancellationToken = default)
@@ -63,7 +57,10 @@ public sealed class BenchmarkOrchestrator
         foreach (var config in _config.Configurations)
         {
             string schema = config.ToLabel();
-            _logger.LogInformation("=== Konfiguracija: {Config} ===", schema.ToUpper());
+            // Oznaka ruke odvaja kontrolne runove (npr. "im@d2") od glavnog seta
+            // u rezultatima i u resume logici; SQL i dalje cilja izvornu shemu.
+            string armed = string.IsNullOrEmpty(_config.ArmLabel) ? schema : $"{schema}@{_config.ArmLabel}";
+            _logger.LogInformation("=== Konfiguracija: {Config} ===", armed.ToUpper());
 
             WorkloadContext ctx;
             try
@@ -79,46 +76,65 @@ public sealed class BenchmarkOrchestrator
                 continue;
             }
 
-            // Eksplicitni tip: collection expression [0] nema ciljni tip u `var` deklaraciji.
-            int[] maxDopVariants = _config.OlapMaxDopVariants.Length > 0 ? _config.OlapMaxDopVariants : [0];
-            int[] syncIntervals  = _config.SyncIntervalsSeconds.Length > 0 ? _config.SyncIntervalsSeconds : [0];
-
-            // Sinhronizacija se odnosi isključivo na HTAP dual-store konfiguraciju;
-            // ostale konfiguracije nemaju odvojen analitički sloj koji bi se punio.
-            if (config != DbConfiguration.HTAP && syncIntervals.Any(s => s > 0))
+            // Provjera da shema uopšte sadrži pun skup podataka. im.* i htap.* su
+            // SCHEMA_ONLY i prazne se pri svakom restartu SQL Servera; mjerenje nad
+            // djelimično učitanim tablicama ne prijavljuje grešku, samo tiho daje
+            // brojke koje nisu usporedive ni s čim. Prekidamo prije nego potroši sate.
+            if (_config.VerifyDatasetBeforeRun)
             {
-                syncIntervals = [0];
-                _logger.LogInformation("  Sync intervali se preskaču za {Config} (nema dual-store sloja).", schema);
-            }
-
-            if (config == DbConfiguration.HTAP && syncIntervals.Any(s => s > 0))
-            {
+                DatasetIntegrityCheck.Report report;
                 try
                 {
-                    await DualStoreSynchronizer.PrepareAsync(_config.ConnectionString, ctx.PostIds, cancellationToken);
-                    _logger.LogInformation("  Sync baseline snimljen ({N} aktivnih postova).", ctx.PostIds.Length);
+                    report = await DatasetIntegrityCheck.VerifyAsync(
+                        _config.ConnectionString, schema, cancellationToken);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "  GREŠKA pri pripremi sinhronizacije. Preskačem {Config}.", schema);
+                    _logger.LogError(ex, "  GREŠKA pri provjeri skupa podataka za {Config}. Preskačem.", schema);
+                    continue;
+                }
+
+                if (!report.IsOk)
+                {
+                    _logger.LogError(
+                        "  PREKID: shema {Schema} nema očekivan broj redova.{NewLine}{Problems}{NewLine}" +
+                        "  Za im.*/htap.* pokrenite SQL/05b_LoadData_CS_HTAP_Only.sql (SCHEMA_ONLY tablice se" +
+                        " prazne pri restartu SQL Servera), za baseline/cs SQL/05_LoadData.sql.{NewLine}" +
+                        "  Provjeru možete zaobići s --skip-verify, ali rezultati tada nisu usporedivi" +
+                        " s ostatkom eksperimenta.",
+                        schema, Environment.NewLine,
+                        DatasetIntegrityCheck.DescribeProblems(report), Environment.NewLine, Environment.NewLine);
+                    continue;
+                }
+
+                _logger.LogInformation("  Skup podataka provjeren: sve tablice u shemi {Schema} pune.", schema);
+            }
+
+            if (_config.SyncIntervalSeconds > 0 && config == DbConfiguration.HTAP)
+            {
+                try
+                {
+                    await DualStoreSynchronizer.PrepareAsync(
+                        _config.ConnectionString, ctx.PostIds, cancellationToken);
+                    _logger.LogInformation(
+                        "  Sinhronizacija svakih {N} s; baseline Score snimljen ({Posts} postova).",
+                        _config.SyncIntervalSeconds, ctx.PostIds.Length);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "  GREŠKA pri pripremi sinhronizacije (je li pokrenut SQL/11_DualStore_Sync.sql?). Preskačem {Config}.",
+                        schema);
                     continue;
                 }
             }
-
-            foreach (int olapMaxDop in maxDopVariants)
-            foreach (int syncInterval in syncIntervals)
-            {
-            string runLabel = config.ToRunLabel(olapMaxDop, syncInterval);
-            if (runLabel != schema)
-                _logger.LogInformation("--- Uvjet: {Label} (MAXDOP={Dop}, sync={Sync}s) ---",
-                    runLabel, olapMaxDop == 0 ? "originalni" : olapMaxDop.ToString(), syncInterval);
 
             foreach (var ratio in _config.WorkloadRatios)
             {
                 foreach (int concurrency in _config.ConcurrencyLevels)
                 {
                     // Provjeri koliko runova postoji za ovu kombinaciju (resume podrška)
-                    var comboKey = (runLabel, ratio.ToLabel(), concurrency);
+                    var comboKey = (armed, ratio.ToLabel(), concurrency);
                     int startRun = 1;
                     if (resumeMap.TryGetValue(comboKey, out int alreadyDone))
                     {
@@ -143,7 +159,7 @@ public sealed class BenchmarkOrchestrator
                     // efekt koji uzrokuje 0 OLAP ops u prvim runovima.
                     try
                     {
-                        await _executor.WarmOlapCacheAsync(schema, olapMaxDop);
+                        await _executor.WarmOlapCacheAsync(schema);
                         _logger.LogInformation("  OLAP cache zagrijan.");
                     }
                     catch (Exception ex)
@@ -164,61 +180,44 @@ public sealed class BenchmarkOrchestrator
                             var outcome = await _executor.ExecuteRunAsync(
                                 config, ratio, concurrency, run,
                                 _config.WarmupSeconds, _config.MeasurementSeconds,
-                                ctx, globalRunId: runId,
-                                olapMaxDopVariant: olapMaxDop,
-                                syncIntervalSeconds: syncInterval,
-                                cancellationToken: cancellationToken);
+                                ctx, globalRunId: runId, cancellationToken);
 
                             var measurements = outcome.Measurements;
-
                             var summary = MetricsCalculator.Calculate(runId, measurements, _config.MeasurementSeconds);
                             summary.RunId = runId;
-                            // Eksperimentalni uvjet se kodira u oznaku konfiguracije
-                            // (npr. htap_md1), da resume logika i analiza razlikuju uvjete.
-                            summary.Configuration = runLabel;
+                            summary.ServerMetrics = outcome.ServerMetrics;
+                            summary.Configuration = armed;
 
                             // Spremi sirova mjerenja i summary
                             foreach (var m in measurements)
                             {
                                 m.RunId = runId;
-                                m.Configuration = runLabel;
+                                m.Configuration = armed;
                             }
 
                             _writer.WriteMeasurements(measurements);
                             _writer.WriteSummary(summary);
-
-                            if (outcome.Resources is not null)
-                            {
-                                Annotate(outcome.Resources, runId, runLabel, ratio, concurrency, run, olapMaxDop, syncInterval);
-                                _writer.WriteResourceUsage(outcome.Resources);
-                            }
-
-                            if (outcome.Waits.Count > 0)
-                            {
-                                foreach (var w in outcome.Waits)
-                                    Annotate(w, runId, runLabel, ratio, concurrency, run, olapMaxDop, syncInterval);
-                                _writer.WriteWaits(outcome.Waits);
-                            }
 
                             if (outcome.SyncCycles.Count > 0)
                             {
                                 foreach (var c in outcome.SyncCycles)
                                 {
                                     c.RunId               = runId;
-                                    c.ExperimentTag       = _config.ExperimentTag;
-                                    c.Configuration       = runLabel;
+                                    c.Configuration       = armed;
                                     c.OltpOlapRatio       = ratio.ToLabel();
                                     c.ConcurrencyLevel    = concurrency;
                                     c.RunNumber           = run;
-                                    c.SyncIntervalSeconds = syncInterval;
+                                    c.SyncIntervalSeconds = _config.SyncIntervalSeconds;
                                 }
                                 _writer.WriteSyncCycles(outcome.SyncCycles);
                             }
 
                             // Vrati cs.* sloj u polazno stanje: sinhronizacija je u njega
                             // upisala redove i izmijenila Score vrijednosti, a sljedeći run
-                            // mora krenuti iz identičnog stanja podataka.
-                            if (syncInterval > 0)
+                            // mora krenuti iz identičnog stanja podataka. Bez ovoga bi se
+                            // izmjene akumulirale i preko TruncateAndReloadPostsAsync vratile
+                            // natrag u htap.Posts.
+                            if (_config.SyncIntervalSeconds > 0 && config == DbConfiguration.HTAP)
                             {
                                 try
                                 {
@@ -269,7 +268,7 @@ public sealed class BenchmarkOrchestrator
                         {
                             _logger.LogError(ex,
                                 "    GREŠKA u runu {Config}/{Ratio}/{C}/#{Run}",
-                                runLabel, ratio.ToLabel(), concurrency, run);
+                                schema, ratio.ToLabel(), concurrency, run);
                         }
                     }
 
@@ -306,47 +305,13 @@ public sealed class BenchmarkOrchestrator
                     }
                 }
             }
-            } // kraj petlji po MAXDOP varijantama i sync intervalima
         }
 
         _logger.LogInformation("Benchmark završen. Ukupno runova: {Completed}/{Total}", completedRuns, TotalRuns);
     }
 
     /// <summary>
-    /// Popunjava identifikacijska polja instrumentacijskih zapisa. ResourceMonitor i
-    /// DualStoreSynchronizer mjere resurse i ne poznaju eksperimentalni kontekst, pa
-    /// im ga orkestrator pridružuje na jednom mjestu.
-    /// </summary>
-    private void Annotate(
-        ResourceUsage usage, int runId, string runLabel, WorkloadRatio ratio,
-        int concurrency, int run, int olapMaxDop, int syncInterval)
-    {
-        usage.RunId               = runId;
-        usage.ExperimentTag       = _config.ExperimentTag;
-        usage.Configuration       = runLabel;
-        usage.OltpOlapRatio       = ratio.ToLabel();
-        usage.ConcurrencyLevel    = concurrency;
-        usage.RunNumber           = run;
-        usage.OlapMaxDop          = olapMaxDop;
-        usage.SyncIntervalSeconds = syncInterval;
-    }
-
-    private void Annotate(
-        WaitDelta wait, int runId, string runLabel, WorkloadRatio ratio,
-        int concurrency, int run, int olapMaxDop, int syncInterval)
-    {
-        wait.RunId               = runId;
-        wait.ExperimentTag       = _config.ExperimentTag;
-        wait.Configuration       = runLabel;
-        wait.OltpOlapRatio       = ratio.ToLabel();
-        wait.ConcurrencyLevel    = concurrency;
-        wait.RunNumber           = run;
-        wait.OlapMaxDop          = olapMaxDop;
-        wait.SyncIntervalSeconds = syncInterval;
-    }
-
-    /// <summary>
-    /// Čita postojeći summary CSV i vraća mapu (runLabel, ratio, concurrency) -> broj završenih runova.
+    /// Čita postojeći summary CSV i vraća mapu (schema, ratio, concurrency) -> broj završenih runova.
     /// Koristi se za resume funkcionalnost — preskačemo kombinacije koje su već završene.
     /// Uzima se MAX(RunNumber) po kombinaciji (a ne COUNT) jer se run brojevi ne mijenjaju pri resume.
     /// </summary>

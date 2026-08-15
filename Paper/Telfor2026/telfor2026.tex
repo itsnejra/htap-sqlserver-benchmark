@@ -1,0 +1,468 @@
+% =============================================================================
+% TELFOR 2026 — 4-page submission
+% "Analytical Acceleration as an OLTP Optimization"
+%
+% Build:  python Paper/Telfor2026/make_figures.py   (figures first)
+%         pdflatex telfor2026 && pdflatex telfor2026
+%
+% NAPOMENA: Telfor traži vlastiti stilski fajl. Ovdje se koristi IEEEtran
+% conference, koji je osnova Telfor predloška; prije slanja zamijeniti
+% \documentclass linijom iz aktuelnog predloška i provjeriti limit od 4 strane.
+%
+% STATUS BROJKI: sve brojke u radu su izmjerene. Preostale crvene oznake
+% u tekstu su isključivo e-mail adrese autora (vidi README za provjeru).
+% =============================================================================
+
+\documentclass[conference,a4paper]{IEEEtran}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{url}
+\usepackage{xcolor}
+
+\graphicspath{{figures/}}
+
+% Vidljivi marker za podatke koje autor još treba unijeti.
+\newcommand{\todonum}[1]{\textcolor{red}{\textbf{[#1]}}}
+
+\begin{document}
+
+\title{Analytical Acceleration as an OLTP Optimization:\\
+Two Independent Levers on the Same Mechanism\\ in SQL Server 2022}
+
+\author{\IEEEauthorblockN{Nejra Smajlović}
+\IEEEauthorblockA{Polytechnic Faculty, University of Zenica\\
+Zenica, Bosnia and Herzegovina\\
+Email: \todonum{email}}
+\and
+\IEEEauthorblockN{Denis Čeke}
+\IEEEauthorblockA{Polytechnic Faculty, University of Zenica\\
+Zenica, Bosnia and Herzegovina\\
+Email: \todonum{email}}}
+
+\maketitle
+
+\begin{abstract}
+Hybrid transactional/analytical processing (HTAP) is normally evaluated as a
+trade-off, with analytical throughput bought at some cost in transactional
+throughput. We report controlled measurements in which the opposite holds: in a
+single-engine deployment, making analytical queries finish sooner returns
+transactional capacity, because both workloads draw on the same processors.
+We demonstrate this with two independent interventions on one Microsoft SQL
+Server 2022 configuration whose transactional layer is held fixed throughout.
+Raising the degree of parallelism of the analytical queries alone --- a change
+of one query hint, with the same schema, storage medium and execution model ---
+raises \emph{transactional} throughput by $1.2\times$ to $3.6\times$. Relocating
+the analytical workload to a columnstore replica raises it by $1.9\times$ to
+$2.8\times$ over the same baseline at equalized parallelism. Server counters
+confirm the mechanism directly: analytical threads account for 83--91\,\% of
+processor time consumed by the benchmark, and scheduler-yield waits grow from
+0.4\,s to 55.7\,s per 60\,s run between the lowest and highest concurrency
+level. Measurements come from a full factorial design over the
+StackOverflow2010 dataset ($\sim$19.2M rows) with 30 runs per cell. We also
+show that an uncontrolled comparison, in which parallelism differs between
+arms, overstates the effect by up to $3.6\times$.
+\end{abstract}
+
+\begin{IEEEkeywords}
+HTAP, In-Memory OLTP, columnstore, workload interference,
+performance isolation, SQL Server 2022
+\end{IEEEkeywords}
+
+% =============================================================================
+\section{Introduction}
+% =============================================================================
+
+Systems that serve transactional and analytical workloads from one database
+must reconcile two opposed access patterns: short point operations under strict
+consistency requirements, and long scans that aggregate millions of rows. The
+HTAP paradigm addresses this by removing the ETL boundary between an OLTP
+system and a separate warehouse~\cite{ozcan2017htap}. Commercial designs span a
+wide range, from single-engine dual-format storage in SAP HANA~\cite{farber2012hana}
+and Oracle Database In-Memory~\cite{lahiri2015oracle} to physically separated
+dual-engine systems such as TiDB~\cite{huang2020tidb} and Google
+F1~Lightning~\cite{yang2020f1}.
+
+The literature frames the choice between these designs as a trade-off in
+\emph{isolation}: separating the analytical engine protects transactional
+performance at the cost of replication and
+synchronization~\cite{zhang2024htap, zhao2023benchmarking}. That framing treats
+analytical acceleration as a benefit to analytics, paid for elsewhere. This
+paper argues the accounting is incomplete. Where a single engine serves both
+workloads, the processors an analytical scan occupies are processors the
+transactional engine cannot use, so anything that shortens the scan is also a
+transactional optimization.
+
+We test this by intervening on the analytical workload twice, in ways that
+share nothing but the mechanism they target, while holding the transactional
+layer fixed:
+
+\begin{itemize}
+\item \textbf{Parallelism.} Raise the degree of parallelism of the analytical
+queries from one to two. Schema, storage medium, execution model and every
+transactional object are unchanged; a single query hint differs.
+\item \textbf{Placement.} Move the analytical queries off the memory-optimized
+tables onto a columnstore replica of the same data, at equal parallelism.
+\end{itemize}
+
+If the contention account is right, both should raise transactional throughput,
+and neither can be explained by transactional engineering. Both do.
+Section~\ref{sec:results} reports the measurements and quantifies how badly the
+effect is overstated when parallelism is left uncontrolled --- a confound we
+found in our own initial comparison.
+
+% =============================================================================
+\section{Background and Related Work}
+% =============================================================================
+
+\subsection{Execution models}
+
+Hekaton is a redesigned OLTP engine using optimistic multi-version concurrency
+control, lock-free structures that bypass the buffer pool entirely, and
+natively compiled stored procedures; the original work reports $10$--$30\times$
+speedups for point operations~\cite{diaconu2013hekaton}. It is, however, not
+built for scans: hash indexes do not serve range access efficiently, and the
+engine does not support batch-mode execution.
+
+Columnstore indexes store column values together in compressed segments,
+processed by a batch-mode executor operating on roughly 1000 rows at a time
+with vectorized instructions, yielding $10$--$100\times$ speedups on typical
+warehouse queries~\cite{larson2013columnstore}. The two designs are
+architecturally incompatible in one direction: MVCC version chains cannot be
+maintained over immutable compressed segments. That incompatibility forces
+analytical queries in a memory-optimized schema into row mode, and it is the
+origin of the effect we measure. Larson et al.~\cite{larson2015realtime}
+describe combining both engines for real-time analytics, but report the
+designers' own micro-benchmarks rather than an independent evaluation.
+
+\subsection{Interference and isolation}
+
+Song et al.~\cite{song2024survey} argue that holding transactional performance
+steady under analytical load is a more meaningful measure of an HTAP system
+than peak throughput, and Zhao et al.~\cite{zhao2023benchmarking} make
+performance isolation the organizing principle of HTAP evaluation.
+Wu et al.~\cite{wu2025htap} confirm that adding analytical clients degrades
+OLTP throughput, and that degradation intensifies with concurrency. Benchmark
+frameworks such as HyBench~\cite{zhang2024hybench} formalize mixed-workload
+measurement, while recent systems~\cite{zhao2025pushtap, zhang2025synchro,
+zhan2025vedb} show that the optimal configuration depends on the interaction of
+workload profile and concurrency.
+
+What this body of work does not report is the transactional return on
+accelerating analytics, isolated from every other difference. Comparisons
+across HTAP systems necessarily vary storage medium, durability, engine and
+execution model together, so the interference term cannot be separated from the
+architectural ones. Our first lever varies one query hint and nothing else.
+
+% =============================================================================
+\section{Experimental Design}
+% =============================================================================
+
+\subsection{The three arms}
+
+Four storage configurations were implemented as separate schemas in one SQL
+Server 2022 instance over identical data. This paper analyses three arms built
+from two of them (Table~\ref{tab:arms}); the disk-based and columnstore-only
+configurations are retained as context but are not compared here, since they
+differ in storage medium and durability as well as in analytical handling.
+
+\begin{table}[t]
+\caption{The three arms. Every transactional property is identical throughout;
+the arms differ only in how analytical queries are executed.}
+\label{tab:arms}
+\centering
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+ & \textbf{IM} & \textbf{IM-P} & \textbf{OFF} \\
+\midrule
+OLTP storage    & \multicolumn{3}{c}{Hekaton (RAM)} \\
+OLTP indexes    & \multicolumn{3}{c}{hash + range} \\
+OLTP procedures & \multicolumn{3}{c}{natively compiled} \\
+Durability      & \multicolumn{3}{c}{\texttt{SCHEMA\_ONLY}} \\
+\midrule
+OLAP target     & same tables & same tables & columnstore \\
+OLAP execution  & row mode    & row mode    & batch mode \\
+OLAP \texttt{MAXDOP} & 1 & 2 & 2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+IM and IM-P differ in exactly one query hint. IM-P and OFF differ in analytical
+placement at equal parallelism. The pair IM/OFF --- the comparison we ran
+first, and the one an evaluation of storage architectures would naturally make
+--- differs in both at once, and Section~\ref{sec:confound} shows what that
+costs.
+
+\subsection{Workload and dataset}
+
+Measurements use the StackOverflow2010 database dump ($\sim$19.2M rows across
+Posts, Users, Votes, Comments and Badges), chosen over synthetic alternatives
+because it carries the Pareto-distributed user activity characteristic of web
+applications, which TPC-style generators do not
+reproduce~\cite{zhang2024hybench}.
+
+The transactional workload comprises six stored procedures with a
+write-dominant weighting (35\,\% vote insert, 25\,\% score update, 15\,\%
+comment insert, 25\,\% reads). The analytical workload comprises five
+aggregation queries chosen uniformly at random, all involving full scans with
+grouping, joins or common table expressions.
+
+\subsection{Design and environment}
+
+The design is full factorial: 3 workload ratios (80/20, 50/50, 20/80
+OLTP/OLAP) $\times$ 3 concurrency levels ($C \in \{4, 16, 32\}$) $\times$ 30
+runs per cell. Results below are reported at the transaction-dominant 80/20
+ratio, where the question of transactional return is sharpest. Each run has a
+10\,s warm-up phase, discarded, followed by 60\,s of measurement. Runs with an
+OLTP success rate below 90\,\% were excluded as unstable measurement
+environment.
+
+The driver is a .NET~8 application using asynchronous OLTP and OLAP worker
+threads over separate connections, tagged so that server-side processor time
+can be attributed to each workload class. Hardware: Intel Core i9-14900HX
+(24 cores / 32 threads), 32\,GB DDR5, NVMe SSD, Windows~11, SQL Server 2022
+Developer Edition. Source code, SQL scripts and raw measurements are publicly
+available.\footnote{\url{https://github.com/itsnejra/htap-sqlserver-benchmark}}
+
+Latency distributions were confirmed non-normal (Shapiro--Wilk, $p < 0.001$),
+so analysis uses the Mann--Whitney $U$ test with Bonferroni correction for
+pairwise comparisons and Cohen's $d$ for effect size, over medians.
+
+% =============================================================================
+\section{Results}
+\label{sec:results}
+% =============================================================================
+
+\subsection{Lever one: parallelism}
+
+Raising the analytical degree of parallelism from one to two, with every other
+property of the system unchanged, raises transactional throughput by
+$1.21\times$ at $C = 4$, $2.45\times$ at $C = 16$ and $3.61\times$ at
+$C = 32$ (Fig.~\ref{fig:levers}, grey versus orange). In absolute terms at
+$C = 32$, 6\,325 ops/s becomes 22\,808 ops/s.
+
+Nothing in the transactional path was touched. No index, no procedure, no
+durability setting, no storage medium, no schema. The analytical queries simply
+finish sooner, and the transactional engine recovers the processors they were
+holding. This is the paper's claim in its most direct form, and it does not
+depend on any architectural comparison.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig1_two_levers.pdf}
+\caption{Transactional throughput at the 80/20 ratio under both interventions.
+Grey to orange isolates parallelism; orange to blue isolates placement at equal
+parallelism. The transactional layer is identical in all three arms.}
+\label{fig:levers}
+\end{figure}
+
+\subsection{Lever two: placement}
+
+Relocating the analytical workload to the columnstore replica, compared against
+IM-P so that parallelism is equal, raises transactional throughput by
+$2.76\times$ at $C = 4$, $1.90\times$ at $C = 16$ and $1.92\times$ at
+$C = 32$. All differences are significant at $p < 0.001$ after Bonferroni
+correction, with $d$ from $4.51$ to $7.52$.
+
+The two levers are not additive in any simple way, and placement does not
+dominate parallelism: at high concurrency, giving row-mode scans a second
+processor recovers more transactional throughput ($3.61\times$) than moving
+them to columnstore at fixed parallelism ($1.92\times$). What they share is
+direction and mechanism.
+
+\subsection{The parallelism confound}
+\label{sec:confound}
+
+Comparing IM against OFF directly --- the natural architectural comparison, and
+the one we ran first --- yields $3.33\times$, $4.65\times$ and $6.92\times$
+across the three concurrency levels. Those figures conflate both levers. The
+ratio between the uncontrolled and the controlled comparison is $1.21\times$,
+$2.45\times$ and $3.61\times$: at $C = 32$, roughly two thirds of the apparent
+architectural advantage is the parallelism difference.
+
+The distortion is not uniform, and this matters for interpretation. The
+uncontrolled comparison grows steeply with concurrency ($3.33 \rightarrow 6.92$),
+which invites the reading that architectural interference compounds as the
+system saturates. Controlled, the placement effect is flat to mildly decreasing
+($2.76 \rightarrow 1.90 \rightarrow 1.92$); it is the \emph{parallelism} term
+that scales. An evaluation that leaves \texttt{MAXDOP} uncontrolled would
+therefore not merely overstate the magnitude but misattribute its trend.
+
+We note that \texttt{MAXDOP 1} is not an arbitrary handicap: it is required to
+avoid \texttt{CXSYNC\_PORT} stalls on memory-optimized tables under parallel
+plans, which is why the original configuration used it. The confound arises
+precisely because a defensible per-configuration tuning decision differs
+between arms.
+
+\subsection{Direct evidence for the mechanism}
+
+The contention account is a claim about processors, and we test it by
+measurement rather than by inference from execution plans. Worker connections
+are tagged so that \texttt{cpu\_time} in \texttt{sys.dm\_exec\_sessions} can be
+attributed to transactional and analytical threads separately, and
+\texttt{sys.dm\_os\_wait\_stats} is sampled across the measurement phase.
+
+Analytical threads account for 91\,\%, 83\,\% and 85\,\% of all processor time
+consumed by the benchmark at $C = 4$, $16$ and $32$ respectively
+(Fig.~\ref{fig:cpu}). \texttt{SOS\_SCHEDULER\_YIELD} --- recording that a task
+exhausted its processor quantum and yielded --- accumulates 0.4\,s, 4.4\,s and
+55.7\,s per 60\,s run over the same range, a growth of two orders of magnitude.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig3_cpu_evidence.pdf}
+\caption{Measured processor evidence from the row-mode arm at equal
+parallelism. Analytics dominate processor consumption at every concurrency
+level, and scheduler contention grows sharply with it.}
+\label{fig:cpu}
+\end{figure}
+
+Total processor utilisation reaches 27.1\,\% of the 32 available hardware
+threads at $C = 32$, so the machine is not saturated in aggregate; the
+contention is for scheduler time among the threads actually engaged, not for
+the last unit of machine capacity. This is a weaker and more accurate statement
+than processor saturation, and it is what the counters support.
+
+\subsection{Analytical latency}
+
+The analytical side shows the same boundary from the other direction
+(Fig.~\ref{fig:cross}). At $C = 4$ row-mode analytics are in fact
+\emph{faster} than the columnstore replica (median P50 of 641\,ms versus
+832\,ms): with all data resident in RAM and processors uncontended, row-mode
+scanning is adequate. The ordering reverses as concurrency rises --- 2\,126\,ms
+versus 1\,045\,ms at $C = 16$, 3\,292\,ms versus 1\,768\,ms at $C = 32$.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig2_olap_crossover.pdf}
+\caption{Analytical latency, aggregated over workload ratios. Row-mode
+execution is competitive in isolation and degrades only under contention.}
+\label{fig:cross}
+\end{figure}
+
+Analytical and transactional performance therefore degrade together, over the
+same range, because they degrade for the same reason. Row-mode scanning of
+$\sim$3.7M rows requires substantially more processor cycles per row than
+vectorized execution over compressed segments, and those cycles come from the
+schedulers the transactional engine needs.
+
+% =============================================================================
+\section{Threats to Validity}
+\label{sec:threats}
+% =============================================================================
+
+\textbf{One direction of the parallelism control.} We equalized parallelism at
+DOP${}=2$. The reciprocal arm, running the offloaded configuration at
+DOP${}=1$, did not produce usable measurements and is not reported. The
+placement effect is therefore established at one level of parallelism rather
+than two.
+
+\textbf{Counters cover one arm.} Server-side processor attribution was added
+after the main measurement campaign and is available for the IM-P arm only.
+Figure~\ref{fig:cpu} characterises how analytics consume processor time in the
+row-mode arm; it does not contrast that against the offloaded arm, which would
+require repeating the main campaign under instrumentation.
+
+\textbf{No synchronization cost.} The offloaded arm separates the two layers
+but runs no synchronization mechanism during measurement, whereas production
+dual-store systems pay that cost continuously~\cite{huang2020tidb, yang2020f1}.
+The placement result is an upper bound, and applications would see analytics
+over data that is not fresh in real time. The parallelism result carries no
+such caveat: it involves no replica.
+
+\textbf{Memory and durability.} The offloaded arm holds the data twice, roughly
+doubling RAM requirements. All arms use \texttt{SCHEMA\_ONLY} durability,
+eliminating transaction log writes; absolute throughput would be lower under
+\texttt{SCHEMA\_AND\_DATA}, though the setting is identical across arms.
+
+\textbf{Scope.} All measurements come from one instance, one dataset and one
+hardware configuration. Generalization to distributed HTAP systems, other
+datasets or later DBMS versions requires caution.
+
+% =============================================================================
+\section{Conclusion}
+% =============================================================================
+
+Two independent interventions on the analytical workload of one SQL Server 2022
+configuration --- raising query parallelism, and relocating queries to a
+columnstore replica --- each raise transactional throughput without any change
+to the transactional layer, by $1.2$--$3.6\times$ and $1.9$--$2.8\times$
+respectively. Server counters attribute 83--91\,\% of benchmark processor time
+to analytical threads and show scheduler contention rising by two orders of
+magnitude across the concurrency range. In a single-engine HTAP deployment, the
+cost of analytics is not confined to analytics, and query acceleration should
+be budgeted against transactional capacity as well as analytical latency.
+
+The study also carries a methodological warning. Our own initial comparison,
+which varied placement and parallelism together, overstated the architectural
+effect by up to $3.6\times$ and reversed its apparent trend with concurrency.
+Per-configuration tuning decisions that are individually defensible become
+confounds when configurations are compared, and HTAP evaluations that report
+architecture-level ratios should state how such parameters were held.
+
+Two directions follow. The synchronization cost this design excludes needs
+measuring, so the placement bound can be converted into a net figure. And the
+effect predicts that a workload-aware scheduler could route analytical queries
+to whichever layer currently has processor headroom; whether such routing
+recovers the measured gap adaptively is an open question.
+
+\begin{thebibliography}{99}
+\bibitem{ozcan2017htap} F. Özcan, Y. Tian, and P. Tözün, ``Hybrid
+transactional/analytical processing: A survey,'' in \emph{Proc. ACM SIGMOD},
+2017, pp. 1771--1775.
+
+\bibitem{farber2012hana} F. Färber \emph{et al.}, ``SAP HANA database: Data
+management for modern business applications,'' \emph{ACM SIGMOD Record},
+vol. 40, no. 4, pp. 45--51, 2012.
+
+\bibitem{lahiri2015oracle} T. Lahiri \emph{et al.}, ``Oracle Database
+In-Memory: A dual format in-memory database,'' in \emph{Proc. IEEE ICDE},
+2015, pp. 1253--1258.
+
+\bibitem{huang2020tidb} D. Huang \emph{et al.}, ``TiDB: A Raft-based HTAP
+database,'' \emph{Proc. VLDB Endowment}, vol. 13, no. 12, pp. 3072--3084, 2020.
+
+\bibitem{yang2020f1} J. Yang \emph{et al.}, ``F1 Lightning: HTAP as a service,''
+\emph{Proc. VLDB Endowment}, vol. 13, no. 12, pp. 3313--3325, 2020.
+
+\bibitem{zhang2024htap} C. Zhang \emph{et al.}, ``A survey on HTAP databases,''
+\emph{IEEE Trans. Knowl. Data Eng.}, 2024.
+
+\bibitem{zhao2023benchmarking} J. Zhao \emph{et al.}, ``Towards benchmarking
+HTAP databases: Performance isolation as a first-class criterion,'' 2023.
+
+\bibitem{diaconu2013hekaton} C. Diaconu \emph{et al.}, ``Hekaton: SQL Server's
+memory-optimized OLTP engine,'' in \emph{Proc. ACM SIGMOD}, 2013,
+pp. 1243--1254.
+
+\bibitem{larson2013columnstore} P.-Å. Larson \emph{et al.}, ``Enhancements to
+SQL Server column stores,'' in \emph{Proc. ACM SIGMOD}, 2013, pp. 1159--1168.
+
+\bibitem{larson2015realtime} P.-Å. Larson \emph{et al.}, ``Real-time analytical
+processing with SQL Server,'' \emph{Proc. VLDB Endowment}, vol. 8, no. 12,
+pp. 1740--1751, 2015.
+
+\bibitem{song2024survey} J. Song \emph{et al.}, ``A survey of HTAP system
+architectures,'' 2024.
+
+\bibitem{wu2025htap} Y. Wu \emph{et al.}, ``On the impact of analytical
+concurrency on transactional throughput in HTAP systems,'' 2025.
+
+\bibitem{zhang2024hybench} C. Zhang \emph{et al.}, ``HyBench: A new benchmark
+for HTAP databases,'' \emph{Proc. VLDB Endowment}, 2024.
+
+\bibitem{zhao2025pushtap} J. Zhao \emph{et al.}, ``PUSHtap: Workload-aware
+HTAP configuration,'' 2025.
+
+\bibitem{zhang2025synchro} C. Zhang \emph{et al.}, ``SynchroStore:
+Synchronization-aware storage for HTAP,'' 2025.
+
+\bibitem{zhan2025vedb} Z. Zhan \emph{et al.}, ``veDB-HTAP: A cloud-native HTAP
+database,'' 2025.
+\end{thebibliography}
+
+\end{document}

@@ -35,41 +35,37 @@ public class BenchmarkConfig
 
     public string SummaryCsvPath { get; set; } = "Results/summary.csv";
 
-    // =========================================================================
-    // Instrumentacija i kontrolni eksperimenti
-    // =========================================================================
+    /// <summary>
+    /// Sufiks imena OLAP pohranjenih procedura (npr. "_D2" → im.usp_OLAP_Q1_..._D2).
+    /// Koristi se za MAXDOP kontrolni eksperiment (SQL/10_MaxDopControl.sql).
+    /// Prazno = standardne procedure iz glavnog eksperimenta.
+    /// </summary>
+    public string OlapProcSuffix { get; set; } = string.Empty;
 
     /// <summary>
-    /// Oznaka eksperimenta koja se upisuje u sve izlazne datoteke. Odvaja glavni
-    /// faktorijal od kontrolnih eksperimenata pri kasnijoj analizi.
+    /// Oznaka eksperimentalne ruke koja se dopisuje na Configuration u rezultatima
+    /// (npr. "d2" → "im@d2"). Drži kontrolne runove odvojenima od glavnog seta
+    /// u istom CSV-u i u resume logici.
     /// </summary>
-    public string ExperimentTag { get; set; } = "main";
+    public string ArmLabel { get; set; } = string.Empty;
+
+    /// <summary>Snimaj serverske brojače (CPU po tipu niti, wait statistika) oko mjerne faze.</summary>
+    public bool CollectServerMetrics { get; set; } = true;
 
     /// <summary>
-    /// Mjeri CPU potrošnju i raspodjelu čekanja po runu (sys.dm_os_schedulers,
-    /// sys.dm_os_wait_stats). Pretpostavlja da je benchmark jedino opterećenje
-    /// na instanci, jer su ti DMV-ovi instance-wide.
+    /// Prije prvog runa provjeri da aktivna shema sadrži pun skup podataka i prekini
+    /// ako ne sadrži. Štiti od mjerenja nad im.*/htap.* tablicama koje su se ispraznile
+    /// pri restartu SQL Servera (DURABILITY = SCHEMA_ONLY). Isključuje se s --skip-verify.
     /// </summary>
-    public bool CollectResourceMetrics { get; set; }
+    public bool VerifyDatasetBeforeRun { get; set; } = true;
 
     /// <summary>
-    /// Varijante stepena paralelizma OLAP upita koje se mjere kao dodatna
-    /// dimenzija eksperimenta. 0 = koristi originalne procedure (MAXDOP kakav
-    /// je zatečen u shemi); 1 ili 2 = koristi _MD1 / _MD2 varijante iz
-    /// 10_MaxDop_Control_Variants.sql.
+    /// Interval periodične propagacije htap.* → cs.* u sekundama (0 = isključeno).
+    /// Primjenjuje se samo na HTAP konfiguraciju. Mjerenjem pri više intervala
+    /// dobiva se krivulja kompromisa između svježine analitičkih podataka i OLTP
+    /// propusnosti. Preduvjet: SQL/11_DualStore_Sync.sql.
     /// </summary>
-    public int[] OlapMaxDopVariants { get; set; } = [0];
-
-    /// <summary>
-    /// Intervali sinhronizacije htap.* → cs.* (sekunde) koji se mjere kao dodatna
-    /// dimenzija. 0 = bez sinhronizacije (kao u glavnom eksperimentu).
-    /// Primjenjuje se isključivo na HTAP konfiguraciju.
-    /// </summary>
-    public int[] SyncIntervalsSeconds { get; set; } = [0];
-
-    public string ResourceUsageCsvPath { get; set; } = "Results/resource_usage.csv";
-
-    public string WaitStatsCsvPath { get; set; } = "Results/wait_stats.csv";
+    public int SyncIntervalSeconds { get; set; }
 
     public string SyncCyclesCsvPath { get; set; } = "Results/sync_cycles.csv";
 }
@@ -103,20 +99,4 @@ public static class WorkloadRatioExtensions
             DbConfiguration.HTAP => "htap",
             _ => throw new ArgumentOutOfRangeException(nameof(config))
         };
-
-    /// <summary>
-    /// Oznaka koja se upisuje u summary.csv kao vrijednost kolone Configuration.
-    /// Dimenzije kontrolnih eksperimenata kodiraju se u samu oznaku (npr.
-    /// "htap_md1", "htap_sync5") umjesto kao dodatne kolone, čime shema
-    /// summary.csv ostaje nepromijenjena — postojećih 1.070 mjerenja i analitičke
-    /// skripte koje ih čitaju nastavljaju raditi bez izmjena, a resume logika
-    /// ispravno razlikuje kombinacije različitih eksperimentalnih uvjeta.
-    /// </summary>
-    public static string ToRunLabel(this DbConfiguration config, int olapMaxDopVariant, int syncIntervalSeconds)
-    {
-        string label = config.ToLabel();
-        if (olapMaxDopVariant is 1 or 2) label += $"_md{olapMaxDopVariant}";
-        if (syncIntervalSeconds > 0)     label += $"_sync{syncIntervalSeconds}";
-        return label;
-    }
 }

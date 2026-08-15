@@ -13,25 +13,13 @@ public sealed class ResultsWriter : IDisposable
     private readonly object _measurementsLock = new();
     private readonly object _summaryLock = new();
 
-    // Instrumentacijski izlazi. Odvojene datoteke, a ne dodatne kolone u
-    // summary.csv, da postojećih 1.070 mjerenja i analitičke skripte koje ih
-    // čitaju ostanu upotrebljivi bez izmjena.
-    private readonly StreamWriter? _resourceWriter;
-    private readonly StreamWriter? _waitsWriter;
+    // Ciklusi sinhronizacije idu u zasebnu datoteku: jedan run ima N ciklusa, pa se
+    // ne uklapaju u summary koji ima jedan red po runu.
     private readonly StreamWriter? _syncWriter;
-    private bool _resourceHeaderWritten;
-    private bool _waitsHeaderWritten;
     private bool _syncHeaderWritten;
-    private readonly object _resourceLock = new();
-    private readonly object _waitsLock = new();
     private readonly object _syncLock = new();
 
-    public ResultsWriter(
-        string measurementsCsvPath,
-        string summaryCsvPath,
-        string? resourceUsageCsvPath = null,
-        string? waitStatsCsvPath = null,
-        string? syncCyclesCsvPath = null)
+    public ResultsWriter(string measurementsCsvPath, string summaryCsvPath, string? syncCyclesCsvPath = null)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(measurementsCsvPath)!);
         Directory.CreateDirectory(Path.GetDirectoryName(summaryCsvPath)!);
@@ -43,19 +31,25 @@ public sealed class ResultsWriter : IDisposable
         _measurementsHeaderWritten = HasContent(measurementsCsvPath);
         _summaryHeaderWritten      = HasContent(summaryCsvPath);
 
-        (_resourceWriter, _resourceHeaderWritten) = OpenOptional(resourceUsageCsvPath);
-        (_waitsWriter,    _waitsHeaderWritten)    = OpenOptional(waitStatsCsvPath);
-        (_syncWriter,     _syncHeaderWritten)     = OpenOptional(syncCyclesCsvPath);
+        if (!string.IsNullOrWhiteSpace(syncCyclesCsvPath))
+        {
+            var dir = Path.GetDirectoryName(syncCyclesCsvPath);
+            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+
+            _syncHeaderWritten = HasContent(syncCyclesCsvPath);
+            _syncWriter        = new StreamWriter(syncCyclesCsvPath, append: true, Encoding.UTF8);
+        }
     }
 
     /// <summary>
     /// Ima li datoteka stvarni sadržaj, a ne samo UTF-8 BOM.
     ///
     /// Dužina fajla nije dovoljna provjera: StreamWriter upisuje BOM (3 bajta) i kad
-    /// nijedan red nije zapisan — npr. ako run padne pri konektovanju ili se benchmark
-    /// prekine odmah po pokretanju. Takav fajl bi po dužini prošao kao "ima sadržaj",
-    /// pa bi sljedeće pokretanje preskočilo zaglavlje i proizvelo CSV bez header reda,
-    /// koji analitičke skripte ne mogu parsirati.
+    /// nijedan red nije zapisan — npr. kad run padne pri konektovanju ili se benchmark
+    /// prekine odmah po pokretanju, što se dešava i pri običnom --dry-run bez baze.
+    /// Takav fajl bi po dužini prošao kao "ima sadržaj", pa bi sljedeće pokretanje
+    /// preskočilo zaglavlje i proizvelo CSV čiji je prvi red podatak. Analitičke
+    /// skripte ga tada čitaju kao zaglavlje.
     /// </summary>
     private static bool HasContent(string path)
     {
@@ -68,21 +62,38 @@ public sealed class ResultsWriter : IDisposable
         }
         catch
         {
-            // Ako datoteku ne možemo pročitati, sigurnije je upisati zaglavlje
-            // (suvišan header je uočljiv; nedostajući tiho kvari parsiranje).
+            // Suvišan header je uočljiv u podacima; nedostajući tiho kvari parsiranje.
             return false;
         }
     }
 
-    private static (StreamWriter?, bool) OpenOptional(string? path)
+    public void WriteSyncCycles(IEnumerable<SyncCycleResult> cycles)
     {
-        if (string.IsNullOrWhiteSpace(path)) return (null, false);
+        if (_syncWriter is null) return;
 
-        var dir = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+        lock (_syncLock)
+        {
+            if (!_syncHeaderWritten)
+            {
+                _syncWriter.WriteLine(
+                    "Configuration,OltpOlapRatio,ConcurrencyLevel,RunNumber," +
+                    "SyncIntervalSeconds,CycleNumber,DurationMs," +
+                    "VotesPropagated,CommentsPropagated,PostsUpdated," +
+                    "AvgFreshnessLagMs,MaxFreshnessLagMs,Success");
+                _syncHeaderWritten = true;
+            }
 
-        bool hasContent = HasContent(path);
-        return (new StreamWriter(path, append: true, Encoding.UTF8), hasContent);
+            foreach (var c in cycles)
+            {
+                _syncWriter.WriteLine(string.Create(CultureInfo.InvariantCulture,
+                    $"{c.Configuration},{c.OltpOlapRatio},{c.ConcurrencyLevel},{c.RunNumber}," +
+                    $"{c.SyncIntervalSeconds},{c.CycleNumber},{c.DurationMs:F2}," +
+                    $"{c.VotesPropagated},{c.CommentsPropagated},{c.PostsUpdated}," +
+                    $"{c.AvgFreshnessLagMs:F1},{c.MaxFreshnessLagMs:F1},{(c.Success ? 1 : 0)}"));
+            }
+
+            _syncWriter.Flush();
+        }
     }
 
     public void WriteMeasurements(IEnumerable<MeasurementResult> results)
@@ -119,9 +130,14 @@ public sealed class ResultsWriter : IDisposable
                     "OltpThroughput,OlapThroughput," +
                     "OltpLatencyP50,OltpLatencyP95,OltpLatencyP99," +
                     "OlapLatencyP50,OlapLatencyP95,OlapLatencyP99," +
-                    "OltpSuccessRate,OlapSuccessRate,OltpTotalOps,OlapTotalOps");
+                    "OltpSuccessRate,OlapSuccessRate,OltpTotalOps,OlapTotalOps," +
+                    "OltpCpuMs,OlapCpuMs,CpuUtilizationPct,OlapCpuShare," +
+                    "SchedulerYieldMs,ParallelismWaitMs,CxSyncPortMs," +
+                    "ResourceSemaphoreMs,PageIoLatchMs,WriteLogMs");
                 _summaryHeaderWritten = true;
             }
+
+            var sm = summary.ServerMetrics;
 
             _summaryWriter.WriteLine(string.Create(CultureInfo.InvariantCulture,
                 $"{summary.Configuration},{summary.OltpOlapRatio},{summary.ConcurrencyLevel},{summary.RunNumber}," +
@@ -129,93 +145,13 @@ public sealed class ResultsWriter : IDisposable
                 $"{summary.OltpLatencyP50:F4},{summary.OltpLatencyP95:F4},{summary.OltpLatencyP99:F4}," +
                 $"{summary.OlapLatencyP50:F4},{summary.OlapLatencyP95:F4},{summary.OlapLatencyP99:F4}," +
                 $"{summary.OltpSuccessRate:F4},{summary.OlapSuccessRate:F4}," +
-                $"{summary.OltpTotalOps},{summary.OlapTotalOps}"));
+                $"{summary.OltpTotalOps},{summary.OlapTotalOps}," +
+                $"{(sm?.OltpCpuMs ?? 0):F1},{(sm?.OlapCpuMs ?? 0):F1}," +
+                $"{(sm?.CpuUtilizationPct ?? 0):F3},{(sm?.OlapCpuShare ?? 0):F4}," +
+                $"{(sm?.SchedulerYieldMs ?? 0):F1},{(sm?.ParallelismWaitMs ?? 0):F1},{(sm?.CxSyncPortMs ?? 0):F1}," +
+                $"{(sm?.ResourceSemaphoreMs ?? 0):F1},{(sm?.PageIoLatchMs ?? 0):F1},{(sm?.WriteLogMs ?? 0):F1}"));
 
             _summaryWriter.Flush();
-        }
-    }
-
-    public void WriteResourceUsage(ResourceUsage usage)
-    {
-        if (_resourceWriter is null) return;
-
-        lock (_resourceLock)
-        {
-            if (!_resourceHeaderWritten)
-            {
-                _resourceWriter.WriteLine(
-                    "ExperimentTag,Configuration,OltpOlapRatio,ConcurrencyLevel,RunNumber," +
-                    "OlapMaxDop,SyncIntervalSeconds,WindowMs,SchedulerCount," +
-                    "SqlCpuMs,SqlCpuUtilPct,TotalWaitMs,TotalSignalWaitMs,SignalWaitPct");
-                _resourceHeaderWritten = true;
-            }
-
-            _resourceWriter.WriteLine(string.Create(CultureInfo.InvariantCulture,
-                $"{usage.ExperimentTag},{usage.Configuration},{usage.OltpOlapRatio}," +
-                $"{usage.ConcurrencyLevel},{usage.RunNumber}," +
-                $"{usage.OlapMaxDop},{usage.SyncIntervalSeconds}," +
-                $"{usage.WindowMs:F1},{usage.SchedulerCount}," +
-                $"{usage.SqlCpuMs},{usage.SqlCpuUtilPct:F3}," +
-                $"{usage.TotalWaitMs},{usage.TotalSignalWaitMs},{usage.SignalWaitPct:F3}"));
-
-            _resourceWriter.Flush();
-        }
-    }
-
-    public void WriteWaits(IEnumerable<WaitDelta> waits)
-    {
-        if (_waitsWriter is null) return;
-
-        lock (_waitsLock)
-        {
-            if (!_waitsHeaderWritten)
-            {
-                _waitsWriter.WriteLine(
-                    "ExperimentTag,Configuration,OltpOlapRatio,ConcurrencyLevel,RunNumber," +
-                    "OlapMaxDop,SyncIntervalSeconds,WaitType,WaitTimeMs,SignalWaitTimeMs,WaitingTasksCount");
-                _waitsHeaderWritten = true;
-            }
-
-            foreach (var w in waits)
-            {
-                _waitsWriter.WriteLine(string.Create(CultureInfo.InvariantCulture,
-                    $"{w.ExperimentTag},{w.Configuration},{w.OltpOlapRatio}," +
-                    $"{w.ConcurrencyLevel},{w.RunNumber}," +
-                    $"{w.OlapMaxDop},{w.SyncIntervalSeconds}," +
-                    $"{w.WaitType},{w.WaitTimeMs},{w.SignalWaitTimeMs},{w.WaitingTasksCount}"));
-            }
-
-            _waitsWriter.Flush();
-        }
-    }
-
-    public void WriteSyncCycles(IEnumerable<SyncCycleResult> cycles)
-    {
-        if (_syncWriter is null) return;
-
-        lock (_syncLock)
-        {
-            if (!_syncHeaderWritten)
-            {
-                _syncWriter.WriteLine(
-                    "ExperimentTag,Configuration,OltpOlapRatio,ConcurrencyLevel,RunNumber," +
-                    "SyncIntervalSeconds,CycleNumber,DurationMs," +
-                    "VotesPropagated,CommentsPropagated,PostsUpdated," +
-                    "AvgFreshnessLagMs,MaxFreshnessLagMs,Success");
-                _syncHeaderWritten = true;
-            }
-
-            foreach (var c in cycles)
-            {
-                _syncWriter.WriteLine(string.Create(CultureInfo.InvariantCulture,
-                    $"{c.ExperimentTag},{c.Configuration},{c.OltpOlapRatio}," +
-                    $"{c.ConcurrencyLevel},{c.RunNumber}," +
-                    $"{c.SyncIntervalSeconds},{c.CycleNumber},{c.DurationMs:F2}," +
-                    $"{c.VotesPropagated},{c.CommentsPropagated},{c.PostsUpdated}," +
-                    $"{c.AvgFreshnessLagMs:F1},{c.MaxFreshnessLagMs:F1},{(c.Success ? 1 : 0)}"));
-            }
-
-            _syncWriter.Flush();
         }
     }
 
@@ -223,8 +159,6 @@ public sealed class ResultsWriter : IDisposable
     {
         _measurementsWriter.Dispose();
         _summaryWriter.Dispose();
-        _resourceWriter?.Dispose();
-        _waitsWriter?.Dispose();
         _syncWriter?.Dispose();
     }
 }

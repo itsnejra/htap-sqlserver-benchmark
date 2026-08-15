@@ -55,3 +55,13 @@ Paper/*_nacrt.*
 # ── Junk / stale result files ────────────────────────────────────
 Results/per_operation_stats_detailed_new.csv
 null
+
+# ── Citljive konverzije prijevoda (nastaju iz prijevod_rada.md) ───
+Paper/Telfor2026/*.docx
+
+# ── Izvjestaji analize (nastaju iz sirovih mjerenja, mijenjaju se pri svakom
+#    pokretanju i inace blokiraju git pull) ─────────────────────────────────
+Results/reviewer_followup.txt
+Results/maxdop_control_report.txt
+Results/maxdop_control.csv
+Results/server_metrics_summary.csv
