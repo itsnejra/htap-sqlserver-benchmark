@@ -9,7 +9,7 @@ konfiguracije u podacima: baseline, cs, htap, im
    svaki run jedne ruke nadmasuje svaki run druge.
 
    smjestaj (OFF vs IM-P): ruka nije izmjerena — preskacem
-   paralelizam (IM-P vs IM): ruka nije izmjerena — preskacem
+   paralelizam (IM-P vs IM) — RAZLICITA SESIJA — efekt paralelizma nije odvojen od efekta sesije: ruka nije izmjerena — preskacem
    nekontrolirano (OFF vs IM)
      C= 4: delta = +0.989 (veliki)   rank-biserial = +0.989   p = 4.98e-11   N = 30/30
      C=16: delta = +1.000 (veliki)   rank-biserial = +1.000   p = 4.46e-11   N = 29/30
@@ -27,7 +27,7 @@ konfiguracije u podacima: baseline, cs, htap, im
         16           158             nan         246          nan
         32           174             nan         342          nan
 
-   (b) Brojaci za IM-P nisu dostupni — preskacem.
+   (b) Brojaci nisu dostupni — preskacem.
 
 4. NEMONOTONOST PROPUSNOSTI (omjer 80/20)
 --------------------------------------------------------------------------

@@ -57,10 +57,18 @@ if (args.Contains("--dry-run"))
 }
 
 // MAXDOP kontrolni eksperiment (SQL/10_MaxDopControl.sql):
-//   --arm d2  → IM analitika s MAXDOP 2 (izjednačeno s HTAP)
-//   --arm d1  → HTAP analitika s MAXDOP 1 (izjednačeno s IM)
-// Rezultati se pišu pod Configuration "im@d2" / "htap@d1" i ne miješaju se
-// s glavnim setom ni u CSV-u ni u resume logici.
+//   --arm d2      → IM analitika s MAXDOP 2 (izjednačeno s HTAP)
+//   --arm d1      → HTAP analitika s MAXDOP 1 (izjednačeno s IM)
+//   --arm d1base  → IM s izvornim procedurama (MAXDOP 1), ali instrumentirano
+//
+// d1base postoji zato što je glavni `im` set izmjeren prije nego je dodana
+// serverska instrumentacija, i u zasebnoj mjernoj sesiji. Usporedba d1base
+// protiv d2 mjeri isključivo MAXDOP, jer obje ruke idu u istoj sesiji, nad
+// istim stanjem baze i s istim brojačima. Bez toga se efekt paralelizma ne
+// može odvojiti od razlike između mjernih sesija.
+//
+// Rezultati se pišu pod Configuration "im@d2" / "htap@d1" / "im@d1base" i ne
+// miješaju se s glavnim setom ni u CSV-u ni u resume logici.
 var armArg = args.SkipWhile(a => a != "--arm").Skip(1).FirstOrDefault()?.ToLowerInvariant();
 if (armArg is not null)
 {
@@ -68,7 +76,11 @@ if (armArg is not null)
     {
         "d2" => "_D2",
         "d1" => "_D1",
-        _ => throw new ArgumentException($"Nepoznata ruka '{armArg}'. Dozvoljeno: d1, d2.")
+        // Izvorne procedure — im.usp_OLAP_* vec nose OPTION(MAXDOP 1);
+        // mijenja se samo to gdje se pise i pod kojom oznakom.
+        "d1base" => "",
+        _ => throw new ArgumentException(
+            $"Nepoznata ruka '{armArg}'. Dozvoljeno: d1, d2, d1base.")
     };
     benchmarkConfig.ArmLabel = armArg;
 
