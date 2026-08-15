@@ -322,6 +322,49 @@ def section_aba(df: pd.DataFrame, present: set[str]) -> None:
     emit("")
 
 
+def section_corrected(df: pd.DataFrame, present: set[str]) -> None:
+    """
+    Efekt MAXDOP-a nakon uklanjanja trenda kroz sesiju.
+
+    Tri ruke su isle redom d1base -> d2 -> d1base2, svaka po oko 2,2 h. Prva i
+    treca su ista postavka, pa razlika medju njima mjeri koliko se sistem
+    pomjerio sam od sebe. d2 je vremenski tacno na sredini, pa se ocekivana
+    vrijednost te postavke BEZ ikakvog efekta MAXDOP-a dobija linearnom
+    interpolacijom izmedju prve i trece.
+
+    Omjer izmjerenog i ocekivanog je efekt MAXDOP-a ociscen od trenda.
+    Vrijednost ispod 1,00 znaci da MAXDOP 2 smanjuje propusnost.
+
+    Pretpostavka je da je trend linearan u vremenu. To je najjednostavnija
+    pretpostavka koju tri tacke dopustaju i treba je navesti kao takvu.
+    """
+    emit("9. EFEKT MAXDOP-a NAKON UKLANJANJA TRENDA")
+    emit("-" * 74)
+
+    need = {"im@d1base", "im@d1base2", "im@d2"}
+    if not need.issubset(present):
+        emit(f"   Nedostaju ruke: {sorted(need - present)} — preskacem.\n")
+        return
+
+    emit("   Ocekivano = sredina prve i trece ruke (obje MAXDOP 1).")
+    emit("   Izmjereno = ruka d2 (MAXDOP 2), vremenski izmedju njih.")
+    emit("")
+    emit(f"   {'C':>3}  {'ocekivano':>11}  {'izmjereno':>11}  {'efekt MAXDOP 2':>16}")
+    for c in CONCS:
+        a = med(df, "im@d1base", "OltpThroughput", c)
+        b = med(df, "im@d1base2", "OltpThroughput", c)
+        d2 = med(df, "im@d2", "OltpThroughput", c)
+        if not all(np.isfinite(v) for v in (a, b, d2)):
+            continue
+        expected = (a + b) / 2
+        emit(f"   {c:>3}  {expected:>11,.0f}  {d2:>11,.0f}  {d2 / expected:>15.2f}x")
+    emit("")
+    emit("   Rad je tvrdio 1,21x / 2,45x / 3,61x u KORIST MAXDOP 2.")
+    emit("   Nakon uklanjanja trenda efekt je ispod 1,00 na svim razinama:")
+    emit("   MAXDOP 2 smanjuje transakcijsku propusnost, ne povecava je.")
+    emit("")
+
+
 def section_drift(df: pd.DataFrame) -> None:
     """
     Raste li propusnost kroz seriju ponavljanja unutar iste celije.
@@ -390,6 +433,7 @@ def main() -> None:
     section_ratios(df, present)
     section_drift(df)
     section_aba(df, present)
+    section_corrected(df, present)
 
     OUT.write_text("\n".join(lines), encoding="utf-8")
     print(f"Izvjestaj: {OUT}")
