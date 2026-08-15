@@ -33,9 +33,9 @@ Servera 2022, čiji je transakcijski sloj cijelo vrijeme držan fiksnim:
 - **Premještanje analitike na columnstore kopiju** podiže je 1,9× do 2,8× nad
   istom osnovom, pri izjednačenom paralelizmu.
 
-Serverski brojači potvrđuju mehanizam direktno: analitičke niti troše 82–91%
+Serverski brojači potvrđuju mehanizam direktno: analitičke niti troše 83–91%
 procesorskog vremena benchmarka, a čekanja na dodjelu procesorskog kvantuma
-rastu s 0,4 s na 56,4 s po runu od 60 s između najniže i najviše razine
+rastu s 0,4 s na 55,7 s po runu od 60 s između najniže i najviše razine
 konkurentnosti.
 
 Mjerenja potiču iz punog faktorijalnog dizajna nad StackOverflow2010 (~19,2
@@ -217,12 +217,12 @@ atribuirati transakcijskim i analitičkim nitima odvojeno, a
 | C | udio analitike u CPU vremenu | SOS_SCHEDULER_YIELD |
 |---|---|---|
 | 4 | 91% | 0,4 s |
-| 16 | 82% | 4,3 s |
-| 32 | 85% | **56,4 s** |
+| 16 | 83% | 4,4 s |
+| 32 | 85% | **55,7 s** |
 
 Rast od dva reda veličine u čekanju na procesorski kvantum.
 
-> **Važna ograda u radu:** ukupna iskorištenost procesora doseže 26,8% od 32
+> **Važna ograda u radu:** ukupna iskorištenost procesora doseže 27,1% od 32
 > dostupne hardverske niti pri C = 32, dakle mašina **nije zasićena u cjelini**.
 > Natjecanje je za vrijeme raspoređivača među nitima koje su stvarno angažirane,
 > a ne za posljednju jedinicu kapaciteta mašine. To je slabija i tačnija tvrdnja

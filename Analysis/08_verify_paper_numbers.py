@@ -48,9 +48,10 @@ CLAIM_LEVER1 = [1.21, 2.45, 3.61]          # im@d2 / im
 CLAIM_LEVER2 = [2.76, 1.90, 1.92]          # htap / im@d2
 CLAIM_UNCONTROLLED = [3.33, 4.65, 6.92]    # htap / im
 CLAIM_COHEN_D = [4.51, 5.33, 7.52]         # htap vs im@d2
-CLAIM_CPU_SHARE = [0.909, 0.825, 0.849]
-CLAIM_YIELD_S = [0.4, 4.3, 56.4]
-CLAIM_CPU_UTIL_C32 = 26.8
+# Medijani; rad ih ispisuje zaokruzene (91 %, 83 %, 85 % / 0,4 s, 4,4 s, 55,7 s / 27,1 %).
+CLAIM_CPU_SHARE = [0.9098, 0.8264, 0.8480]
+CLAIM_YIELD_S = [0.40, 4.39, 55.74]
+CLAIM_CPU_UTIL_C32 = 27.07
 CLAIM_OLAP_P50 = {"im": [641, 2126, 3292], "htap": [832, 1045, 1768]}
 CLAIM_VALID_RUNS = 1070
 
@@ -194,7 +195,7 @@ def main() -> None:
             check(f"udio analitike u CPU @ C={c}", med(df, "im@d2", "OlapCpuShare", c), claimed)
         for c, claimed in zip(CONCS, CLAIM_YIELD_S):
             check(f"scheduler yield @ C={c}",
-                  med(df, "im@d2", "SchedulerYieldMs", c) / 1000, claimed, " s", tol=0.05)
+                  med(df, "im@d2", "SchedulerYieldMs", c) / 1000, claimed, " s")
         check("iskoristenost CPU @ C=32",
               med(df, "im@d2", "CpuUtilizationPct", 32), CLAIM_CPU_UTIL_C32, " %")
     else:

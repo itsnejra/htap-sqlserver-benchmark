@@ -127,8 +127,8 @@ nitima, uz uzorkovanje `sys.dm_os_wait_stats` kroz mjernu fazu.
 | Konkurentnost | Udio analitike u CPU vremenu | Čekanje na procesorski kvantum |
 |---|---:|---:|
 | C = 4 | 91 % | 0,4 s |
-| C = 16 | 82 % | 4,3 s |
-| C = 32 | 85 % | **56,4 s** |
+| C = 16 | 83 % | 4,4 s |
+| C = 32 | 85 % | **55,7 s** |
 
 Analitika, iako joj je dodijeljeno svega 20 % radnih niti (6 od 32 pri
 C = 32), troši preko 80 % procesorskog vremena. Čekanje `SOS_SCHEDULER_YIELD` — koje bilježi da je zadatak potrošio
@@ -235,7 +235,7 @@ nego što ih recenzent nađe:
   analitičke kopije tokom mjerenja, pa je taj rezultat gornja granica.
   *Rezultat za paralelizam ne nosi tu ogradu — ne uključuje nikakvu kopiju.*
 
-- **Natjecanje, ne zasićenje.** Ukupna iskorištenost procesora doseže 26,8 % od
+- **Natjecanje, ne zasićenje.** Ukupna iskorištenost procesora doseže 27,1 % od
   32 dostupne niti, pa rad govori o natjecanju za vrijeme raspoređivača, a ne o
   zasićenju mašine. To je slabija i tačnija tvrdnja od one koju bi podaci na
   prvi pogled dopustili.
