@@ -130,8 +130,8 @@ nitima, uz uzorkovanje `sys.dm_os_wait_stats` kroz mjernu fazu.
 | C = 16 | 82 % | 4,3 s |
 | C = 32 | 85 % | **56,4 s** |
 
-Analitika, iako čini svega 20 % operacija, troši preko 80 % procesorskog
-vremena. Čekanje `SOS_SCHEDULER_YIELD` — koje bilježi da je zadatak potrošio
+Analitika, iako joj je dodijeljeno svega 20 % radnih niti (6 od 32 pri
+C = 32), troši preko 80 % procesorskog vremena. Čekanje `SOS_SCHEDULER_YIELD` — koje bilježi da je zadatak potrošio
 dodijeljeni procesorski kvantum i morao ustupiti mjesto — raste za **dva reda
 veličine** kroz ispitani raspon konkurentnosti.
 
