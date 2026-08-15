@@ -24,6 +24,7 @@ POKRETANJE
   python Analysis/08_verify_paper_numbers.py
 """
 
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -109,9 +110,34 @@ def med(df: pd.DataFrame, cfg: str, col: str, conc: int, ratio: str | None = RAT
     return float(v.median()) if len(v) else float("nan")
 
 
+def print_medians(df: pd.DataFrame) -> None:
+    """
+    Ispisuje tacne medijane serverskih brojaca, u obliku spremnom za prepis u rad.
+
+    Postoji jer su te brojke prvobitno preuzete iz aritmetickih sredina, dok rad
+    svugdje drugdje koristi medijane; ovo daje vrijednosti bez posrednika.
+    """
+    print("TACNI MEDIJANI SERVERSKIH BROJACA (ruka im@d2, omjer 80/20)\n")
+    if "im@d2" not in set(df.Configuration.unique()) or "OlapCpuShare" not in df.columns:
+        print("  Ruka im@d2 ili kolone brojaca nisu dostupni.")
+        return
+
+    print(f"  {'C':>3}  {'udio analitike u CPU':>22}  {'scheduler yield':>18}  {'iskoristenost CPU':>19}")
+    for c in CONCS:
+        share = med(df, "im@d2", "OlapCpuShare", c)
+        yld = med(df, "im@d2", "SchedulerYieldMs", c) / 1000
+        util = med(df, "im@d2", "CpuUtilizationPct", c)
+        print(f"  {c:>3}  {share * 100:>21.2f}%  {yld:>16.2f} s  {util:>18.2f}%")
+
+
 def main() -> None:
-    print("REVIZIJA BROJKI IZ RADA\n")
     df = load()
+
+    if "--print-medians" in sys.argv:
+        print_medians(df)
+        return
+
+    print("REVIZIJA BROJKI IZ RADA\n")
     present = set(df.Configuration.unique())
     print(f"  konfiguracije: {', '.join(sorted(present))}\n")
 

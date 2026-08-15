@@ -196,8 +196,10 @@ def server_metrics_summary(df: pd.DataFrame) -> pd.DataFrame | None:
         print("  UPOZORENJE: serverski brojači su svi nula — mjerenje nije bilo aktivno.")
         return None
 
+    # Medijan je primarna mjera, dosljedno s ostatkom rada: raspodjele su
+    # desno-asimetricne, pa bi sredina odstupala od vrijednosti koje rad navodi.
     agg = (df.groupby(["Configuration", "OltpOlapRatio", "ConcurrencyLevel"])[SERVER_COLS]
-             .agg(["mean", "std"]))
+             .agg(["median", "mean", "std"]))
     agg.columns = [f"{c}_{s}" for c, s in agg.columns]
     return agg.reset_index()
 
@@ -323,9 +325,9 @@ def write_report(comp: pd.DataFrame, contrib: pd.DataFrame, server: pd.DataFrame
             lines.append(
                 f"  {r['Configuration']:<10} {r['OltpOlapRatio']:<6} "
                 f"{int(r['ConcurrencyLevel']):>3} "
-                f"{r['CpuUtilizationPct_mean']:>7.1f} "
-                f"{r['OlapCpuShare_mean']:>14.3f} "
-                f"{r['SchedulerYieldMs_mean'] / 1000:>14.1f}")
+                f"{r['CpuUtilizationPct_median']:>7.1f} "
+                f"{r['OlapCpuShare_median']:>14.3f} "
+                f"{r['SchedulerYieldMs_median'] / 1000:>14.1f}")
     lines.append("")
 
     path = OUT_DIR / "maxdop_control_report.txt"
