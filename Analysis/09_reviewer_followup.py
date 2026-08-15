@@ -284,6 +284,53 @@ def section_ratios(df: pd.DataFrame, present: set[str]) -> None:
     emit("")
 
 
+def section_drift(df: pd.DataFrame) -> None:
+    """
+    Raste li propusnost kroz seriju ponavljanja unutar iste celije.
+
+    Trideset runova u celiji tretiraju se kao nezavisni uzorci — to pretpostavlja
+    i Mann-Whitney. Ako propusnost sistematski raste s rednim brojem runa, uzorci
+    nisu razmjenjivi: medijan tada ovisi o tome koliko je serija dugacka, a ne
+    samo o konfiguraciji. Mjeri se Spearmanovom korelacijom izmedju rednog broja
+    runa i propusnosti, unutar svake celije zasebno.
+    """
+    emit("7. DRIFT UNUTAR SERIJE PONAVLJANJA")
+    emit("-" * 74)
+    emit("   rho = korelacija rednog broja runa i propusnosti unutar celije.")
+    emit("   Blizu nule: runovi su razmjenjivi. Blizu +1: sistem se jos zagrijava.")
+    emit("")
+    emit(f"   {'konfiguracija':<14} {'C':>3}  {'rho':>7}  {'p':>10}  "
+         f"{'prvih 5':>10}  {'zadnjih 5':>11}  {'omjer':>7}")
+
+    flagged = 0
+    for cfg in sorted(df.Configuration.unique()):
+        for c in CONCS:
+            sel = ((df.Configuration == cfg) & (df.ConcurrencyLevel == c)
+                   & (df.OltpOlapRatio == RATIO))
+            sub = df.loc[sel, ["RunNumber", "OltpThroughput"]].dropna()
+            if len(sub) < 10:
+                continue
+            sub = sub.sort_values("RunNumber")
+            rho, p = stats.spearmanr(sub.RunNumber, sub.OltpThroughput)
+            first = sub.OltpThroughput.head(5).median()
+            last = sub.OltpThroughput.tail(5).median()
+            ratio = last / first if first else float("nan")
+            mark = " <-" if (p < 0.05 and abs(rho) > 0.5) else ""
+            if mark:
+                flagged += 1
+            emit(f"   {cfg:<14} {c:>3}  {rho:>+7.3f}  {p:>10.2e}  "
+                 f"{first:>10,.0f}  {last:>11,.0f}  {ratio:>7.2f}{mark}")
+
+    emit("")
+    if flagged:
+        emit(f"   {flagged} celija pokazuje jak drift (|rho| > 0,5 uz p < 0,05).")
+        emit("   Tamo medijan mjeri i duzinu serije, ne samo konfiguraciju, pa")
+        emit("   usporedbe treba ograniciti na jednak broj runova po ruci.")
+    else:
+        emit("   Nijedna celija ne pokazuje jak drift — runovi su razmjenjivi.")
+    emit("")
+
+
 def main() -> None:
     if not (RESULTS / "summary.csv").exists():
         raise SystemExit(f"Nedostaje {RESULTS / 'summary.csv'}.")
@@ -303,6 +350,7 @@ def main() -> None:
     section_nonmonotonic(df)
     section_sample_size(df)
     section_ratios(df, present)
+    section_drift(df)
 
     OUT.write_text("\n".join(lines), encoding="utf-8")
     print(f"Izvjestaj: {OUT}")
