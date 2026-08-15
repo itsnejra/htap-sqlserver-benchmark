@@ -59,15 +59,23 @@ failures: list[str] = []
 skipped: list[str] = []
 
 
-def check(label: str, computed: float, claimed: float, unit: str = "", tol: float = TOL) -> None:
+def check(label: str, computed: float, claimed: float, unit: str = "",
+          tol: float = TOL, abs_tol: float = 0.0) -> None:
+    """
+    abs_tol postoji jer je relativna tolerancija besmislena kod malih vrijednosti:
+    1 % od 0,40 s je 0,004 s, uze od zaokruzivanja na dvije decimale na koje su
+    ocekivane vrijednosti ovdje zapisane. Provjera prolazi ako je zadovoljen
+    bilo koji od dva kriterija.
+    """
     if not np.isfinite(computed):
         skipped.append(f"{label}: nema podataka")
         print(f"  ?  {label:<44} nema podataka")
         return
 
     denom = abs(claimed) if claimed else 1.0
-    rel = abs(computed - claimed) / denom
-    ok = rel <= tol
+    diff = abs(computed - claimed)
+    rel = diff / denom
+    ok = rel <= tol or diff <= abs_tol
     mark = "OK " if ok else "!! "
     print(f"  {mark}{label:<44} izracunato {computed:>10,.2f}{unit}   "
           f"u radu {claimed:>10,.2f}{unit}   odstupanje {rel * 100:>5.2f} %")
@@ -192,12 +200,13 @@ def main() -> None:
     print("\n6. SERVERSKI BROJACI (ruka im@d2)")
     if "im@d2" in present and "OlapCpuShare" in df.columns:
         for c, claimed in zip(CONCS, CLAIM_CPU_SHARE):
-            check(f"udio analitike u CPU @ C={c}", med(df, "im@d2", "OlapCpuShare", c), claimed)
+            check(f"udio analitike u CPU @ C={c}", med(df, "im@d2", "OlapCpuShare", c),
+                  claimed, abs_tol=0.00005)
         for c, claimed in zip(CONCS, CLAIM_YIELD_S):
             check(f"scheduler yield @ C={c}",
-                  med(df, "im@d2", "SchedulerYieldMs", c) / 1000, claimed, " s")
+                  med(df, "im@d2", "SchedulerYieldMs", c) / 1000, claimed, " s", abs_tol=0.005)
         check("iskoristenost CPU @ C=32",
-              med(df, "im@d2", "CpuUtilizationPct", 32), CLAIM_CPU_UTIL_C32, " %")
+              med(df, "im@d2", "CpuUtilizationPct", 32), CLAIM_CPU_UTIL_C32, " %", abs_tol=0.005)
     else:
         skipped.append("serverski brojaci: ruka im@d2 ili kolone nedostaju")
         print("  ?  brojaci nisu dostupni — preskacem")
