@@ -75,6 +75,16 @@ def med(df: pd.DataFrame, cfg: str, col: str, conc: int, ratio: str | None = RAT
     return float(vals.median()) if len(vals) else float("nan")
 
 
+def med_q(df: pd.DataFrame, cfg: str, col: str, conc: int, q: float,
+          ratio: str | None = RATIO) -> float:
+    """Kvantil unutar iste celije kao med() — za interkvartilne intervale."""
+    sel = (df.Configuration == cfg) & (df.ConcurrencyLevel == conc)
+    if ratio is not None:
+        sel &= df.OltpOlapRatio == ratio
+    v = df.loc[sel, col]
+    return float(v.quantile(q)) if len(v) else float("nan")
+
+
 def save(fig, name: str) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT / f"{name}.pdf")
@@ -96,9 +106,9 @@ def fig_two_levers(df: pd.DataFrame) -> None:
         print("  ! preskacem fig1_two_levers — nedostaje ruka im@d2")
         return
 
-    arms = [("im", "IM, OLAP na MAXDOP 1", C_ROW),
-            ("im@d2", "IM, OLAP na MAXDOP 2", C_PAR),
-            ("htap", "OLAP preusmjeren na columnstore", C_OFF)]
+    arms = [("im", "IM, OLAP at MAXDOP 1", C_ROW),
+            ("im@d2", "IM, OLAP at MAXDOP 2", C_PAR),
+            ("htap", "OLAP offloaded to columnstore", C_OFF)]
 
     x = np.arange(len(CONCS))
     width = 0.26
@@ -106,13 +116,22 @@ def fig_two_levers(df: pd.DataFrame) -> None:
     fig, ax = plt.subplots(figsize=(COL_W, 2.5))
     for k, (cfg, label, colour) in enumerate(arms):
         vals = [med(df, cfg, "OltpThroughput", c) for c in CONCS]
+        # Intervali su interkvartilni raspon oko medijana, dosljedno s
+        # neparametarskom analizom u radu; simetricna devijacija bi ovdje
+        # sugerirala normalnost koju su testovi odbacili.
+        lo = [med_q(df, cfg, "OltpThroughput", c, 0.25) for c in CONCS]
+        hi = [med_q(df, cfg, "OltpThroughput", c, 0.75) for c in CONCS]
+        err = np.array([[v - l for v, l in zip(vals, lo)],
+                        [h - v for v, h in zip(vals, hi)]])
         bars = ax.bar(x + (k - 1) * width, vals, width, label=label,
-                      color=colour, edgecolor="black", linewidth=0.4)
-        ax.bar_label(bars, fmt="%.0f", fontsize=5.5, padding=1, rotation=90)
+                      color=colour, edgecolor="black", linewidth=0.4,
+                      yerr=err, capsize=1.6,
+                      error_kw={"elinewidth": 0.6, "capthick": 0.6})
+        ax.bar_label(bars, fmt="%.0f", fontsize=5.5, padding=7, rotation=90)
 
     base = [med(df, "im", "OltpThroughput", c) for c in CONCS]
     top = [med(df, "htap", "OltpThroughput", c) for c in CONCS]
-    ax.set_ylim(0, np.nanmax(top) * 1.38)
+    ax.set_ylim(0, np.nanmax(top) * 1.52)
 
     ax.set_xticks(x, [f"C = {c}" for c in CONCS])
     ax.set_ylabel("OLTP throughput [ops/s]")
@@ -131,8 +150,8 @@ def fig_olap_crossover(df: pd.DataFrame) -> None:
     """
     fig, ax = plt.subplots(figsize=(COL_W, 2.2))
 
-    series = [("im", "IM, row-mode", C_ROW, "s", "--"),
-              ("htap", "Preusmjeren, batch-mode", C_OFF, "o", "-")]
+    series = [("im", "IM, row mode", C_ROW, "s", "--"),
+              ("htap", "Offloaded, batch mode", C_OFF, "o", "-")]
 
     for cfg, label, colour, marker, ls in series:
         vals = [med(df, cfg, "OlapLatencyP50", c, ratio=None) for c in CONCS]
@@ -144,8 +163,8 @@ def fig_olap_crossover(df: pd.DataFrame) -> None:
 
     ax.set_xscale("log", base=2)
     ax.set_xticks(CONCS, [str(c) for c in CONCS])
-    ax.set_xlabel("Razina konkurentnosti")
-    ax.set_ylabel("OLAP latencija P50 [ms]")
+    ax.set_xlabel("Concurrency level")
+    ax.set_ylabel("OLAP latency P50 [ms]")
     ax.legend(loc="upper left", frameon=False)
     fig.tight_layout(pad=0.3)
     save(fig, "fig2_olap_crossover")
@@ -177,9 +196,9 @@ def fig_cpu_evidence(df: pd.DataFrame) -> None:
     x = np.arange(len(CONCS))
 
     bars = ax.bar(x, share, 0.5, color=C_PAR, edgecolor="black", linewidth=0.4,
-                  label="Udio analitike u CPU vremenu")
+                  label="Analytical share of CPU time")
     ax.bar_label(bars, fmt="%.0f%%", fontsize=6, padding=1)
-    ax.set_ylabel("Udio analitike u CPU vremenu [%]")
+    ax.set_ylabel("Analytical share of CPU time [%]")
     ax.set_ylim(0, 118)
     ax.set_xticks(x, [f"C = {c}" for c in CONCS])
 
@@ -187,7 +206,7 @@ def fig_cpu_evidence(df: pd.DataFrame) -> None:
     ax2.plot(x, yield_s, color="#a02020", marker="o", ms=3.5, lw=1.3,
              label="SOS_SCHEDULER_YIELD")
     ax2.set_yscale("log")
-    ax2.set_ylabel("Scheduler yield [s / 60 s run]", color="#a02020")
+    ax2.set_ylabel("Scheduler yield [s per 60 s run]", color="#a02020")
     ax2.tick_params(axis="y", colors="#a02020")
     ax2.grid(False)
     for xi, v in zip(x, yield_s):
