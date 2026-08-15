@@ -104,6 +104,20 @@ def im_baseline(present: set[str]) -> tuple[str, str]:
     return "im", "RAZLICITA SESIJA — efekt paralelizma nije odvojen od efekta sesije"
 
 
+def off_arm(present: set[str]) -> tuple[str, str]:
+    """
+    Koja se ruka koristi kao preusmjerena (OFF) konfiguracija.
+
+    htap@d1base je HTAP mjeren u istoj sesiji kao im@d1base i im@d2. Glavni
+    `htap` set potice iz ranije kampanje, pa usporedba protiv njega nosi isti
+    problem kao i poluga paralelizma: efekt smjestaja se ne moze odvojiti od
+    razlike medju mjernim sesijama.
+    """
+    if "htap@d1base" in present:
+        return "htap@d1base", "ista sesija"
+    return "htap", "RAZLICITA SESIJA — efekt smjestaja nije odvojen od efekta sesije"
+
+
 def cell(df: pd.DataFrame, cfg: str, col: str, conc: int,
          ratio: str | None = RATIO) -> np.ndarray:
     sel = (df.Configuration == cfg) & (df.ConcurrencyLevel == conc)
@@ -126,7 +140,8 @@ def section_effect_size(df: pd.DataFrame, present: set[str]) -> None:
     emit("")
 
     base, note = im_baseline(present)
-    pairs = [("htap", "im@d2", "smjestaj (OFF vs IM-P)"),
+    off, offnote = off_arm(present)
+    pairs = [(off, "im@d2", f"smjestaj ({off.upper()} vs IM-P) — {offnote}"),
              ("im@d2", base, f"paralelizam (IM-P vs {base.upper()}) — {note}"),
              ("htap", "im", "nekontrolirano (OFF vs IM)")]
 
