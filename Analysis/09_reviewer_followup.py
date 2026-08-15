@@ -90,6 +90,20 @@ def load() -> pd.DataFrame:
     return df[df["OltpSuccessRate"] >= 0.90]
 
 
+def im_baseline(present: set[str]) -> tuple[str, str]:
+    """
+    Koja se ruka koristi kao MAXDOP 1 osnova za polugu paralelizma.
+
+    im@d1base je izmjeren u istoj sesiji kao im@d2, pod istim brojacima i nad
+    istim stanjem baze, pa usporedba protiv njega mjeri iskljucivo MAXDOP.
+    Glavni `im` set potice iz ranije kampanje, prije instrumentacije, pa
+    usporedba protiv njega mijesa efekt paralelizma s razlikom medju sesijama.
+    """
+    if "im@d1base" in present:
+        return "im@d1base", "ista sesija — mjeri iskljucivo MAXDOP"
+    return "im", "RAZLICITA SESIJA — efekt paralelizma nije odvojen od efekta sesije"
+
+
 def cell(df: pd.DataFrame, cfg: str, col: str, conc: int,
          ratio: str | None = RATIO) -> np.ndarray:
     sel = (df.Configuration == cfg) & (df.ConcurrencyLevel == conc)
@@ -111,8 +125,9 @@ def section_effect_size(df: pd.DataFrame, present: set[str]) -> None:
     emit("   svaki run jedne ruke nadmasuje svaki run druge.")
     emit("")
 
+    base, note = im_baseline(present)
     pairs = [("htap", "im@d2", "smjestaj (OFF vs IM-P)"),
-             ("im@d2", "im", "paralelizam (IM-P vs IM)"),
+             ("im@d2", base, f"paralelizam (IM-P vs {base.upper()}) — {note}"),
              ("htap", "im", "nekontrolirano (OFF vs IM)")]
 
     for a_cfg, b_cfg, label in pairs:
@@ -169,23 +184,33 @@ def section_causal(df: pd.DataFrame, present: set[str]) -> None:
         emit(f"       {c:>3}  {im:>12,.0f}  {imp:>14,.0f}  {off:>10,.0f}  {ratio:>11.2f}")
     emit("")
 
-    if "im@d2" in present and "OlapCpuMs" in df.columns:
-        emit("   (b) Procesorsko vrijeme po ZAVRSENOM analitickom upitu, ruka IM-P")
-        emit("       Ako je ovaj broj nizak, paralelni plan radi manje ukupnog posla;")
-        emit("       ako je visok, dobitak dolazi od rasterecenja reda cekanja.")
-        emit(f"       {'C':>3}  {'OLAP CPU (s)':>14}  {'upita':>8}  {'CPU po upitu (ms)':>19}")
+    if "OlapCpuMs" not in df.columns:
+        emit("   (b) Brojaci nisu dostupni — preskacem.\n")
+        return
+
+    emit("   (b) Procesorsko vrijeme po ZAVRSENOM analitickom upitu")
+    emit("       Pada li po upitu, paralelni plan radi manje ukupnog posla;")
+    emit("       ostane li isti, dobitak dolazi od propusnosti a ne od ustede.")
+    emit(f"       {'ruka':<10} {'C':>3}  {'OLAP CPU (s)':>13}  {'upita':>8}  {'CPU/upit (ms)':>15}"
+         f"  {'OLTP CPU (s)':>13}")
+    for arm in ["im@d1base", "im@d2"]:
+        if arm not in present:
+            emit(f"       {arm:<10} nije izmjereno")
+            continue
         for c in CONCS:
-            cpu = med(df, "im@d2", "OlapCpuMs", c)
-            ops = med(df, "im@d2", "OlapTotalOps", c)
+            cpu = med(df, arm, "OlapCpuMs", c)
+            ops = med(df, arm, "OlapTotalOps", c)
+            oltp = med(df, arm, "OltpCpuMs", c)
             if not np.isfinite(cpu) or not ops:
                 continue
-            emit(f"       {c:>3}  {cpu / 1000:>14.1f}  {ops:>8,.0f}  {cpu / ops:>19.1f}")
-        emit("")
-        emit("   NAPOMENA: isti broj za ruku IM (DOP 1) trazi ponovno mjerenje te")
-        emit("   ruke pod instrumentacijom. Bez njega se (a) i (b) ne mogu uporediti")
-        emit("   izmedju ruku, pa kauzalni racun ostaje nezatvoren.")
-    else:
-        emit("   (b) Brojaci za IM-P nisu dostupni — preskacem.")
+            emit(f"       {arm:<10} {c:>3}  {cpu / 1000:>13.1f}  {ops:>8,.0f}  "
+                 f"{cpu / ops:>15.1f}  {oltp / 1000:>13.1f}")
+    emit("")
+
+    if "im@d1base" not in present:
+        emit("   NAPOMENA: ruka im@d1base nije izmjerena, pa se CPU po upitu ne moze")
+        emit("   uporediti izmedju stepena paralelizma. Kauzalni racun ostaje")
+        emit("   nezatvoren: pokrenite --arm d1base u istoj sesiji kao --arm d2.")
     emit("")
 
 

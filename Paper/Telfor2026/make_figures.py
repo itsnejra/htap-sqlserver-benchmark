@@ -106,7 +106,14 @@ def fig_two_levers(df: pd.DataFrame) -> None:
         print("  ! preskacem fig1_two_levers — nedostaje ruka im@d2")
         return
 
-    arms = [("im", "IM, OLAP at MAXDOP 1", C_ROW),
+    # im@d1base je MAXDOP 1 izmjeren u istoj sesiji kao im@d2; glavni `im` set
+    # potice iz ranije kampanje, pa bi usporedba protiv njega mijesala efekt
+    # paralelizma s razlikom medju mjernim sesijama.
+    base = "im@d1base" if "im@d1base" in df.Configuration.values else "im"
+    if base == "im":
+        print("  ! fig1 koristi glavni `im` set — ruke nisu iz iste sesije")
+
+    arms = [(base, "IM, OLAP at MAXDOP 1", C_ROW),
             ("im@d2", "IM, OLAP at MAXDOP 2", C_PAR),
             ("htap", "OLAP offloaded to columnstore", C_OFF)]
 
@@ -129,7 +136,6 @@ def fig_two_levers(df: pd.DataFrame) -> None:
                       error_kw={"elinewidth": 0.6, "capthick": 0.6})
         ax.bar_label(bars, fmt="%.0f", fontsize=5.5, padding=7, rotation=90)
 
-    base = [med(df, "im", "OltpThroughput", c) for c in CONCS]
     top = [med(df, "htap", "OltpThroughput", c) for c in CONCS]
     ax.set_ylim(0, np.nanmax(top) * 1.52)
 
@@ -138,7 +144,6 @@ def fig_two_levers(df: pd.DataFrame) -> None:
     ax.legend(loc="upper left", frameon=False)
     fig.tight_layout(pad=0.3)
     save(fig, "fig1_two_levers")
-    _ = base
 
 
 def fig_olap_crossover(df: pd.DataFrame) -> None:
