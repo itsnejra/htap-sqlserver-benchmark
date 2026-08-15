@@ -233,7 +233,7 @@ def section_nonmonotonic(df: pd.DataFrame) -> None:
     emit("4. NEMONOTONOST PROPUSNOSTI (omjer 80/20)")
     emit("-" * 74)
     emit(f"   {'konfiguracija':<14} {'C=4':>10} {'C=16':>10} {'C=32':>10}   C16 -> C32")
-    for cfg in ["baseline", "cs", "im", "im@d2", "htap"]:
+    for cfg in sorted(df.Configuration.unique()):
         v = [med(df, cfg, "OltpThroughput", c) for c in CONCS]
         if not np.isfinite(v).all():
             continue
@@ -281,6 +281,44 @@ def section_ratios(df: pd.DataFrame, present: set[str]) -> None:
         emit("")
     emit("   Smjer efekta (> 1) treba potvrditi u tekstu i za ostale omjere,")
     emit("   uz napomenu da velicina nije monotona po konkurentnosti.")
+    emit("")
+
+
+def section_aba(df: pd.DataFrame, present: set[str]) -> None:
+    """
+    ABA raspored: ista postavka izmjerena prije i poslije druge postavke.
+
+    Postoji jer redoslijed ruku nije bio kontrolisan — d1base je isla prva,
+    d2 druga. Ako se sistem mijenja kroz sesiju, ta razlika ulazi u rezultat
+    isto kao i sama postavka. Ponavljanjem prve ruke na kraju dobija se mjera
+    tog pomaka: ako se dva mjerenja iste postavke poklapaju, vremena nema i
+    usporedba vrijedi; ako se razlikuju, razlika je velicina koju treba oduzeti.
+    """
+    emit("8. ABA — pomak kroz sesiju")
+    emit("-" * 74)
+
+    if "im@d1base2" not in present:
+        emit("   Ponovljena ruka im@d1base2 nije izmjerena.")
+        emit("   Bez nje se efekt postavke ne moze odvojiti od pomaka kroz sesiju,")
+        emit("   jer je d1base isla prva a d2 druga. Pokrenite:")
+        emit("     dotnet run ... -- --arm d1base2 --only IM\n")
+        return
+
+    emit("   Ista postavka (MAXDOP 1), izmjerena prije i poslije ruke d2.")
+    emit("")
+    emit(f"   {'C':>3}  {'prvi put':>10}  {'zadnji put':>12}  {'pomak':>8}  "
+         f"{'d2 izmedju':>12}")
+    for c in CONCS:
+        a = med(df, "im@d1base", "OltpThroughput", c)
+        b = med(df, "im@d1base2", "OltpThroughput", c)
+        d2 = med(df, "im@d2", "OltpThroughput", c)
+        if not (np.isfinite(a) and np.isfinite(b)):
+            continue
+        emit(f"   {c:>3}  {a:>10,.0f}  {b:>12,.0f}  {b / a:>8.2f}  {d2:>12,.0f}")
+    emit("")
+    emit("   Pomak blizu 1,00 -> sesija je stabilna, usporedba d1base vs d2 vrijedi.")
+    emit("   Pomak znatno razlicit od 1,00 -> redoslijed nosi dio razlike i")
+    emit("   zakljucak o MAXDOP-u se ne moze donijeti bez korekcije.")
     emit("")
 
 
@@ -351,6 +389,7 @@ def main() -> None:
     section_sample_size(df)
     section_ratios(df, present)
     section_drift(df)
+    section_aba(df, present)
 
     OUT.write_text("\n".join(lines), encoding="utf-8")
     print(f"Izvjestaj: {OUT}")

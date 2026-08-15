@@ -60,6 +60,7 @@ if (args.Contains("--dry-run"))
 //   --arm d2      → IM analitika s MAXDOP 2 (izjednačeno s HTAP)
 //   --arm d1      → HTAP analitika s MAXDOP 1 (izjednačeno s IM)
 //   --arm d1base  → IM s izvornim procedurama (MAXDOP 1), ali instrumentirano
+//   --arm d1base2 → ponovljeni d1base, za ABA raspored (v. nize)
 //
 // d1base postoji zato što je glavni `im` set izmjeren prije nego je dodana
 // serverska instrumentacija, i u zasebnoj mjernoj sesiji. Usporedba d1base
@@ -72,15 +73,19 @@ if (args.Contains("--dry-run"))
 var armArg = args.SkipWhile(a => a != "--arm").Skip(1).FirstOrDefault()?.ToLowerInvariant();
 if (armArg is not null)
 {
+    // Prefiks odredjuje koje se procedure pozivaju; ostatak imena je slobodan,
+    // pa se ista ruka moze izmjeriti vise puta u razlicitim trenucima sesije
+    // (npr. d1base, pa d1base2 poslije d2) bez izmjene koda. To je nuzno za
+    // ABA raspored, kojim se odvaja efekt postavke od pomaka kroz vrijeme.
     benchmarkConfig.OlapProcSuffix = armArg switch
     {
-        "d2" => "_D2",
-        "d1" => "_D1",
         // Izvorne procedure — im.usp_OLAP_* vec nose OPTION(MAXDOP 1);
-        // mijenja se samo to gdje se pise i pod kojom oznakom.
-        "d1base" => "",
+        // mijenja se samo gdje se pise i pod kojom oznakom.
+        var a when a.StartsWith("d1base") => "",
+        var a when a.StartsWith("d2")     => "_D2",
+        var a when a.StartsWith("d1")     => "_D1",
         _ => throw new ArgumentException(
-            $"Nepoznata ruka '{armArg}'. Dozvoljeno: d1, d2, d1base.")
+            $"Nepoznata ruka '{armArg}'. Ime mora poceti s d1base, d2 ili d1.")
     };
     benchmarkConfig.ArmLabel = armArg;
 
