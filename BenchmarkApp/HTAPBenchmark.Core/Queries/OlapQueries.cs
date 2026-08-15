@@ -37,6 +37,33 @@ public static class OlapQueries
             _ => throw new ArgumentOutOfRangeException(nameof(queryName))
         };
 
+    /// <summary>
+    /// Varijanta upita s eksplicitno kontroliranim stepenom paralelizma.
+    ///
+    /// maxDopVariant = 0 → originalna procedura (MAXDOP kakav je zatečen u shemi:
+    ///                     MAXDOP 1 za im, MAXDOP 2 za cs/htap/baseline).
+    /// maxDopVariant = 1 ili 2 → _MD1 / _MD2 procedura iz
+    ///                     10_MaxDop_Control_Variants.sql.
+    ///
+    /// Postoji da bi se u usporedbi IM naspram HTAP stepen paralelizma mogao
+    /// izjednačiti; bez toga izmjereni jaz miješa efekt dual-store arhitekture s
+    /// efektom paralelizma analitičkih upita.
+    /// </summary>
+    public static string GetQuery(string schema, string queryName, int maxDopVariant)
+    {
+        if (maxDopVariant == 0)
+            return GetQuery(schema, queryName);
+
+        if (maxDopVariant is not (1 or 2))
+            throw new ArgumentOutOfRangeException(nameof(maxDopVariant),
+                maxDopVariant, "Podržane su samo varijante 0 (originalna), 1 i 2.");
+
+        if (!QueryNames.Contains(queryName))
+            throw new ArgumentOutOfRangeException(nameof(queryName));
+
+        return $"EXEC {schema}.usp_OLAP_{queryName}_MD{maxDopVariant};";
+    }
+
     public static string SelectQueryName(Random rng) =>
         QueryNames[rng.Next(QueryNames.Length)];
 }

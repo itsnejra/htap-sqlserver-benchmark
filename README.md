@@ -19,6 +19,7 @@ Projekat iz Optimizacija baza podataka — Komparativna analiza četiri konfigur
 9. [Konfiguracijske strategije](#9-konfiguracijske-strategije)
 10. [Radna opterećenja](#10-radna-opterećenja)
 11. [Izlazni fajlovi](#11-izlazni-fajlovi)
+12. [Kontrolni eksperimenti](#12-kontrolni-eksperimenti)
 
 ---
 
@@ -587,3 +588,116 @@ Success, ErrorMessage
 ```
 
 Milioni redova za puni benchmark — koristiti za per-operacijsku analizu (`04_per_operation_stats.py`).
+
+---
+
+## 12. Kontrolni eksperimenti
+
+Tri dopunska eksperimenta koja adresiraju ograničenja glavnog faktorijala. Svaki
+piše u vlastite izlazne datoteke i **ne dira** `Results/summary.csv` niti
+postojećih 1.070 mjerenja.
+
+Eksperimentalni uvjet kodiran je u vrijednost kolone `Configuration`
+(npr. `htap_md1`, `htap_sync5`), pa shema `summary.csv` ostaje nepromijenjena i
+postojeće analitičke skripte rade bez izmjena.
+
+### 12.1 Profil potrošnje resursa — mjerenje mehanizma CPU saturacije
+
+**Problem.** Tvrdnja da row-mode OLAP skeniranja u IM konfiguraciji zasićuju
+procesor i time istiskuju OLTP niti izvedena je iz modela izvršavanja upita, a
+nije izmjerena. Bez mjerenja, centralno objašnjenje rada ostaje pretpostavka.
+
+**Rješenje.** Snapshot `sys.dm_os_schedulers` i `sys.dm_os_wait_stats` na
+granicama mjerne faze; razlika daje CPU vrijeme i čekanja koja pripadaju
+isključivo tom prozoru.
+
+```bash
+dotnet run --project HTAPBenchmark.Runner -- --experiment waits
+python Analysis/06_resource_profile.py
+```
+
+| | |
+|---|---|
+| Obim | 3 konfiguracije × 3 omjera × 3 razine × 10 runova = 270 runova |
+| Trajanje | ~5,3 h (70 s po runu) |
+| Izlaz | `profile_resource_usage.csv`, `profile_wait_stats.csv`, figure 14–15 |
+
+**Uslov ispravnosti:** DMV-ovi su instance-wide, pa benchmark mora biti jedino
+opterećenje na instanci tokom mjerenja.
+
+### 12.2 Kontrola stepena paralelizma (MAXDOP)
+
+**Problem.** IM koristi `OPTION(MAXDOP 1)` zbog `CXSYNC_PORT` čekanja, a HTAP
+`OPTION(MAXDOP 2)`. Izmjereni jaz od 3,3–6,9× stoga miješa efekt dual-store
+arhitekture s efektom paralelizma analitičkih upita.
+
+**Rješenje.** Pun 2×2 faktorijal (konfiguracija × MAXDOP). Ključna usporedba je
+`im_md1` naspram `htap_md1`: pri identičnom paralelizmu svaka preostala razlika
+pripisiva je isključivo tome gdje se analitika izvršava.
+
+```bash
+sqlcmd -S . -i SQL/10_MaxDop_Control_Variants.sql
+dotnet run --project HTAPBenchmark.Runner -- --experiment maxdop
+python Analysis/07_maxdop_control.py
+```
+
+| | |
+|---|---|
+| Obim | 2 konfiguracije × 2 MAXDOP × 2 omjera × 2 razine × 10 runova = 160 runova |
+| Trajanje | ~3,1 h |
+| Izlaz | `maxdop_summary.csv`, `maxdop_control_tests.csv`, figura 16 |
+
+Očekuje se da `im_md2` bude sporiji od `im_md1` zbog `CXSYNC_PORT` čekanja na
+memorijsko-optimiziranim tablicama — to je nalaz, a ne greška mjerenja.
+
+### 12.3 Cijena sinhronizacije dual-store slojeva
+
+**Problem.** HTAP konfiguracija odvaja slojeve, ali tokom mjerenja ne radi
+nikakav mehanizam sinhronizacije — analitika čita statičan snapshot. Izmjerene
+prednosti su gornja granica ostvariva uz nultu cijenu propagacije.
+
+**Rješenje.** Periodična batch propagacija `htap.*` → `cs.*` po rasponu
+identifikatora (seek po hash indeksu, bez skeniranja tablice — delta-store model
+kao u F1 Lightningu). Mjerenjem pri više intervala dobiva se krivulja kompromisa
+između svježine analitičkih podataka i OLTP propusnosti.
+
+```bash
+sqlcmd -S . -i SQL/11_DualStore_Sync.sql
+dotnet run --project HTAPBenchmark.Runner -- --experiment sync
+python Analysis/08_sync_cost.py
+```
+
+| | |
+|---|---|
+| Obim | 4 intervala (0/1/5/30 s) × 2 omjera × 10 runova = 80 runova |
+| Trajanje | ~1,6 h |
+| Izlaz | `sync_summary.csv`, `sync_cycles.csv`, figura 17 |
+
+**Napomene:**
+
+- Nakon svakog runa `htap.usp_SyncCleanupColumnstore` vraća `cs.*` u polazno
+  stanje. Bez toga bi se izmjene akumulirale kroz runove jer
+  `TruncateAndReloadPostsAsync` učitava `htap.Posts` iz `cs.Posts`.
+- Kašnjenje svježine mjeri se nad `Comments` redovima jer je
+  `Votes.CreationDate` tipa `DATE`. Rezolucija je 1 s (`DATETIME2(0)`), dovoljna
+  za intervale reda sekunde, ali ne za sub-sekundne.
+- Na kraju eksperimenta pokrenuti `EXEC htap.usp_SyncMaintenance;` — propagirani
+  pa obrisani redovi ostavljaju delete bitmap i nekompresirane row groupe u
+  columnstore indeksima.
+
+### Provjera postavke prije punog pokretanja
+
+Svaki eksperiment podržava `--dry-run` i `--quick`, koji dolaze poslije preseta
+i skraćuju ga:
+
+```bash
+dotnet run --project HTAPBenchmark.Runner -- --experiment sync --dry-run
+```
+
+### Nove izlazne datoteke
+
+| Datoteka | Sadržaj |
+|---|---|
+| `*_resource_usage.csv` | CPU ms, iskorištenost %, ukupno čekanje, signal wait % — 1 red po runu |
+| `*_wait_stats.csv` | Top 15 tipova čekanja po runu (delta mjernog prozora) |
+| `sync_cycles.csv` | 1 red po ciklusu sinhronizacije: trajanje, propagirani redovi, kašnjenje svježine |

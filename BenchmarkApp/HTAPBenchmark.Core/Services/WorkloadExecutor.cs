@@ -10,10 +10,12 @@ namespace HTAPBenchmark.Core.Services;
 public sealed class WorkloadExecutor
 {
     private readonly string _connectionString;
+    private readonly ResourceMonitor? _resourceMonitor;
 
-    public WorkloadExecutor(string connectionString)
+    public WorkloadExecutor(string connectionString, bool collectResourceMetrics = false)
     {
         _connectionString = connectionString;
+        _resourceMonitor  = collectResourceMetrics ? new ResourceMonitor(connectionString) : null;
     }
 
     public async Task<WorkloadContext> LoadWorkloadContextAsync(string schema)
@@ -57,13 +59,13 @@ public sealed class WorkloadExecutor
     /// Sprječava cold-cache efekt koji uzrokuje 0 OLAP ops u prvim runovima
     /// kada htap.* in-memory tablice potiskuju cs.* stranice iz buffer pool-a.
     /// </summary>
-    public async Task WarmOlapCacheAsync(string schema)
+    public async Task WarmOlapCacheAsync(string schema, int olapMaxDopVariant = 0)
     {
         await using var conn = new SqlConnection(_connectionString);
         await conn.OpenAsync();
         foreach (var q in Queries.OlapQueries.QueryNames)
         {
-            var sql = Queries.OlapQueries.GetQuery(schema, q);
+            var sql = Queries.OlapQueries.GetQuery(schema, q, olapMaxDopVariant);
             try
             {
                 using var reader = await conn.ExecuteReaderAsync(
@@ -209,7 +211,7 @@ public sealed class WorkloadExecutor
         }
     }
 
-    public async Task<List<MeasurementResult>> ExecuteRunAsync(
+    public async Task<RunOutcome> ExecuteRunAsync(
         DbConfiguration config,
         WorkloadRatio ratio,
         int concurrencyLevel,
@@ -218,6 +220,8 @@ public sealed class WorkloadExecutor
         int measurementSeconds,
         WorkloadContext ctx,
         int globalRunId = 0,          // globally unique run index (1-1080) — used for ID generation only
+        int olapMaxDopVariant = 0,    // 0 = originalne procedure, 1/2 = _MD1/_MD2 varijante
+        int syncIntervalSeconds = 0,  // 0 = bez sinhronizacije htap.* -> cs.*
         CancellationToken cancellationToken = default)
     {
         var schema = config.ToLabel();
@@ -245,12 +249,64 @@ public sealed class WorkloadExecutor
                 voteCounter, commentCounter, runNumber, config, ratio, concurrencyLevel, cancellationToken))
             .Concat(Enumerable.Range(0, olapThreads)
             .Select(_ => RunOlapWorkerAsync(schema, measurements, warmupEnd, measureEnd,
-                runNumber, config, ratio, concurrencyLevel, cancellationToken)))
+                runNumber, config, ratio, concurrencyLevel, olapMaxDopVariant, cancellationToken)))
             .ToList();
 
-        await Task.WhenAll(allTasks);
+        // Snapshot brojača resursa uzima se na GRANICAMA mjerne faze, ne runa:
+        // warmup se ne smije uračunati jer sistem u njemu još nije u stacionarnom stanju.
+        var monitor = _resourceMonitor;
+        Task<ResourceSnapshot>? beforeSnapshot = null;
+        if (monitor is not null)
+        {
+            beforeSnapshot = Task.Run(async () =>
+            {
+                var untilWarmupEnd = warmupEnd - DateTime.UtcNow;
+                if (untilWarmupEnd > TimeSpan.Zero)
+                    await Task.Delay(untilWarmupEnd, cancellationToken);
+                return await monitor.CaptureAsync(cancellationToken);
+            }, cancellationToken);
+        }
 
-        return measurements.ToList();
+        // Sinhronizacija dual-store slojeva radi paralelno s radnim opterećenjem.
+        DualStoreSynchronizer? synchronizer = null;
+        Task? syncTask = null;
+        if (syncIntervalSeconds > 0 && config == DbConfiguration.HTAP)
+        {
+            synchronizer = new DualStoreSynchronizer(
+                _connectionString, syncIntervalSeconds, voteCounter, commentCounter,
+                initialVoteId:    ctx.NextVoteId    + idBase * 10_000_000,
+                initialCommentId: ctx.NextCommentId + idBase * 10_000_000);
+
+            syncTask = synchronizer.RunAsync(warmupEnd, measureEnd, cancellationToken);
+        }
+
+        await Task.WhenAll(allTasks);
+        if (syncTask is not null) await syncTask;
+
+        var outcome = new RunOutcome { Measurements = measurements.ToList() };
+
+        if (monitor is not null && beforeSnapshot is not null)
+        {
+            try
+            {
+                var after  = await monitor.CaptureAsync(cancellationToken);
+                var before = await beforeSnapshot;
+
+                var (usage, waits) = ResourceMonitor.Diff(before, after);
+                outcome.Resources = usage;
+                outcome.Waits     = waits;
+            }
+            catch
+            {
+                // Neuspjelo mjerenje resursa ne smije obesmisliti sam run —
+                // mjerenja propusnosti i latencije su već prikupljena.
+            }
+        }
+
+        if (synchronizer is not null)
+            outcome.SyncCycles = synchronizer.Cycles.ToList();
+
+        return outcome;
     }
 
     private async Task RunOltpWorkerAsync(
@@ -392,6 +448,7 @@ public sealed class WorkloadExecutor
         DbConfiguration config,
         WorkloadRatio ratio,
         int concurrency,
+        int olapMaxDopVariant,
         CancellationToken ct)
     {
         var rng = new Random(Guid.NewGuid().GetHashCode());
@@ -409,7 +466,7 @@ public sealed class WorkloadExecutor
         {
             bool inWarmup = DateTime.UtcNow < warmupEnd;
             string queryName = OlapQueries.SelectQueryName(rng);
-            string sql = OlapQueries.GetQuery(schema, queryName);
+            string sql = OlapQueries.GetQuery(schema, queryName, olapMaxDopVariant);
 
             // Per-query deadline: cancel the SQL command 5 s after measurement window ends.
             // This prevents slow baseline/im queries from blocking the entire run.

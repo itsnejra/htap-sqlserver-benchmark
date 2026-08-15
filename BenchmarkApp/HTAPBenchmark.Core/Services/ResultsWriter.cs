@@ -13,7 +13,25 @@ public sealed class ResultsWriter : IDisposable
     private readonly object _measurementsLock = new();
     private readonly object _summaryLock = new();
 
-    public ResultsWriter(string measurementsCsvPath, string summaryCsvPath)
+    // Instrumentacijski izlazi. Odvojene datoteke, a ne dodatne kolone u
+    // summary.csv, da postojećih 1.070 mjerenja i analitičke skripte koje ih
+    // čitaju ostanu upotrebljivi bez izmjena.
+    private readonly StreamWriter? _resourceWriter;
+    private readonly StreamWriter? _waitsWriter;
+    private readonly StreamWriter? _syncWriter;
+    private bool _resourceHeaderWritten;
+    private bool _waitsHeaderWritten;
+    private bool _syncHeaderWritten;
+    private readonly object _resourceLock = new();
+    private readonly object _waitsLock = new();
+    private readonly object _syncLock = new();
+
+    public ResultsWriter(
+        string measurementsCsvPath,
+        string summaryCsvPath,
+        string? resourceUsageCsvPath = null,
+        string? waitStatsCsvPath = null,
+        string? syncCyclesCsvPath = null)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(measurementsCsvPath)!);
         Directory.CreateDirectory(Path.GetDirectoryName(summaryCsvPath)!);
@@ -27,6 +45,21 @@ public sealed class ResultsWriter : IDisposable
         _summaryWriter             = new StreamWriter(summaryCsvPath,      append: true, Encoding.UTF8);
         _measurementsHeaderWritten = measurementsHasContent;
         _summaryHeaderWritten      = summaryHasContent;
+
+        (_resourceWriter, _resourceHeaderWritten) = OpenOptional(resourceUsageCsvPath);
+        (_waitsWriter,    _waitsHeaderWritten)    = OpenOptional(waitStatsCsvPath);
+        (_syncWriter,     _syncHeaderWritten)     = OpenOptional(syncCyclesCsvPath);
+    }
+
+    private static (StreamWriter?, bool) OpenOptional(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return (null, false);
+
+        var dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+
+        bool hasContent = File.Exists(path) && new FileInfo(path).Length > 0;
+        return (new StreamWriter(path, append: true, Encoding.UTF8), hasContent);
     }
 
     public void WriteMeasurements(IEnumerable<MeasurementResult> results)
@@ -79,9 +112,96 @@ public sealed class ResultsWriter : IDisposable
         }
     }
 
+    public void WriteResourceUsage(ResourceUsage usage)
+    {
+        if (_resourceWriter is null) return;
+
+        lock (_resourceLock)
+        {
+            if (!_resourceHeaderWritten)
+            {
+                _resourceWriter.WriteLine(
+                    "ExperimentTag,Configuration,OltpOlapRatio,ConcurrencyLevel,RunNumber," +
+                    "OlapMaxDop,SyncIntervalSeconds,WindowMs,SchedulerCount," +
+                    "SqlCpuMs,SqlCpuUtilPct,TotalWaitMs,TotalSignalWaitMs,SignalWaitPct");
+                _resourceHeaderWritten = true;
+            }
+
+            _resourceWriter.WriteLine(string.Create(CultureInfo.InvariantCulture,
+                $"{usage.ExperimentTag},{usage.Configuration},{usage.OltpOlapRatio}," +
+                $"{usage.ConcurrencyLevel},{usage.RunNumber}," +
+                $"{usage.OlapMaxDop},{usage.SyncIntervalSeconds}," +
+                $"{usage.WindowMs:F1},{usage.SchedulerCount}," +
+                $"{usage.SqlCpuMs},{usage.SqlCpuUtilPct:F3}," +
+                $"{usage.TotalWaitMs},{usage.TotalSignalWaitMs},{usage.SignalWaitPct:F3}"));
+
+            _resourceWriter.Flush();
+        }
+    }
+
+    public void WriteWaits(IEnumerable<WaitDelta> waits)
+    {
+        if (_waitsWriter is null) return;
+
+        lock (_waitsLock)
+        {
+            if (!_waitsHeaderWritten)
+            {
+                _waitsWriter.WriteLine(
+                    "ExperimentTag,Configuration,OltpOlapRatio,ConcurrencyLevel,RunNumber," +
+                    "OlapMaxDop,SyncIntervalSeconds,WaitType,WaitTimeMs,SignalWaitTimeMs,WaitingTasksCount");
+                _waitsHeaderWritten = true;
+            }
+
+            foreach (var w in waits)
+            {
+                _waitsWriter.WriteLine(string.Create(CultureInfo.InvariantCulture,
+                    $"{w.ExperimentTag},{w.Configuration},{w.OltpOlapRatio}," +
+                    $"{w.ConcurrencyLevel},{w.RunNumber}," +
+                    $"{w.OlapMaxDop},{w.SyncIntervalSeconds}," +
+                    $"{w.WaitType},{w.WaitTimeMs},{w.SignalWaitTimeMs},{w.WaitingTasksCount}"));
+            }
+
+            _waitsWriter.Flush();
+        }
+    }
+
+    public void WriteSyncCycles(IEnumerable<SyncCycleResult> cycles)
+    {
+        if (_syncWriter is null) return;
+
+        lock (_syncLock)
+        {
+            if (!_syncHeaderWritten)
+            {
+                _syncWriter.WriteLine(
+                    "ExperimentTag,Configuration,OltpOlapRatio,ConcurrencyLevel,RunNumber," +
+                    "SyncIntervalSeconds,CycleNumber,DurationMs," +
+                    "VotesPropagated,CommentsPropagated,PostsUpdated," +
+                    "AvgFreshnessLagMs,MaxFreshnessLagMs,Success");
+                _syncHeaderWritten = true;
+            }
+
+            foreach (var c in cycles)
+            {
+                _syncWriter.WriteLine(string.Create(CultureInfo.InvariantCulture,
+                    $"{c.ExperimentTag},{c.Configuration},{c.OltpOlapRatio}," +
+                    $"{c.ConcurrencyLevel},{c.RunNumber}," +
+                    $"{c.SyncIntervalSeconds},{c.CycleNumber},{c.DurationMs:F2}," +
+                    $"{c.VotesPropagated},{c.CommentsPropagated},{c.PostsUpdated}," +
+                    $"{c.AvgFreshnessLagMs:F1},{c.MaxFreshnessLagMs:F1},{(c.Success ? 1 : 0)}"));
+            }
+
+            _syncWriter.Flush();
+        }
+    }
+
     public void Dispose()
     {
         _measurementsWriter.Dispose();
         _summaryWriter.Dispose();
+        _resourceWriter?.Dispose();
+        _waitsWriter?.Dispose();
+        _syncWriter?.Dispose();
     }
 }
