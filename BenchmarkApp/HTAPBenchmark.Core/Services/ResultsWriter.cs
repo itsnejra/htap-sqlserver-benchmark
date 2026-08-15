@@ -38,17 +38,40 @@ public sealed class ResultsWriter : IDisposable
 
         // Append mode: preserve existing data so resume logic works correctly.
         // Header is NOT re-written if the file already has content.
-        bool measurementsHasContent = File.Exists(measurementsCsvPath) && new FileInfo(measurementsCsvPath).Length > 0;
-        bool summaryHasContent      = File.Exists(summaryCsvPath)      && new FileInfo(summaryCsvPath).Length > 0;
-
         _measurementsWriter        = new StreamWriter(measurementsCsvPath, append: true, Encoding.UTF8);
         _summaryWriter             = new StreamWriter(summaryCsvPath,      append: true, Encoding.UTF8);
-        _measurementsHeaderWritten = measurementsHasContent;
-        _summaryHeaderWritten      = summaryHasContent;
+        _measurementsHeaderWritten = HasContent(measurementsCsvPath);
+        _summaryHeaderWritten      = HasContent(summaryCsvPath);
 
         (_resourceWriter, _resourceHeaderWritten) = OpenOptional(resourceUsageCsvPath);
         (_waitsWriter,    _waitsHeaderWritten)    = OpenOptional(waitStatsCsvPath);
         (_syncWriter,     _syncHeaderWritten)     = OpenOptional(syncCyclesCsvPath);
+    }
+
+    /// <summary>
+    /// Ima li datoteka stvarni sadržaj, a ne samo UTF-8 BOM.
+    ///
+    /// Dužina fajla nije dovoljna provjera: StreamWriter upisuje BOM (3 bajta) i kad
+    /// nijedan red nije zapisan — npr. ako run padne pri konektovanju ili se benchmark
+    /// prekine odmah po pokretanju. Takav fajl bi po dužini prošao kao "ima sadržaj",
+    /// pa bi sljedeće pokretanje preskočilo zaglavlje i proizvelo CSV bez header reda,
+    /// koji analitičke skripte ne mogu parsirati.
+    /// </summary>
+    private static bool HasContent(string path)
+    {
+        if (!File.Exists(path)) return false;
+
+        try
+        {
+            using var reader = new StreamReader(path, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+            return !string.IsNullOrWhiteSpace(reader.ReadLine());
+        }
+        catch
+        {
+            // Ako datoteku ne možemo pročitati, sigurnije je upisati zaglavlje
+            // (suvišan header je uočljiv; nedostajući tiho kvari parsiranje).
+            return false;
+        }
     }
 
     private static (StreamWriter?, bool) OpenOptional(string? path)
@@ -58,7 +81,7 @@ public sealed class ResultsWriter : IDisposable
         var dir = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
 
-        bool hasContent = File.Exists(path) && new FileInfo(path).Length > 0;
+        bool hasContent = HasContent(path);
         return (new StreamWriter(path, append: true, Encoding.UTF8), hasContent);
     }
 
