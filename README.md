@@ -398,7 +398,7 @@ konfiguracije pri 80/20 opterećenju, 15 serija po kombinaciji (180 serija, ~4 h
 i piše u zasebne fajlove:
 
 ```bash
-dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -- --settings appsettings.ResourceProfile.json
+dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release -- --settings appsettings.ResourceProfile.json
 ```
 
 Za uključivanje profila u vlastitu konfiguraciju dovoljno je u `appsettings.json`:
@@ -431,7 +431,7 @@ u H3 usporedbi. Kontrola izvodi obje konfiguracije pri `MAXDOP 1`:
 
 # 2. Kontrolno mjerenje (~3,5 h: 2 konfiguracije x 3 razine x 30 serija)
 #    Pokreće se IZ KORIJENA repozitorija — izlazni putevi su relativni na radni direktorij.
-dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -- --settings appsettings.H3Control.json
+dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release -- --settings appsettings.H3Control.json
 
 # 3. Analiza
 cd Analysis
