@@ -5,7 +5,8 @@ projekta *Evaluacija performansi hibridne transakcijsko-analitičke obrade (HTAP
 u Microsoft SQL Serveru*.
 
 **Naslov:** *Empirical Evaluation of HTAP Storage Configurations in Microsoft SQL Server 2022*
-**Autor:** Nejra Smajlović, Politehnički fakultet, Univerzitet u Zenici
+(bosanski: *Empirijska evaluacija konfiguracija pohrane za HTAP obradu u Microsoft SQL Serveru 2022*)
+**Autori:** Nejra Smajlović, Alen Begović — Politehnički fakultet, Univerzitet u Zenici
 
 ## Sadržaj foldera
 
@@ -45,7 +46,7 @@ pa je dovoljno dva puta pokrenuti `pdflatex`.
 | Maksimalno 4 stranice A4 (redovni i studentski radovi) | 4 stranice |
 | Copyright napomena na dnu prve stranice | `\IEEEpubid` — **vidi napomenu ispod** |
 | Predaja u PDF formatu kroz TELFOR sistem | PDF se generiše `pdflatex`-om |
-| Jezik rada | engleski (radovi idu u IEEE Xplore) |
+| Jezik rada | engleska verzija za slanje (IEEE Xplore); bosanska verzija za čitanje |
 
 ### ⚠️ Prije predaje obavezno provjeriti
 
@@ -56,12 +57,12 @@ pa je dovoljno dva puta pokrenuti `pdflatex`.
    treba upisati umjesto `XXXX-XXXX`. (Domena telfor.rs nije bila dostupna iz
    okruženja u kojem je rad pripremljen, pa string nije mogao biti automatski
    preuzet.)
-2. **Koautorstvo.** Rad je trenutno potpisan s jednim autorom. Ako mentor treba biti
-   koautor, dodaje se u `\author{...}` bloku (i u `\thanks` fusnotu).
-3. **Rok i sekcija.** Odabrati odgovarajuću TELFOR sekciju pri predaji i provjeriti
+2. **Rok i sekcija.** Odabrati odgovarajuću TELFOR sekciju pri predaji i provjeriti
    aktuelne rokove na telfor.rs.
-4. **IEEE PDF eXpress.** Finalnu verziju propustiti kroz PDF eXpress radi
+3. **IEEE PDF eXpress.** Finalnu verziju propustiti kroz PDF eXpress radi
    Xplore-kompatibilnosti (ugrađivanje fontova i sl.).
+4. **Obje verzije.** Svaka izmjena teksta mora se unijeti u oba `.tex` fajla,
+   jer engleska i bosanska verzija nisu automatski povezane.
 
 ## Odnos prema izvornom istraživanju
 
@@ -71,22 +72,19 @@ zaokruživanja koje bi mijenjalo zaključke. Zbog ograničenja od 4 stranice, iz
 originalnog projektnog izvještaja preneseni su:
 
 - kompletan eksperimentalni dizajn (4×3×3, 30 ponavljanja, 1 070 validnih serija);
-- sve tri hipoteze s izmjerenim ishodima (H1 odbačena u glavnoj tvrdnji, H2 potvrđena
-  pri *C* = 16, H3 odbačena);
 - centralna tablica rezultata (propusnost OLTP + latencija OLAP za svih 36 ćelija);
 - oba OLS regresijska modela;
 - sva ograničenja validnosti iz originalnog rada.
 
-**Napomena o H2:** vrijednosti 67,4 % (CS) naspram 55,9 % (HTAP) vrijede za razinu
-konkurentnosti *C* = 16, kako ih računa `Analysis/02_statistical_tests.py`. U radu je
-to eksplicitno navedeno, a Slika 1 prikazuje degradaciju za sve tri razine
-konkurentnosti, gdje je razlika CS–HTAP značajna samo pri *C* = 16.
+**Napomena o hipotezama:** originalni izvještaj iznosi tri hipoteze (H1–H3) i za svaku
+daje presudu. U ovom radu ta forma je uklonjena na zahtjev autorice — isti nalazi se
+iznose direktno, a pregled literature završava s tri istraživačka pitanja umjesto s
+hipotezama. Mjerenja i zaključci su nepromijenjeni.
 
-**Napomena o H1:** originalni izvještaj H1 tretira kao „djelimično potvrđenu". Budući
-da je glavna tvrdnja hipoteze — usporedivost CS i HTAP pri niskoj konkurentnosti —
-izmjerena kao neistinita (*d* = 6,14, *p* < 0,001 već pri *C* = 4), u radu je H1
-označena kao **odbačena u glavnoj tvrdnji**, uz napomenu da preživljava samo njena
-sekundarna predikcija o rastu razlike s konkurentnošću.
+**Napomena o degradaciji:** vrijednosti 67,4 % (CS) naspram 55,9 % (HTAP) vrijede za
+razinu konkurentnosti *C* = 16, kako ih računa `Analysis/02_statistical_tests.py`. U
+radu je to eksplicitno navedeno, a Slika 1 prikazuje degradaciju za sve tri razine,
+gdje je razlika CS–HTAP značajna samo pri *C* = 16.
 
 **Napomena o latencijama Baseline konfiguracije:** pri *C* = 32 uspješnost OLAP-a
 Baseline konfiguracije je 83,6 %, jer upiti prekoračuju klijentski timeout. Takvi
@@ -103,3 +101,6 @@ ali su spremne za prošireni/journal oblik rada:
 
 - `fig1_oltp_scaling.pdf` — skalabilnost OLTP propusnosti po omjeru opterećenja (2 kolone);
 - `fig2_olap_latency.pdf` — distribucija OLAP *P*₅₀ latencije pri *C* = 32.
+
+Slika koja jest u radu generiše se u dvije jezičke varijante:
+`fig3_degradation.pdf` (engleska) i `fig3_degradation_bs.pdf` (bosanska).
