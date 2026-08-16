@@ -26,16 +26,29 @@ public static class OlapQueries
         "Q5_UserCohortActivity"
     ];
 
-    public static string GetQuery(string schema, string queryName) =>
-        queryName switch
+    /// <summary>
+    /// Gradi EXEC poziv za zadanu shemu i upit.
+    /// </summary>
+    /// <param name="suffix">
+    /// Opcionalni sufiks imena procedure (npr. "_Dop1"). Koristi se u kontrolnom
+    /// eksperimentu za H3, gdje HTAP izvodi analitiku pri istom stepenu paralelizma
+    /// kao IM (MAXDOP 1), da bi se razlika u propusnosti pripisala arhitekturi
+    /// pohrane, a ne razlici u paralelizmu. Prazan sufiks daje originalne procedure.
+    /// </param>
+    public static string GetQuery(string schema, string queryName, string suffix = "")
+    {
+        string procedure = queryName switch
         {
-            "Q1_MonthlyActivity"    => Q1_MonthlyActivity(schema),
-            "Q2_TopContributors"    => Q2_TopContributors(schema),
-            "Q3_VoteDistribution"   => Q3_VoteDistribution(schema),
-            "Q4_TimeToAnswer"       => Q4_TimeToAnswer(schema),
-            "Q5_UserCohortActivity" => Q5_UserCohortActivity(schema),
+            "Q1_MonthlyActivity"    => "usp_OLAP_Q1_MonthlyActivity",
+            "Q2_TopContributors"    => "usp_OLAP_Q2_TopContributors",
+            "Q3_VoteDistribution"   => "usp_OLAP_Q3_VoteDistribution",
+            "Q4_TimeToAnswer"       => "usp_OLAP_Q4_TimeToAnswer",
+            "Q5_UserCohortActivity" => "usp_OLAP_Q5_UserCohortActivity",
             _ => throw new ArgumentOutOfRangeException(nameof(queryName))
         };
+
+        return $"EXEC {schema}.{procedure}{suffix};";
+    }
 
     public static string SelectQueryName(Random rng) =>
         QueryNames[rng.Next(QueryNames.Length)];

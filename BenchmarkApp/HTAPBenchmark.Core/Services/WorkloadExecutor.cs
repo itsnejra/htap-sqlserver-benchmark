@@ -10,10 +10,16 @@ namespace HTAPBenchmark.Core.Services;
 public sealed class WorkloadExecutor
 {
     private readonly string _connectionString;
+    private readonly string _olapProcedureSuffix;
 
-    public WorkloadExecutor(string connectionString)
+    /// <param name="olapProcedureSuffix">
+    /// Sufiks imena OLAP procedura (npr. "_Dop1"). Vidi
+    /// <see cref="Models.BenchmarkConfig.OlapProcedureSuffix"/>.
+    /// </param>
+    public WorkloadExecutor(string connectionString, string olapProcedureSuffix = "")
     {
-        _connectionString = connectionString;
+        _connectionString    = connectionString;
+        _olapProcedureSuffix = olapProcedureSuffix ?? string.Empty;
     }
 
     public async Task<WorkloadContext> LoadWorkloadContextAsync(string schema)
@@ -63,7 +69,7 @@ public sealed class WorkloadExecutor
         await conn.OpenAsync();
         foreach (var q in Queries.OlapQueries.QueryNames)
         {
-            var sql = Queries.OlapQueries.GetQuery(schema, q);
+            var sql = Queries.OlapQueries.GetQuery(schema, q, _olapProcedureSuffix);
             try
             {
                 using var reader = await conn.ExecuteReaderAsync(
@@ -409,7 +415,7 @@ public sealed class WorkloadExecutor
         {
             bool inWarmup = DateTime.UtcNow < warmupEnd;
             string queryName = OlapQueries.SelectQueryName(rng);
-            string sql = OlapQueries.GetQuery(schema, queryName);
+            string sql = OlapQueries.GetQuery(schema, queryName, _olapProcedureSuffix);
 
             // Per-query deadline: cancel the SQL command 5 s after measurement window ends.
             // This prevents slow baseline/im queries from blocking the entire run.

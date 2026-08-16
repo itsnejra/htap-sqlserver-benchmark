@@ -229,6 +229,7 @@ Otvoriti svaki fajl u SSMS i pokrenuti redom (F5 ili Execute):
 | 8 | `07_StoredProcs_OLAP.sql` | Kreira 5 OLAP upita (Q1–Q5) za sve sheme: agregatna analiza aktivnosti, angažiranosti, tagova, vremena odgovora i top korisnika |
 | 9 | `07b_StoredProcs_OLAP_HTAP_DualStore.sql` | **Override:** prepisuje HTAP OLAP procedure da čitaju iz `cs.*` (columnstore) umjesto iz `htap.*` (memory). Mora se pokrenuti **nakon skripte 8** |
 | 10 | `09_Fix_OLAP_MaxDop.sql` | Dodaje `OPTION(MAXDOP 2)` svim OLAP procedurama — sprječava `CXSYNC_PORT` čekanje pri C=32 s više istovremenih batch-mode skenova. **Obavezno pokrenuti prije benchmarka** |
+| 11 | `10_H3_MaxDop_Control.sql` | *Opcionalno, samo za kontrolni eksperiment H3.* Kreira `_Dop1` varijante OLAP procedura u kojima i IM i HTAP rade pri `MAXDOP 1`. Vidi poglavlje 5.1 |
 
 **Opcionalno:** `08_ResultsSchema.sql` kreira tablicu za DB-side logging mjerenja — benchmark aplikacija to ne koristi (rezultati idu u CSV), ali može biti korisno za ručno testiranje pojedinih procedura.
 
@@ -374,6 +375,63 @@ dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -c Release
 
 Ctrl+C pokreće graceful prekid — završava tekući run i potom staje.
 
+### 5.1 Mjerenje resursa i kontrolni eksperiment za H3
+
+Dva dodatna mjerenja postoje da bi tvrdnje koje su u radu bile *izvedene* postale
+*izmjerene*. Oba su isključena po defaultu i ne mijenjaju glavno mjerenje.
+
+#### Profil resursa (CPU saturacija)
+
+Objašnjenje zašto HTAP nadmašuje IM počiva na tvrdnji da row-mode analitički skenovi
+zasićuju procesor. Bez mjerenja to je izvedeno iz modela izvršavanja upita. Uključivanjem
+profila resursa benchmark uz svaki run bilježi:
+
+- deltu `sys.dm_os_wait_stats` za mjernu fazu (na šta se čekalo i koliko),
+- uzorak `sys.dm_os_schedulers` svake sekunde (`runnable_tasks_count` — zadaci koji čekaju CPU),
+- deltu `SUM(cpu_time)` korisničkih sesija, normaliziranu brojem jezgara.
+
+U `appsettings.json`:
+
+```json
+"CollectResourceProfile": true,
+"ResourcesCsvPath": "Results/resource_profile.csv",
+"ResourceSampleIntervalMs": 1000
+```
+
+SQL nalog treba dozvolu `VIEW SERVER STATE`; bez nje monitor tiho vraća prazan rezultat,
+uz upozorenje u logu, a benchmark se normalno nastavlja:
+
+```sql
+GRANT VIEW SERVER STATE TO [DOMENA\korisnik];
+```
+
+Analiza: `python 06_resource_profile.py`. Ključni ishod je usporedba IM i HTAP pri 80/20 —
+mehanizam iz rada potvrđen je samo ako IM pokazuje sistematski veći CPU pritisak po sva
+tri pokazatelja.
+
+#### Kontrolni eksperiment za H3 (izjednačen MAXDOP)
+
+U glavnom mjerenju HTAP izvodi analitiku s `MAXDOP 2`, a IM s `MAXDOP 1` (paralelni planovi
+nad Hekaton tablicama izazivaju `CXSYNC_PORT` čekanja). Razlika u paralelizmu je confound
+u H3 usporedbi. Kontrola izvodi obje konfiguracije pri `MAXDOP 1`:
+
+```bash
+# 1. Kreiraj _Dop1 procedure (jednom, u SSMS)
+#    SQL/10_H3_MaxDop_Control.sql
+
+# 2. Pokreni kontrolno mjerenje (~3,5 h: 2 konfiguracije x 3 razine x 30 runova)
+cd BenchmarkApp
+dotnet run --project HTAPBenchmark.Runner -- --settings appsettings.H3Control.json
+
+# 3. Analiza
+cd ../Analysis
+python 07_h3_maxdop_control.py
+```
+
+Kontrolno mjerenje piše u zasebne fajlove (`Results/h3_control_*.csv`), pa ne dira
+rezultate glavnog benchmarka. Skript ispisuje koliki dio originalne prednosti (3,3–6,9×)
+preživi izjednačavanje paralelizma i predlaže formulaciju za rad ovisno o ishodu.
+
 ### Resume — nastavak nakon prekida
 
 Benchmark automatski nastavlja od zadnjeg završenog runa. Pri startu čita `Results/summary.csv` i preskače sve kombinacije koje su već zabilježene. Sigurno je prekinuti (Ctrl+C) i ponovo pokrenuti — niti jedan završeni run neće se ponoviti.
@@ -428,6 +486,16 @@ python 04_per_operation_stats.py
 python 05_regression_anova.py
 # OLS regresija i ANOVA: kvantificira uticaj konfiguracije, omjera i konkurentnosti na metrike
 # Izlaz: ../Results/regression_oltp_throughput.csv, regression_olap_latency.csv, regression_report.txt
+
+python 06_resource_profile.py
+# Profil resursa: CPU pritisak (runnable zadaci, iskorištenost CPU-a, signal wait) i
+# dominantni tipovi čekanja po konfiguraciji. Zahtijeva CollectResourceProfile = true.
+# Izlaz: ../Results/resource_profile_summary.csv, resource_waits_summary.csv, resource_profile_report.txt
+
+python 07_h3_maxdop_control.py
+# Kontrolni eksperiment H3: poredi jaz HTAP-IM pri izjednačenom MAXDOP-u s jazom iz glavnog mjerenja
+# Ulaz: ../Results/summary.csv i ../Results/h3_control_summary.csv
+# Izlaz: ../Results/h3_control_report.txt, h3_control_comparison.csv
 ```
 
 ### Generirani grafovi

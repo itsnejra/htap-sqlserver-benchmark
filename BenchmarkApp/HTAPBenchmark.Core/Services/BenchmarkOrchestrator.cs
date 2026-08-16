@@ -11,6 +11,7 @@ public sealed class BenchmarkOrchestrator
     private readonly BenchmarkConfig _config;
     private readonly WorkloadExecutor _executor;
     private readonly ResultsWriter _writer;
+    private readonly ResourceMonitor? _resourceMonitor;
     private readonly ILogger<BenchmarkOrchestrator> _logger;
     // Resume mapa pročitana PRIJE nego ResultsWriter otvori (i potencijalno zareze) fajlove.
     private readonly Dictionary<(string, string, int), int> _resumeMap;
@@ -27,13 +28,19 @@ public sealed class BenchmarkOrchestrator
         ILogger<BenchmarkOrchestrator> logger)
     {
         _config   = config;
-        _executor = new WorkloadExecutor(config.ConnectionString);
+        _executor = new WorkloadExecutor(config.ConnectionString, config.OlapProcedureSuffix);
         _logger   = logger;
+        _resourceMonitor = config.CollectResourceProfile
+            ? new ResourceMonitor(config.ConnectionString, config.ResourceSampleIntervalMs)
+            : null;
         // VAŽNO: pročitaj resume stanje PRIJE nego ResultsWriter otvori fajlove.
         // ResultsWriter koristi append:true ali drži file handle koji može spriječiti
         // konkurentno čitanje u nekim scenarijima. Čitanjem prvo garantiramo konzistentnost.
         _resumeMap = BuildResumeMap(config.SummaryCsvPath);
-        _writer   = new ResultsWriter(config.ResultsCsvPath, config.SummaryCsvPath);
+        _writer   = new ResultsWriter(
+            config.ResultsCsvPath,
+            config.SummaryCsvPath,
+            config.CollectResourceProfile ? config.ResourcesCsvPath : null);
     }
 
     public async Task RunAllAsync(CancellationToken cancellationToken = default)
@@ -117,6 +124,13 @@ public sealed class BenchmarkOrchestrator
 
                         try
                         {
+                            // Monitor resursa se pokreće paralelno s radnim nitima i sam
+                            // preskače warmup fazu, pa mjeri isti prozor kao i radne niti.
+                            var profileTask = _resourceMonitor?.ProfileRunAsync(
+                                config, ratio, concurrency, run,
+                                _config.WarmupSeconds, _config.MeasurementSeconds,
+                                cancellationToken);
+
                             var measurements = await _executor.ExecuteRunAsync(
                                 config, ratio, concurrency, run,
                                 _config.WarmupSeconds, _config.MeasurementSeconds,
@@ -131,6 +145,21 @@ public sealed class BenchmarkOrchestrator
 
                             _writer.WriteMeasurements(measurements);
                             _writer.WriteSummary(summary);
+
+                            if (profileTask is not null)
+                            {
+                                var profile = await profileTask;
+                                if (profile is not null)
+                                {
+                                    profile.RunId = runId;
+                                    _writer.WriteResourceProfile(profile);
+                                }
+                                else if (run == startRun)
+                                {
+                                    _logger.LogWarning(
+                                        "  Profil resursa nije dostupan (provjeri VIEW SERVER STATE dozvolu).");
+                                }
+                            }
 
                             completedRuns++;
                             runId++;

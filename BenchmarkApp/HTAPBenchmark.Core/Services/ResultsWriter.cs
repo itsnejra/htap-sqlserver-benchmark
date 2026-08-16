@@ -8,12 +8,15 @@ public sealed class ResultsWriter : IDisposable
 {
     private readonly StreamWriter _measurementsWriter;
     private readonly StreamWriter _summaryWriter;
+    private readonly StreamWriter? _resourcesWriter;
     private bool _measurementsHeaderWritten;
     private bool _summaryHeaderWritten;
+    private bool _resourcesHeaderWritten;
     private readonly object _measurementsLock = new();
     private readonly object _summaryLock = new();
+    private readonly object _resourcesLock = new();
 
-    public ResultsWriter(string measurementsCsvPath, string summaryCsvPath)
+    public ResultsWriter(string measurementsCsvPath, string summaryCsvPath, string? resourcesCsvPath = null)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(measurementsCsvPath)!);
         Directory.CreateDirectory(Path.GetDirectoryName(summaryCsvPath)!);
@@ -27,6 +30,13 @@ public sealed class ResultsWriter : IDisposable
         _summaryWriter             = new StreamWriter(summaryCsvPath,      append: true, Encoding.UTF8);
         _measurementsHeaderWritten = measurementsHasContent;
         _summaryHeaderWritten      = summaryHasContent;
+
+        if (!string.IsNullOrWhiteSpace(resourcesCsvPath))
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(resourcesCsvPath)!);
+            _resourcesHeaderWritten = File.Exists(resourcesCsvPath) && new FileInfo(resourcesCsvPath).Length > 0;
+            _resourcesWriter        = new StreamWriter(resourcesCsvPath, append: true, Encoding.UTF8);
+        }
     }
 
     public void WriteMeasurements(IEnumerable<MeasurementResult> results)
@@ -79,9 +89,53 @@ public sealed class ResultsWriter : IDisposable
         }
     }
 
+    /// <summary>
+    /// Zapisuje profil resursa jednog runa: jedan red po (run, wait_type), plus red
+    /// TOTAL s agregatnim pokazateljima CPU pritiska. Format je "long" da bi se u
+    /// analizi lako filtriralo po tipu čekanja bez fiksne liste kolona.
+    /// </summary>
+    public void WriteResourceProfile(ResourceProfile profile)
+    {
+        if (_resourcesWriter is null) return;
+
+        lock (_resourcesLock)
+        {
+            if (!_resourcesHeaderWritten)
+            {
+                _resourcesWriter.WriteLine(
+                    "Configuration,OltpOlapRatio,ConcurrencyLevel,RunNumber," +
+                    "WaitType,WaitingTasksCount,WaitTimeMs,SignalWaitTimeMs," +
+                    "AvgRunnableTasksPerScheduler,MaxRunnableTasksPerScheduler," +
+                    "AvgActiveWorkersPerScheduler,AvgSqlCpuPercent,MaxSqlCpuPercent," +
+                    "AvgTotalCpuPercent,SignalWaitPercent,SampleCount");
+                _resourcesHeaderWritten = true;
+            }
+
+            string key = string.Create(CultureInfo.InvariantCulture,
+                $"{profile.Configuration},{profile.OltpOlapRatio},{profile.ConcurrencyLevel},{profile.RunNumber}");
+
+            string aggregates = string.Create(CultureInfo.InvariantCulture,
+                $"{profile.AvgRunnableTasksPerScheduler:F4},{profile.MaxRunnableTasksPerScheduler:F4}," +
+                $"{profile.AvgActiveWorkersPerScheduler:F4},{profile.AvgSqlCpuPercent:F4},{profile.MaxSqlCpuPercent:F4}," +
+                $"{profile.AvgTotalCpuPercent:F4},{profile.SignalWaitPercent:F4},{profile.SampleCount}");
+
+            _resourcesWriter.WriteLine(string.Create(CultureInfo.InvariantCulture,
+                $"{key},TOTAL,0,{profile.TotalWaitTimeMs:F2},{profile.TotalSignalWaitTimeMs:F2},{aggregates}"));
+
+            foreach (var w in profile.Waits)
+            {
+                _resourcesWriter.WriteLine(string.Create(CultureInfo.InvariantCulture,
+                    $"{key},{w.WaitType},{w.WaitingTasksCount},{w.WaitTimeMs:F2},{w.SignalWaitTimeMs:F2},{aggregates}"));
+            }
+
+            _resourcesWriter.Flush();
+        }
+    }
+
     public void Dispose()
     {
         _measurementsWriter.Dispose();
         _summaryWriter.Dispose();
+        _resourcesWriter?.Dispose();
     }
 }

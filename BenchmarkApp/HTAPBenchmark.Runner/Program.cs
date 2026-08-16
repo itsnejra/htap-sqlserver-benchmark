@@ -18,9 +18,19 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
-var configuration = new ConfigurationBuilder()
+// Opcionalni dodatni settings fajl (--settings appsettings.H3Control.json).
+// Sloji se preko appsettings.json, pa nasljeđuje connection string i ostalo
+// što u njemu nije navedeno. Koristi se za kontrolne eksperimente.
+var settingsArg = args.SkipWhile(a => a != "--settings").Skip(1).FirstOrDefault();
+
+var configBuilder = new ConfigurationBuilder()
     .SetBasePath(AppContext.BaseDirectory)
-    .AddJsonFile("appsettings.json", optional: false)
+    .AddJsonFile("appsettings.json", optional: false);
+
+if (settingsArg is not null)
+    configBuilder.AddJsonFile(settingsArg, optional: false);
+
+var configuration = configBuilder
     .AddEnvironmentVariables()   // npr. BenchmarkConfig__ConnectionString (Docker)
     .AddCommandLine(args)
     .Build();
@@ -38,6 +48,29 @@ var logger = services.GetRequiredService<ILogger<BenchmarkOrchestrator>>();
 // Učitaj konfiguraciju (Get<> creates a fresh instance; Bind on pre-initialized obj doubles arrays)
 var benchmarkConfig = configuration.GetSection("BenchmarkConfig").Get<BenchmarkConfig>()
     ?? new BenchmarkConfig();
+
+// .NET konfiguracija spaja nizove po INDEKSU, ne zamjenjuje ih: ["IM","HTAP"]
+// preko ["Baseline","CS","IM","HTAP"] daje ["IM","HTAP","IM","HTAP"]. Zato se
+// nizovi, kada su navedeni u override fajlu, čitaju isključivo iz njega.
+if (settingsArg is not null)
+{
+    var overrideSection = new ConfigurationBuilder()
+        .SetBasePath(AppContext.BaseDirectory)
+        .AddJsonFile(settingsArg, optional: false)
+        .Build()
+        .GetSection("BenchmarkConfig");
+
+    var overrideOnly = overrideSection.Get<BenchmarkConfig>();
+    if (overrideOnly is not null)
+    {
+        if (overrideSection.GetSection("Configurations").Exists())
+            benchmarkConfig.Configurations = overrideOnly.Configurations;
+        if (overrideSection.GetSection("WorkloadRatios").Exists())
+            benchmarkConfig.WorkloadRatios = overrideOnly.WorkloadRatios;
+        if (overrideSection.GetSection("ConcurrencyLevels").Exists())
+            benchmarkConfig.ConcurrencyLevels = overrideOnly.ConcurrencyLevels;
+    }
+}
 
 // Provjeri command-line override-ove (za parcijalno pokretanje)
 if (args.Contains("--quick"))
@@ -76,6 +109,13 @@ logger.LogInformation("Ratio-i:       {Ratios}", string.Join(", ", benchmarkConf
 logger.LogInformation("Concurrency:   {C}", string.Join(", ", benchmarkConfig.ConcurrencyLevels));
 logger.LogInformation("Runs/combo:    {R}", benchmarkConfig.RunsPerCombination);
 logger.LogInformation("Warmup:        {W}s | Measurement: {M}s", benchmarkConfig.WarmupSeconds, benchmarkConfig.MeasurementSeconds);
+if (settingsArg is not null)
+    logger.LogInformation("Settings:      {File}", settingsArg);
+if (!string.IsNullOrEmpty(benchmarkConfig.OlapProcedureSuffix))
+    logger.LogWarning("OLAP sufiks:   {Suffix} (kontrolni eksperiment — procedure {Suffix} moraju postojati)",
+        benchmarkConfig.OlapProcedureSuffix, benchmarkConfig.OlapProcedureSuffix);
+if (benchmarkConfig.CollectResourceProfile)
+    logger.LogInformation("Profil resursa: uključen → {Path}", Path.GetFullPath(benchmarkConfig.ResourcesCsvPath));
 logger.LogInformation("Output:        {Path}", Path.GetFullPath(benchmarkConfig.ResultsCsvPath));
 
 int totalRuns = benchmarkConfig.Configurations.Length *
