@@ -131,12 +131,12 @@ asynchronous Raft replication, obtaining strong isolation at the price of
 network latency, and Google F1 Lightning~\cite{yang2020} lets transactional
 changes flow into delta structures that periodic compaction rewrites into an
 analytical format. SQL Server 2022 realizes an in-process variant of the
-same dual-store pattern and therefore pays no network latency. Its building
-blocks are well documented: the Hekaton engine~\cite{diaconu2013}, reporting
-10--30$\times$ speed-ups for point queries but supporting neither
-range-friendly indexing nor batch-mode execution, and columnstore
-indexes~\cite{larson2013}, whose batch-mode executor processes about 1\,000
-rows at a time for 10--100$\times$ speed-ups on warehouse queries. Their
+same pattern and pays no network latency. Its building blocks are well
+documented: the Hekaton engine~\cite{diaconu2013}, reporting 10--30$\times$
+speed-ups for point queries but supporting neither range-friendly indexing
+nor batch-mode execution, and columnstore indexes~\cite{larson2013}, whose
+batch-mode executor processes about 1\,000 rows at a time for
+10--100$\times$ speed-ups on warehouse queries. Their
 combination is described in~\cite{larson2015}, which reports the design and
 internal micro-benchmarks of the system's own authors.
 
@@ -215,8 +215,8 @@ driver is a purpose-built .NET 8 application using
 and OLAP workers concurrently, discards a 10\,s warm-up phase, measures for
 60\,s per run and writes per-operation latencies and outcomes to CSV. Each
 session first loads a working context of 20\,000 random post and 5\,000
-random user identifiers, so that access follows the natural distribution of
-the dataset.
+random user identifiers, so that access follows the dataset's natural
+distribution.
 
 The OLTP workload comprises six stored procedures drawn from a weighted
 distribution typical of a write-intensive web application: vote insert
@@ -293,22 +293,22 @@ highest analytical throughput, 6.84 q/s at $C = 32$ versus 3.13 (IM), 2.80
 (CS) and 0.85 q/s (Baseline), an 8.0$\times$ improvement over the control
 group. Robustness follows the same order: the OLAP success rate at $C = 32$
 is 99.4\,\% for HTAP and 97.8\,\% for CS, but only 83.6\,\% for Baseline,
-whose queries increasingly exceed the client timeout.
+whose queries increasingly exceed the client timeout. Since timed-out
+queries contribute no latency sample, the Baseline latencies in
+Table~\ref{tab:main} are survivor-biased and understate its true cost.
 
-Hypothesis H1 assumed comparable analytical latency for CS and HTAP at low
-concurrency. Under the balanced 50/50 mix the hybrid configuration is
-already significantly faster at $C = 4$ (median 825 vs. 1\,850\,ms,
-$d = 6.14$, $p < 0.001$), and the gap widens to 1\,807\,ms at $C = 32$
-(1\,813 vs. 3\,620\,ms, $d = 6.52$), consistent with the positive
-$\log(\text{concurrency})$ coefficient in Table~\ref{tab:ols}. \textbf{H1 is
-only partially confirmed}: the predicted growth with concurrency holds, but
-the assumed equivalence at low concurrency does not, because reading the
-columnstore copy from RAM removes the I/O latency that the disk-based
-columnstore still pays. Notably, IM surpasses CS in analytical throughput at
-$C = 32$ despite having no columnstore index: beyond six simultaneous
-batch-mode queries, waiting for a memory grant
-(\texttt{RESOURCE\_SEMAPHORE}) costs more than batch-mode execution
-saves~\cite{zeng2023}.
+Hypothesis H1 predicted equivalent CS and HTAP analytical latency at low
+concurrency, diverging only at high concurrency. Under the 50/50 mix the
+hybrid configuration is already significantly faster at $C = 4$ (median 825
+vs. 1\,850\,ms, $d = 6.14$, $p < 0.001$), and the gap widens to
+1\,807\,ms at $C = 32$ ($d = 6.52$). \textbf{H1 is therefore rejected in its
+principal claim} --- the two are not equivalent at low concurrency, since
+reading the columnstore copy from RAM removes the I/O latency the disk-based
+columnstore still pays --- and only its secondary prediction, growth with
+concurrency, survives. IM also surpasses CS in analytical throughput at
+$C = 32$ despite having no columnstore index, since memory-grant waits
+(\texttt{RESOURCE\_SEMAPHORE}) beyond six concurrent batch-mode queries cost
+more than batch mode saves~\cite{zeng2023}.
 
 \begin{figure}[t]
 \centering
@@ -335,8 +335,8 @@ on the same disk-based schema, whereas in the dual-store layout analytical
 queries read the \texttt{cs} columnstore while transactions operate on
 memory-optimized tables that never touch the buffer pool. Losing 67.4\,\% of
 transactional capacity is critical under a service-level agreement, and the
-magnitude agrees with the 50--70\,\% range reported for disk-based systems
-by Wu \emph{et al.}~\cite{wu2025}.
+magnitude agrees with the 50--70\,\% range reported for disk-based
+systems~\cite{wu2025}.
 
 \subsection{Regression Analysis}
 Two OLS models with log-transformed dependent variables quantify each
@@ -389,14 +389,14 @@ complements the isolation-first perspective of~\cite{zhao2023} and the
 decoupled architectures of TiDB~\cite{huang2020} and F1
 Lightning~\cite{yang2020}, obtained here without network latency.
 
-The practical rule is simple: whenever the workload contains both
-transactions and analytics, and the preconditions below are met, the
-dual-store layout is preferable regardless of the mix; CS remains the
-pragmatic choice for purely analytical workloads, RAM-constrained servers
-and editions such as SQL Server Express that lack In-Memory OLTP. The
-preconditions are substantial: roughly double the memory footprint, the
-engineering cost of operating the synchronization between the two layers,
-and tolerance for analytics over data that is not real-time fresh.
+The practical rule is simple: whenever the workload mixes transactions and
+analytics, and the preconditions below are met, the dual-store layout is
+preferable regardless of the ratio; CS remains the pragmatic choice for
+purely analytical workloads, RAM-constrained servers and editions such as
+SQL Server Express that lack In-Memory OLTP. The preconditions are
+substantial: roughly double the memory footprint, the engineering cost of
+operating the synchronization between the layers, and tolerance for
+analytics over data that is not real-time fresh.
 
 \subsection{Threats to Validity}
 \label{sec:threats}
@@ -409,15 +409,14 @@ upper bound obtained at zero synchronization cost, quantifying how much
 interference physical separation removes rather than the net benefit of a
 fully consistent system. Second, the memory-optimized configurations use
 \texttt{DURABILITY = SCHEMA\_ONLY} and read from RAM while the disk-based
-ones read from an NVMe SSD, so comparisons across media and durability
-settings mix the effect of architecture with that of the medium; the
-cleanest comparisons are those within one medium (HTAP vs. IM, and CS vs.
-the analytical layer of HTAP). Third, the \texttt{MAXDOP} asymmetry required
-by the engines is a confounding variable in the H3 comparison whose absolute
-contribution was not isolated. Fourth, the CPU-saturation explanation is
-derived from the query execution model rather than from direct processor
-profiling, and all measurements come from a single instance and dataset, so
-generalization requires caution.
+ones read from an NVMe SSD, so comparisons across media and durability mix
+the effect of architecture with that of the medium; the cleanest comparisons
+are those within one medium (HTAP vs. IM, and CS vs. the analytical layer of
+HTAP). Third, the \texttt{MAXDOP} asymmetry required by the engines
+confounds the H3 comparison, and its absolute contribution was not isolated.
+Fourth, the CPU-saturation explanation is derived from the query execution
+model rather than from direct processor profiling, and all measurements come
+from a single instance and dataset, so generalization requires caution.
 
 % =====================================================================
 \section{Conclusion}
@@ -432,17 +431,18 @@ same transactional engine, because row-mode analytical scans saturate the
 CPU, while the disk-based columnstore configuration lost two thirds of its
 transactional capacity once analytical load was added. The principal insight
 is that accelerating analytics is itself a means of protecting transactional
-throughput; this indirect effect, worth a factor of 3.3--6.9 here, should be
-taken into account when HTAP systems are tuned. Future work will measure the
-cost of continuous synchronization between the layers, add direct CPU
-profiling, and extend the comparison to distributed HTAP engines and larger
-Stack Overflow dumps.
+throughput; this indirect effect, worth a factor of 3.3--6.9 here, deserves
+attention when HTAP systems are tuned. Future work will measure the cost of
+continuous synchronization between the layers, add direct CPU profiling, and
+extend the comparison to distributed HTAP engines and larger Stack Overflow
+dumps.
 
 \balance
 
 % =====================================================================
 \begin{thebibliography}{99}
 \scriptsize  % 8 pt reference list, as in the IEEE conference template
+\setlength{\itemsep}{0pt plus 0.2pt}\setlength{\parsep}{0pt}
 \bibitem{diaconu2013}
 C. Diaconu \emph{et al.}, ``Hekaton: SQL Server's memory-optimized OLTP
 engine,'' in \emph{Proc. ACM SIGMOD}, 2013, pp. 1243--1254.

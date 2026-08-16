@@ -122,7 +122,7 @@ def fig_oltp_scaling(df: pd.DataFrame) -> None:
 # Fig. 2 - OLAP P50 latency distribution at C = 32 (single column)
 # ----------------------------------------------------------------------
 def fig_olap_latency(df: pd.DataFrame) -> None:
-    fig, ax = plt.subplots(figsize=(COL_W, 1.36))
+    fig, ax = plt.subplots(figsize=(COL_W, 1.28))
     data = [df[(df.Configuration == c) & (df.ConcurrencyLevel == 32)]["OlapLatencyP50"].values
             for c in CONFIGS]
     bp = ax.boxplot(data, patch_artist=True, widths=0.55, showfliers=True,
@@ -154,7 +154,7 @@ def fig_olap_latency(df: pd.DataFrame) -> None:
 # Fig. 3 - OLTP throughput degradation 80/20 -> 50/50 (single column)
 # ----------------------------------------------------------------------
 def fig_degradation(df: pd.DataFrame) -> None:
-    fig, ax = plt.subplots(figsize=(COL_W, 1.36))
+    fig, ax = plt.subplots(figsize=(COL_W, 1.28))
     width = 0.2
     xs = np.arange(len(LEVELS))
     for i, cfg in enumerate(CONFIGS):

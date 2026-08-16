@@ -63,8 +63,8 @@ zaokruživanja koje bi mijenjalo zaključke. Zbog ograničenja od 4 stranice, iz
 originalnog projektnog izvještaja preneseni su:
 
 - kompletan eksperimentalni dizajn (4×3×3, 30 ponavljanja, 1 070 validnih serija);
-- sve tri hipoteze s izmjerenim ishodima (H1 djelimično potvrđena, H2 potvrđena,
-  H3 odbačena);
+- sve tri hipoteze s izmjerenim ishodima (H1 odbačena u glavnoj tvrdnji, H2 potvrđena
+  pri *C* = 16, H3 odbačena);
 - centralna tablica rezultata (propusnost OLTP + latencija OLAP za svih 36 ćelija);
 - oba OLS regresijska modela;
 - sva ograničenja validnosti iz originalnog rada.
@@ -73,6 +73,17 @@ originalnog projektnog izvještaja preneseni su:
 konkurentnosti *C* = 16, kako ih računa `Analysis/02_statistical_tests.py`. U radu je
 to eksplicitno navedeno, a Slika 1 prikazuje degradaciju za sve tri razine
 konkurentnosti, gdje je razlika CS–HTAP značajna samo pri *C* = 16.
+
+**Napomena o H1:** originalni izvještaj H1 tretira kao „djelimično potvrđenu". Budući
+da je glavna tvrdnja hipoteze — usporedivost CS i HTAP pri niskoj konkurentnosti —
+izmjerena kao neistinita (*d* = 6,14, *p* < 0,001 već pri *C* = 4), u radu je H1
+označena kao **odbačena u glavnoj tvrdnji**, uz napomenu da preživljava samo njena
+sekundarna predikcija o rastu razlike s konkurentnošću.
+
+**Napomena o latencijama Baseline konfiguracije:** pri *C* = 32 uspješnost OLAP-a
+Baseline konfiguracije je 83,6 %, jer upiti prekoračuju klijentski timeout. Takvi
+upiti ne doprinose uzorku latencije, pa su Baseline latencije u Tabeli I
+survivor-biased i potcjenjuju stvarni trošak — što je u radu eksplicitno navedeno.
 
 Izostavljeni su prilozi s kodom pohranjenih procedura i detaljna metodološka razrada
 (dostupni u repozitoriju i originalnom izvještaju).
