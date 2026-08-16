@@ -60,6 +60,13 @@ LABELS = {
     "IM": "IM (Hekaton)",
     "HTAP": "HTAP (dual-store)",
 }
+# Bosanska varijanta oznaka za prijevod rada
+LABELS_BS = {
+    "BASELINE": "Baseline (B-stablo)",
+    "CS": "CS (columnstore)",
+    "IM": "IM (Hekaton)",
+    "HTAP": "HTAP (dual-store)",
+}
 # Colour-blind-safe, and separable in grayscale (light -> dark)
 COLOR = {"BASELINE": "#BFBFBF", "CS": "#7FB1D3", "IM": "#F0A73A", "HTAP": "#1B5E8C"}
 HATCH = {"BASELINE": "///", "CS": "\\\\\\", "IM": "xxx", "HTAP": ""}
@@ -153,7 +160,9 @@ def fig_olap_latency(df: pd.DataFrame) -> None:
 # ----------------------------------------------------------------------
 # Fig. 3 - OLTP throughput degradation 80/20 -> 50/50 (single column)
 # ----------------------------------------------------------------------
-def fig_degradation(df: pd.DataFrame) -> None:
+def fig_degradation(df: pd.DataFrame, lang: str = "en") -> None:
+    bs = lang == "bs"
+    labels = LABELS_BS if bs else LABELS
     fig, ax = plt.subplots(figsize=(COL_W, 1.28))
     width = 0.2
     xs = np.arange(len(LEVELS))
@@ -162,18 +171,18 @@ def fig_degradation(df: pd.DataFrame) -> None:
         sds = [degradation(df, cfg, c).std(ddof=1) for c in LEVELS]
         ax.bar(xs + (i - 1.5) * width, means, width, yerr=sds, capsize=1.6,
                color=COLOR[cfg], hatch=HATCH[cfg], edgecolor="black", linewidth=0.45,
-               error_kw=dict(elinewidth=0.6), label=LABELS[cfg])
+               error_kw=dict(elinewidth=0.6), label=labels[cfg])
     ax.axhline(0, color="black", linewidth=0.5)
     ax.set_xticks(xs)
     ax.set_xticklabels([f"$C = {c}$" for c in LEVELS])
-    ax.set_ylabel("OLTP throughput loss [%]")
-    ax.set_xlabel("Concurrency level")
+    ax.set_ylabel("Pad OLTP propusnosti [%]" if bs else "OLTP throughput loss [%]")
+    ax.set_xlabel("Razina konkurentnosti" if bs else "Concurrency level")
     ax.grid(True, axis="y", ls=":", alpha=0.55)
     ax.legend(loc="lower left", ncol=2, frameon=True, framealpha=0.92,
               handlelength=1.4, borderpad=0.25, labelspacing=0.2, columnspacing=0.9)
     ax.set_ylim(-45, 108)
     fig.tight_layout(pad=0.25)
-    fig.savefig(OUTDIR / "fig3_degradation.pdf")
+    fig.savefig(OUTDIR / ("fig3_degradation_bs.pdf" if bs else "fig3_degradation.pdf"))
     plt.close(fig)
 
 
@@ -181,7 +190,8 @@ def main() -> None:
     df = load()
     fig_oltp_scaling(df)
     fig_olap_latency(df)
-    fig_degradation(df)
+    fig_degradation(df, lang="en")
+    fig_degradation(df, lang="bs")
     print(f"Figures written to {OUTDIR}")
 
 

@@ -11,8 +11,10 @@ u Microsoft SQL Serveru*.
 
 | Datoteka | Opis |
 |---|---|
-| `telfor2026_htap.tex` | Izvorni LaTeX kod rada (IEEEtran, A4, dvokolonski) |
-| `telfor2026_htap.pdf` | Kompajlirani rad — **4 stranice A4** |
+| `telfor2026_htap.tex` | Izvorni LaTeX kod rada, engleski (IEEEtran, A4, dvokolonski) |
+| `telfor2026_htap.pdf` | Kompajlirani rad, engleski — **4 stranice A4** |
+| `telfor2026_htap_bs.tex` | Bosanska verzija istog rada (isti template) |
+| `telfor2026_htap_bs.pdf` | Kompajlirani rad, bosanski — **4 stranice A4** |
 | `make_figures.py` | Generiše slike direktno iz `Results/summary.csv` |
 | `figures/*.pdf` | Vektorske slike (Type-42 fontovi, IEEE širine kolona) |
 
@@ -23,7 +25,13 @@ python3 Telfor2026/make_figures.py     # iz korijena repozitorija
 cd Telfor2026
 pdflatex telfor2026_htap.tex
 pdflatex telfor2026_htap.tex           # drugi prolaz zbog referenci
+
+pdflatex telfor2026_htap_bs.tex        # bosanska verzija
+pdflatex telfor2026_htap_bs.tex
 ```
+
+Bosanska verzija dodatno traži `texlive-lang-european` (babel obrazac za
+prelamanje riječi; koristi se `croatian`, jer bosanski nema zaseban obrazac).
 
 Potreban je TeX Live s paketima `texlive-publishers` (IEEEtran), `texlive-latex-recommended`
 i `texlive-latex-extra`. Bibliografija je upisana kao `thebibliography` (bez BibTeX-a),
