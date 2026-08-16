@@ -42,11 +42,16 @@
 \author{\IEEEauthorblockN{Nejra Smajlovi\'c}
 \IEEEauthorblockA{Polytechnic Faculty, University of Zenica\\
 Zenica, Bosnia and Herzegovina\\
-nejra.smajlovic.22@size.ba}%
-\thanks{Nejra Smajlovi\'c is with the Polytechnic Faculty, University of
-Zenica, Fakultetska 1, 72000 Zenica, Bosnia and Herzegovina (e-mail:
-nejra.smajlovic.22@size.ba). Benchmark code, SQL scripts and raw
-measurements: \url{https://github.com/itsnejra/htap-sqlserver-benchmark}.}}
+nejra.smajlovic.22@size.ba}
+\and
+\IEEEauthorblockN{Alen Begovi\'c}
+\IEEEauthorblockA{Polytechnic Faculty, University of Zenica\\
+Zenica, Bosnia and Herzegovina\\
+alen.begovic@unze.ba}%
+\thanks{The authors are with the Polytechnic Faculty, University of Zenica,
+Fakultetska 1, 72000 Zenica, Bosnia and Herzegovina. Benchmark code, SQL
+scripts and measurements:
+\url{https://github.com/itsnejra/htap-sqlserver-benchmark}.}}
 
 \maketitle
 
@@ -384,10 +389,10 @@ row mode, spending far more CPU cycles per row and saturating the processor
 at $C = 16$ and $C = 32$; in the dual-store layout the same queries are
 served in batch mode from the columnstore copy, so transactions never
 compete with analytical threads for CPU. Accelerating analytics is therefore
-also a means of protecting OLTP throughput --- a design lever that
-complements the isolation-first perspective of~\cite{zhao2023} and the
-decoupled architectures of TiDB~\cite{huang2020} and F1
-Lightning~\cite{yang2020}, obtained here without network latency.
+also a means of protecting OLTP throughput --- a lever that complements the
+isolation-first perspective of~\cite{zhao2023} and the decoupled
+architectures of~\cite{huang2020, yang2020}, obtained here without network
+latency.
 
 The practical rule is simple: whenever the workload mixes transactions and
 analytics, and the preconditions below are met, the dual-store layout is
