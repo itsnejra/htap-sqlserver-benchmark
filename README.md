@@ -392,6 +392,17 @@ profila resursa benchmark uz svaki run bilježi:
 
 U `appsettings.json`:
 
+Ne treba ponavljati cijeli benchmark od 1 080 serija — profil resursa je zasebno
+mjerenje mehanizma, pa `appsettings.ResourceProfile.json` pokriva sve četiri
+konfiguracije pri 80/20 opterećenju, 15 serija po kombinaciji (180 serija, ~4 h),
+i piše u zasebne fajlove:
+
+```bash
+dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -- --settings appsettings.ResourceProfile.json
+```
+
+Za uključivanje profila u vlastitu konfiguraciju dovoljno je u `appsettings.json`:
+
 ```json
 "CollectResourceProfile": true,
 "ResourcesCsvPath": "Results/resource_profile.csv",
@@ -416,15 +427,14 @@ nad Hekaton tablicama izazivaju `CXSYNC_PORT` čekanja). Razlika u paralelizmu j
 u H3 usporedbi. Kontrola izvodi obje konfiguracije pri `MAXDOP 1`:
 
 ```bash
-# 1. Kreiraj _Dop1 procedure (jednom, u SSMS)
-#    SQL/10_H3_MaxDop_Control.sql
+# 1. Kreiraj _Dop1 procedure (jednom, u SSMS): SQL/10_H3_MaxDop_Control.sql
 
-# 2. Pokreni kontrolno mjerenje (~3,5 h: 2 konfiguracije x 3 razine x 30 runova)
-cd BenchmarkApp
-dotnet run --project HTAPBenchmark.Runner -- --settings appsettings.H3Control.json
+# 2. Kontrolno mjerenje (~3,5 h: 2 konfiguracije x 3 razine x 30 serija)
+#    Pokreće se IZ KORIJENA repozitorija — izlazni putevi su relativni na radni direktorij.
+dotnet run --project BenchmarkApp/HTAPBenchmark.Runner -- --settings appsettings.H3Control.json
 
 # 3. Analiza
-cd ../Analysis
+cd Analysis
 python 07_h3_maxdop_control.py
 ```
 
