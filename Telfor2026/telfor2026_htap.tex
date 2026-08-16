@@ -157,13 +157,13 @@ Independent evaluations of the SQL Server mechanisms nevertheless remain
 rare, and no study known to the author covers three concurrency levels and
 three mixes on this platform with a non-parametric analysis.
 
-Three hypotheses are therefore tested. \textbf{H1}: CS attains analytical
-latency comparable to the hybrid configuration at low concurrency, while the
-difference becomes significant at high concurrency. \textbf{H2}: the OLTP
-degradation caused by concurrent analytical queries is larger for CS than
-for the hybrid configuration. \textbf{H3}: under a transaction-heavy mix,
-the hybrid configuration does not achieve significantly higher OLTP
-throughput than the purely transactional in-memory configuration.
+The study is therefore organized around three questions. First, how the
+analytical latency of the disk-based columnstore configuration compares with
+that of the hybrid one, and whether the comparison changes with concurrency.
+Second, how much transactional throughput each configuration gives up when
+analytical queries run alongside it. Third, whether the hybrid configuration
+gains transactional throughput over the purely in-memory configuration under
+a transaction-heavy mix, given that both rest on the same Hekaton engine.
 
 % =====================================================================
 \section{System Under Test}
@@ -281,14 +281,14 @@ Baseline. The disk-based configurations scale non-monotonically: under the
 9\,005 $\rightarrow$ 5\,727 ops/s) once I/O contention and locking saturate
 the storage subsystem, whereas the memory-optimized ones keep scaling.
 
-Hypothesis H3 predicted no significant advantage of the hybrid over the
-purely in-memory configuration under a transaction-heavy mix. The data
-reject it: at 80/20 the median throughput ratio grows from 3.3$\times$ at
-$C = 4$ (10\,083 vs. 3\,027 ops/s, $d = -4.38$) through 4.7$\times$ at
-$C = 16$ to 6.9$\times$ at $C = 32$ (43\,751 vs. 6\,325 ops/s,
-$d = -11.93$), significant at every level ($p < 0.001$). The same ordering
-holds per procedure: the $P_{95}$ latency of the score update is 11.9\,ms in
-IM against 4.3\,ms in HTAP. \textbf{H3 is rejected.}
+Sharing the Hekaton engine does not make the two memory-optimized
+configurations equivalent under a transaction-heavy mix. At 80/20 the median
+throughput ratio between the hybrid and the purely in-memory configuration
+grows from 3.3$\times$ at $C = 4$ (10\,083 vs. 3\,027 ops/s, $d = -4.38$)
+through 4.7$\times$ at $C = 16$ to 6.9$\times$ at $C = 32$ (43\,751 vs.
+6\,325 ops/s, $d = -11.93$), significant at every level ($p < 0.001$). The
+same ordering holds per procedure: the $P_{95}$ latency of the score update
+is 11.9\,ms in IM against 4.3\,ms in HTAP.
 
 \subsection{Analytical Performance}
 The dual-store configuration also attains the lowest analytical latency in
@@ -302,15 +302,14 @@ whose queries increasingly exceed the client timeout. Since timed-out
 queries contribute no latency sample, the Baseline latencies in
 Table~\ref{tab:main} are survivor-biased and understate its true cost.
 
-Hypothesis H1 predicted equivalent CS and HTAP analytical latency at low
-concurrency, diverging only at high concurrency. Under the 50/50 mix the
-hybrid configuration is already significantly faster at $C = 4$ (median 825
-vs. 1\,850\,ms, $d = 6.14$, $p < 0.001$), and the gap widens to
-1\,807\,ms at $C = 32$ ($d = 6.52$). \textbf{H1 is therefore rejected in its
-principal claim} --- the two are not equivalent at low concurrency, since
+Holding the columnstore layer constant does not equalize analytical latency
+either. Under the 50/50 mix the hybrid configuration is already
+significantly faster than CS at $C = 4$ (median 825 vs. 1\,850\,ms,
+$d = 6.14$, $p < 0.001$), and the gap widens to 1\,807\,ms at $C = 32$
+($d = 6.52$): the two are not equivalent even at minimal concurrency, since
 reading the columnstore copy from RAM removes the I/O latency the disk-based
-columnstore still pays --- and only its secondary prediction, growth with
-concurrency, survives. IM also surpasses CS in analytical throughput at
+columnstore still pays, and the difference grows with load. IM also
+surpasses CS in analytical throughput at
 $C = 32$ despite having no columnstore index, since memory-grant waits
 (\texttt{RESOURCE\_SEMAPHORE}) beyond six concurrent batch-mode queries cost
 more than batch mode saves~\cite{zeng2023}.
@@ -329,7 +328,7 @@ At $C = 16$, moving from the 80/20 to the 50/50 mix costs CS
 67.4\,\%\,$\pm$\,2.8\,\% of its transactional throughput against
 55.9\,\%\,$\pm$\,6.3\,\% for the hybrid configuration; the 11.5
 percentage-point difference is significant with a large effect
-($p < 0.001$, $d = 2.32$), so \textbf{H2 is confirmed} at that level.
+($p < 0.001$, $d = 2.32$).
 Fig.~\ref{fig:degradation} shows the advantage to be concurrency-dependent:
 at $C = 4$ all configurations lose between 25\,\% and 46\,\% with no
 significant CS--HTAP difference, and at $C = 32$ the comparison is dominated
@@ -418,7 +417,7 @@ ones read from an NVMe SSD, so comparisons across media and durability mix
 the effect of architecture with that of the medium; the cleanest comparisons
 are those within one medium (HTAP vs. IM, and CS vs. the analytical layer of
 HTAP). Third, the \texttt{MAXDOP} asymmetry required by the engines
-confounds the H3 comparison, and its absolute contribution was not isolated.
+confounds the HTAP--IM comparison, and its contribution was not isolated.
 Fourth, the CPU-saturation explanation is derived from the query execution
 model rather than from direct processor profiling, and all measurements come
 from a single instance and dataset, so generalization requires caution.
