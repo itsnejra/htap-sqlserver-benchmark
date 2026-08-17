@@ -2,7 +2,8 @@
 %  TELFOR 2026 -- Telecommunications Forum, Belgrade, Serbia
 %  Paper: Empirical Evaluation of HTAP Storage Configurations
 %         in Microsoft SQL Server 2022
-%  Author: Nejra Smajlovic, Polytechnic Faculty, University of Zenica
+%  Authors: Nejra Smajlovic (University of Zenica, Polytechnic Faculty)
+%           Alen Begovic (University of Sarajevo, Faculty of Electrical Eng.)
 %
 %  FORMAT COMPLIANCE (TELFOR instructions for authors):
 %    * double-column A4, standard IEEE conference template (IEEEtran, 10 pt)
@@ -40,18 +41,20 @@
 \title{Empirical Evaluation of HTAP Storage\\Configurations in Microsoft SQL Server 2022}
 
 \author{\IEEEauthorblockN{Nejra Smajlovi\'c}
-\IEEEauthorblockA{Polytechnic Faculty, University of Zenica\\
+\IEEEauthorblockA{University of Zenica\\
+Polytechnic Faculty\\
 Zenica, Bosnia and Herzegovina\\
 nejra.smajlovic.22@size.ba}
 \and
 \IEEEauthorblockN{Alen Begovi\'c}
-\IEEEauthorblockA{Polytechnic Faculty, University of Zenica\\
-Zenica, Bosnia and Herzegovina\\
-alen.begovic@unze.ba}%
-\thanks{The authors are with the Polytechnic Faculty, University of Zenica,
-Fakultetska 1, 72000 Zenica, Bosnia and Herzegovina. Benchmark code, SQL
-scripts and measurements:
-\url{https://github.com/itsnejra/htap-sqlserver-benchmark}.}}
+\IEEEauthorblockA{University of Sarajevo\\
+Faculty of Electrical Engineering\\
+Sarajevo, Bosnia and Herzegovina\\
+alen.begovic@etf.unsa.ba}%
+\thanks{N. Smajlovi\'c is with the Polytechnic Faculty, University of Zenica,
+and A. Begovi\'c with the Faculty of Electrical Engineering, University of
+Sarajevo, Bosnia and Herzegovina. Benchmark code, SQL scripts and
+measurements: \url{https://github.com/itsnejra/htap-sqlserver-benchmark}.}}
 
 \maketitle
 
@@ -59,10 +62,9 @@ scripts and measurements:
 This paper reports an independent empirical evaluation of four storage
 configuration strategies available inside a single Microsoft SQL Server 2022
 instance, for systems that must serve transactional and analytical queries
-over the same data without the staleness and operational complexity
-introduced by a data warehouse bridged by an ETL pipeline: disk-based tables
-with B-tree indexes (Baseline),
-disk-based tables with a nonclustered columnstore index (CS),
+over the same data without the staleness and operational complexity of an
+ETL-bridged data warehouse: disk-based tables with B-tree indexes
+(Baseline), disk-based tables with a nonclustered columnstore index (CS),
 memory-optimized tables on the Hekaton engine (IM), and a dual-store hybrid
 configuration combining a memory-optimized transactional layer with a
 columnstore analytical layer (HTAP). The experiment is a full factorial
@@ -420,7 +422,7 @@ HTAP). Third, the \texttt{MAXDOP} asymmetry required by the engines
 confounds the HTAP--IM comparison, and its contribution was not isolated.
 Fourth, the CPU-saturation explanation is derived from the query execution
 model rather than from direct processor profiling, and all measurements come
-from a single instance and dataset, so generalization requires caution.
+from one instance and dataset, so generalization requires caution.
 
 % =====================================================================
 \section{Conclusion}

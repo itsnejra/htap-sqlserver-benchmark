@@ -6,7 +6,8 @@ u Microsoft SQL Serveru*.
 
 **Naslov:** *Empirical Evaluation of HTAP Storage Configurations in Microsoft SQL Server 2022*
 (bosanski: *Empirijska evaluacija konfiguracija pohrane za HTAP obradu u Microsoft SQL Serveru 2022*)
-**Autori:** Nejra Smajlović, Alen Begović — Politehnički fakultet, Univerzitet u Zenici
+**Autori:** Nejra Smajlović (Univerzitet u Zenici, Politehnički fakultet)
+· Alen Begović (Univerzitet u Sarajevu, Elektrotehnički fakultet)
 
 ## Sadržaj foldera
 

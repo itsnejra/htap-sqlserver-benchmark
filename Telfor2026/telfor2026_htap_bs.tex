@@ -2,7 +2,8 @@
 %  TELFOR 2026 -- Telekomunikacioni forum, Beograd
 %  Rad: Empirijska evaluacija konfiguracija pohrane za HTAP obradu
 %       u Microsoft SQL Serveru 2022
-%  Autori: Nejra Smajlović, Alen Begović — Politehnički fakultet, UNZE
+%  Autori: Nejra Smajlović (Univerzitet u Zenici, Politehnički fakultet)
+%          Alen Begović (Univerzitet u Sarajevu, Elektrotehnički fakultet)
 %
 %  BOSANSKA VERZIJA rada telfor2026_htap.tex. Sadržaj, brojke i zaključci
 %  su identični; razlikuje se samo jezik i decimalni zarez.
@@ -50,17 +51,19 @@
 \title{Empirijska evaluacija konfiguracija pohrane\\za HTAP obradu u Microsoft SQL Serveru 2022}
 
 \author{\IEEEauthorblockN{Nejra Smajlović}
-\IEEEauthorblockA{Politehnički fakultet, Univerzitet u Zenici\\
+\IEEEauthorblockA{Univerzitet u Zenici\\
+Politehnički fakultet\\
 Zenica, Bosna i Hercegovina\\
 nejra.smajlovic.22@size.ba}
 \and
 \IEEEauthorblockN{Alen Begović}
-\IEEEauthorblockA{Politehnički fakultet, Univerzitet u Zenici\\
-Zenica, Bosna i Hercegovina\\
-alen.begovic@unze.ba}%
-\thanks{Autori su s Politehničkog fakulteta Univerziteta u Zenici,
-Fakultetska 1, 72000 Zenica, Bosna i Hercegovina. Izvorni kod benchmarka,
-SQL skripte i mjerenja:
+\IEEEauthorblockA{Univerzitet u Sarajevu\\
+Elektrotehnički fakultet\\
+Sarajevo, Bosna i Hercegovina\\
+alen.begovic@etf.unsa.ba}%
+\thanks{N. Smajlović je s Politehničkog fakulteta Univerziteta u Zenici, a
+A. Begović s Elektrotehničkog fakulteta Univerziteta u Sarajevu, Bosna i
+Hercegovina. Izvorni kod benchmarka, SQL skripte i mjerenja:
 \url{https://github.com/itsnejra/htap-sqlserver-benchmark}.}}
 
 \maketitle
@@ -68,9 +71,9 @@ SQL skripte i mjerenja:
 \begin{abstract}
 Ovaj rad donosi nezavisnu empirijsku evaluaciju četiri strategije pohrane
 dostupne unutar jedne instance Microsoft SQL Servera 2022, namijenjenu
-sistemima koji nad istim podacima moraju opsluživati i transakcijske i
-analitičke upite bez zastarjelosti podataka i operativne složenosti koje
-uvodi skladište premošćeno ETL procesom: disk-zasnovane tabele s B-stablo
+sistemima koji nad istim podacima moraju opsluživati transakcijske i
+analitičke upite bez zastarjelosti i operativne složenosti koje uvodi
+skladište premošćeno ETL procesom: disk-zasnovane tabele s B-stablo
 indeksima (Baseline), disk-zasnovane tabele
 s nonclustered columnstore indeksom (CS), memorijsko-optimizirane tabele na
 Hekaton engineu (IM) i hibridnu dual-store konfiguraciju koja
@@ -166,7 +169,7 @@ optimalna konfiguracija ovisi o interakciji profila opterećenja i
 konkurentnosti, što motiviše ovdje primijenjeni faktorijalni dizajn.
 Nezavisne evaluacije mehanizama SQL Servera ipak su rijetke, a nijedna
 autorima poznata studija ne obuhvata tri razine konkurentnosti i tri omjera
-na ovoj platformi uz neparametarsku analizu.
+uz neparametarsku analizu.
 
 Istraživanje je stoga organizovano oko tri pitanja. Prvo, kako se analitička
 latencija disk-zasnovane columnstore konfiguracije odnosi prema hibridnoj i
@@ -226,7 +229,7 @@ ponavljanja po ćeliji.
 
 Sva mjerenja izvedena su na jednoj mašini s procesorom Intel Core i9-14900HX
 (24 jezgra / 32 niti), 32\,GB DDR5-5600 memorije i NVMe SSD-om od 1\,TB, pod
-operativnim sistemom Windows 11 (24H2) i SQL Serverom 2022 Developer Edition.
+Windowsom 11 (24H2) i SQL Serverom 2022 Developer Edition.
 Mjerna aplikacija je namjenski razvijena u .NET 8 uz
 \texttt{Microsoft.Data.SqlClient} i Dapper micro-ORM; izvršava OLTP i OLAP
 radnike uporedo, odbacuje warmup fazu od 10\,s, mjeri 60\,s po seriji i
@@ -322,11 +325,10 @@ $C = 4$ (medijana 825 naspram 1\,850\,ms, $d = 6{,}14$, $p < 0{,}001$), a jaz
 se širi na 1\,807\,ms pri $C = 32$ ($d = 6{,}52$): dvije konfiguracije nisu
 jednake ni pri minimalnoj konkurentnosti, jer čitanje columnstore kopije iz
 radne memorije uklanja ulazno-izlaznu latenciju koju disk-zasnovani
-columnstore i dalje plaća, a razlika raste s opterećenjem. IM nadmašuje CS u
-analitičkoj propusnosti pri $C = 32$ uprkos tome što nema columnstore
-indeks, jer čekanje na dodjelu memorije (\texttt{RESOURCE\_SEMAPHORE}) iznad
-šest istovremenih batch-mode upita košta više nego što batch-mode
-donosi~\cite{zeng2023}.
+columnstore i dalje plaća, a razlika raste s opterećenjem. IM nadmašuje CS u analitičkoj
+propusnosti pri $C = 32$ uprkos tome što nema columnstore indeks, jer čekanje
+na dodjelu memorije (\texttt{RESOURCE\_SEMAPHORE}) iznad šest istovremenih
+upita košta više nego što batch-mode donosi~\cite{zeng2023}.
 
 \begin{figure}[t]
 \centering
@@ -350,7 +352,7 @@ snižena row-mode analitičkim skeniranjima. Mehanizam izolacije je jasan: u CS
 batch-mode skeniranja dijele buffer pool i procesorske niti s OLTP naredbama
 nad istom disk-zasnovanom shemom, dok u dual-store rasporedu analitički
 upiti čitaju \texttt{cs} columnstore, a transakcije rade nad
-memorijsko-optimiziranim tabelama koje buffer pool nikada ne dodiruju.
+memorijsko-optimiziranim tabelama koje buffer pool ne dodiruju.
 Gubitak 67,4\,\% transakcijskog kapaciteta kritičan je uz ugovorenu razinu
 usluge, a red veličine odgovara rasponu od 50 do 70\,\% koji se za
 disk-zasnovane sisteme navodi u~\cite{wu2025}.
@@ -403,16 +405,15 @@ opslužuju u batch-modu iz columnstore kopije, pa se transakcije nikada ne
 natječu s analitičkim nitima za procesor. Ubrzanje analitike je stoga i
 sredstvo zaštite OLTP propusnosti --- poluga koja dopunjuje pristup
 usmjeren na izolaciju iz~\cite{zhao2023} i razdvojene arhitekture
-iz~\cite{huang2020, yang2020}, ovdje ostvarena bez mrežne latencije.
+iz~\cite{huang2020, yang2020}.
 
 Praktično pravilo je jednostavno: kad god opterećenje spaja transakcije i
-analitiku, a preduslovi navedeni niže su ispunjeni, dual-store raspored je
-poželjniji bez obzira na omjer; CS ostaje pragmatičan izbor za isključivo
-analitička opterećenja, servere s ograničenom memorijom i izdanja poput SQL
-Server Express koja ne podržavaju In-Memory OLTP. Preduslovi nisu mali:
-otprilike dvostruka potrošnja memorije, trošak održavanja sinhronizacije
-između slojeva i tolerancija na analitiku nad podacima koji nisu svježi u
-realnom vremenu.
+analitiku, a preduslovi su ispunjeni, dual-store raspored je poželjniji bez
+obzira na omjer; CS ostaje pragmatičan izbor za isključivo analitička
+opterećenja, servere s ograničenom memorijom i izdanja poput SQL Server
+Express koja ne podržavaju In-Memory OLTP. Preduslovi nisu mali: otprilike
+dvostruka potrošnja memorije, trošak održavanja sinhronizacije između
+slojeva i tolerancija na analitiku nad podacima koji nisu svježi.
 
 \subsection{Ograničenja validnosti}
 \label{sec:threats}
@@ -431,19 +432,19 @@ najčistije su usporedbe unutar istog medija (HTAP naspram IM, te CS naspram
 analitičkog sloja HTAP-a). Treće, asimetrija u \texttt{MAXDOP} postavci koju
 zahtijevaju engine-i predstavlja confounding varijablu u usporedbi HTAP--IM,
 a njen doprinos nije izolovan. Četvrto, objašnjenje putem zasićenja procesora
-izvedeno je iz modela izvršavanja upita, a ne iz direktnog profilisanja, i sva
+izvedeno je iz modela izvršavanja upita, a ne iz direktnog profilisanja, a sva
 mjerenja potiču s jedne instance i jednog skupa podataka, pa generalizacija
 zahtijeva opreznost.
 
 % =====================================================================
 \section{Zaključak}
 % =====================================================================
-Kroz 1\,070 valjanih serija nad stvarnim skupom podataka od 19,2 miliona
-zapisa, dual-store konfiguracija SQL Servera 2022 dominirala je u svakom
-ispitanom scenariju mješovitog opterećenja, dostigavši 21\,920 op/s pri
-$C = 32$ --- 4,6$\times$ više od memorijsko-optimizirane i 9,0$\times$ više
-od Baseline konfiguracije --- uz najnižu analitičku latenciju
-($P_{50} = 924$\,ms pri omjeru 80/20). Čisto memorijsko-optimizirana
+Kroz 1\,070 valjanih serija nad stvarnim skupom od 19,2 miliona zapisa,
+dual-store konfiguracija SQL Servera 2022 dominirala je u svakom ispitanom
+scenariju mješovitog opterećenja, dostigavši 21\,920 op/s pri $C = 32$ ---
+4,6$\times$ više od memorijsko-optimizirane i 9,0$\times$ više od Baseline
+konfiguracije --- uz najnižu analitičku latenciju ($P_{50} = 924$\,ms pri
+80/20). Čisto memorijsko-optimizirana
 konfiguracija pokazala se neočekivano slabom pod mješovitim opterećenjem
 uprkos istom transakcijskom engineu, jer row-mode analitička skeniranja
 zasićuju procesor, dok je disk-zasnovana columnstore konfiguracija izgubila
