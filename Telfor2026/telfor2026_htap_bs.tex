@@ -1,7 +1,7 @@
 % =====================================================================
 %  TELFOR 2026 -- Telekomunikacioni forum, Beograd
-%  Rad: In-Memory OLTP i columnstore: empirijska evaluacija konfiguracija
-%       pohrane za HTAP obradu u SQL Serveru 2022
+%  Rad: O konfiguracijama pohrane za HTAP obradu u SQL Serveru 2022:
+%       empirijska evaluacija
 %  Autori: Nejra Smajlović (Univerzitet u Zenici, Politehnički fakultet)
 %          Alen Begović (Univerzitet u Sarajevu, Elektrotehnički fakultet)
 %
@@ -48,9 +48,8 @@
 
 \begin{document}
 
-\title{In-Memory OLTP i columnstore:\\
-empirijska evaluacija konfiguracija pohrane\\
-za HTAP obradu u SQL Serveru 2022}
+\title{O konfiguracijama pohrane za HTAP obradu\\
+u SQL Serveru 2022: empirijska evaluacija}
 
 \author{\IEEEauthorblockN{Nejra Smajlović}
 \IEEEauthorblockA{Univerzitet u Zenici\\
@@ -405,7 +404,7 @@ opslužuju u batch-modu iz columnstore kopije, pa se transakcije nikada ne
 natječu s analitičkim nitima za procesor. Ubrzanje analitike je stoga i
 sredstvo zaštite OLTP propusnosti --- poluga koja dopunjuje pristup
 usmjeren na izolaciju iz~\cite{zhao2023} i razdvojene arhitekture
-iz~\cite{huang2020, yang2020}.
+iz~\cite{huang2020, yang2020}, ovdje ostvarena bez mrežne latencije.
 
 Praktično pravilo je jednostavno: kad god opterećenje spaja transakcije i
 analitiku, a preduslovi su ispunjeni, dual-store raspored je poželjniji bez

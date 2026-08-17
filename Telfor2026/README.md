@@ -4,10 +4,9 @@ Rad za **34. Telekomunikacioni forum TELFOR 2026** (Beograd, Srbija), izveden iz
 projekta *Evaluacija performansi hibridne transakcijsko-analitičke obrade (HTAP)
 u Microsoft SQL Serveru*.
 
-**Naslov:** *In-Memory OLTP Meets Columnstore: An Empirical Evaluation of HTAP
-Storage Configurations in SQL Server 2022*
-(bosanski: *In-Memory OLTP i columnstore: empirijska evaluacija konfiguracija
-pohrane za HTAP obradu u SQL Serveru 2022*)
+**Naslov:** *On HTAP Storage Configurations in SQL Server 2022: An Empirical Evaluation*
+(bosanski: *O konfiguracijama pohrane za HTAP obradu u SQL Serveru 2022:
+empirijska evaluacija*)
 **Autori:** Nejra Smajlović (Univerzitet u Zenici, Politehnički fakultet)
 · Alen Begović (Univerzitet u Sarajevu, Elektrotehnički fakultet)
 
