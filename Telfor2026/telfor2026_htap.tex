@@ -56,12 +56,12 @@ scripts and measurements:
 \maketitle
 
 \begin{abstract}
-Systems that must serve transactional and analytical queries over the same
-data are traditionally split into an OLTP database and a data warehouse
-bridged by an ETL pipeline, which introduces staleness and operational
-complexity. This paper reports an independent empirical evaluation of four
-storage configuration strategies available inside a single Microsoft SQL
-Server 2022 instance: disk-based tables with B-tree indexes (Baseline),
+This paper reports an independent empirical evaluation of four storage
+configuration strategies available inside a single Microsoft SQL Server 2022
+instance, for systems that must serve transactional and analytical queries
+over the same data without the staleness and operational complexity
+introduced by a data warehouse bridged by an ETL pipeline: disk-based tables
+with B-tree indexes (Baseline),
 disk-based tables with a nonclustered columnstore index (CS),
 memory-optimized tables on the Hekaton engine (IM), and a dual-store hybrid
 configuration combining a memory-optimized transactional layer with a

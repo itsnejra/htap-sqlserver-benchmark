@@ -66,12 +66,12 @@ SQL skripte i mjerenja:
 \maketitle
 
 \begin{abstract}
-Sistemi koji nad istim podacima moraju opsluživati i transakcijske i
-analitičke upite tradicionalno se dijele na OLTP bazu i skladište podataka
-premošćeno ETL procesom, što uvodi zastarjelost podataka i operativnu
-složenost. Ovaj rad donosi nezavisnu empirijsku evaluaciju četiri strategije
-pohrane dostupne unutar jedne instance Microsoft SQL Servera 2022:
-disk-zasnovane tabele s B-stablo indeksima (Baseline), disk-zasnovane tabele
+Ovaj rad donosi nezavisnu empirijsku evaluaciju četiri strategije pohrane
+dostupne unutar jedne instance Microsoft SQL Servera 2022, namijenjenu
+sistemima koji nad istim podacima moraju opsluživati i transakcijske i
+analitičke upite bez zastarjelosti podataka i operativne složenosti koje
+uvodi skladište premošćeno ETL procesom: disk-zasnovane tabele s B-stablo
+indeksima (Baseline), disk-zasnovane tabele
 s nonclustered columnstore indeksom (CS), memorijsko-optimizirane tabele na
 Hekaton engineu (IM) i hibridnu dual-store konfiguraciju koja
 memorijsko-optimizirani transakcijski sloj kombinuje s columnstore
