@@ -5,7 +5,7 @@ projekta *Evaluacija performansi hibridne transakcijsko-analitičke obrade (HTAP
 u Microsoft SQL Serveru*.
 
 **Naslov:** *On HTAP Storage Configurations in SQL Server 2022: An Empirical Evaluation*
-(bosanski: *O konfiguracijama pohrane za HTAP obradu u SQL Serveru 2022:
+(bosanski: *O konfiguracijama pohrane za HTAP u SQL Serveru 2022:
 empirijska evaluacija*)
 **Autori:** Nejra Smajlović (Univerzitet u Zenici, Politehnički fakultet)
 · Alen Begović (Univerzitet u Sarajevu, Elektrotehnički fakultet)
