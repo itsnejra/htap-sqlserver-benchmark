@@ -1,7 +1,7 @@
 % =====================================================================
 %  TELFOR 2026 -- Telecommunications Forum, Belgrade, Serbia
-%  Paper: Empirical Evaluation of HTAP Storage Configurations
-%         in Microsoft SQL Server 2022
+%  Paper: In-Memory OLTP Meets Columnstore: An Empirical Evaluation
+%         of HTAP Storage Configurations in SQL Server 2022
 %  Authors: Nejra Smajlovic (University of Zenica, Polytechnic Faculty)
 %           Alen Begovic (University of Sarajevo, Faculty of Electrical Eng.)
 %
@@ -38,7 +38,9 @@
 
 \begin{document}
 
-\title{Empirical Evaluation of HTAP Storage\\Configurations in Microsoft SQL Server 2022}
+\title{In-Memory OLTP Meets Columnstore:\\
+An Empirical Evaluation of HTAP Storage\\
+Configurations in SQL Server 2022}
 
 \author{\IEEEauthorblockN{Nejra Smajlovi\'c}
 \IEEEauthorblockA{University of Zenica\\
@@ -114,10 +116,10 @@ This paper addresses that gap with a full-factorial benchmark of four
 storage configurations inside a single SQL Server 2022 instance over a real
 dataset. Its contributions are an independent, statistically rigorous
 comparison of the four configurations across three workload mixes and three
-concurrency levels (1\,070 valid runs); a per-configuration quantification
-of the OLTP throughput loss caused by concurrent analytical load, together
-with the mechanism behind it; and configuration-selection guidance stated
-with the preconditions under which it holds.
+concurrency levels (1\,070 valid runs); a per-configuration quantification of
+the OLTP throughput loss caused by concurrent analytical load, with the
+mechanism behind it; and configuration-selection guidance stated with the
+preconditions under which it holds.
 
 % =====================================================================
 \section{Related Work}
@@ -134,18 +136,18 @@ Commercial systems span that space. SAP HANA~\cite{farber2012} and Oracle
 Database In-Memory~\cite{lahiri2015} keep row and column formats inside one
 in-memory engine, whereas TiDB~\cite{huang2020} separates the transactional
 layer (TiKV) from the analytical one (TiFlash) and synchronizes them by
-asynchronous Raft replication, obtaining strong isolation at the price of
-network latency, and Google F1 Lightning~\cite{yang2020} lets transactional
-changes flow into delta structures that periodic compaction rewrites into an
+asynchronous Raft replication, obtaining isolation at the price of network
+latency, and Google F1 Lightning~\cite{yang2020} lets transactional changes
+flow into delta structures that periodic compaction rewrites into an
 analytical format. SQL Server 2022 realizes an in-process variant of the
 same pattern and pays no network latency. Its building blocks are well
 documented: the Hekaton engine~\cite{diaconu2013}, reporting 10--30$\times$
 speed-ups for point queries but supporting neither range-friendly indexing
 nor batch-mode execution, and columnstore indexes~\cite{larson2013}, whose
 batch-mode executor processes about 1\,000 rows at a time for
-10--100$\times$ speed-ups on warehouse queries. Their
-combination is described in~\cite{larson2015}, which reports the design and
-internal micro-benchmarks of the system's own authors.
+10--100$\times$ speed-ups on warehouse queries. Their combination is
+described in~\cite{larson2015}, which reports the vendor's own design and
+micro-benchmarks.
 
 Methodologically, HyBench~\cite{zhang2024hybench} couples TPC-C transactions
 with analytical queries, Wu \emph{et al.}~\cite{wu2025} confirm that
@@ -159,13 +161,13 @@ Independent evaluations of the SQL Server mechanisms nevertheless remain
 rare, and no study known to the author covers three concurrency levels and
 three mixes on this platform with a non-parametric analysis.
 
-The study is therefore organized around three questions. First, how the
-analytical latency of the disk-based columnstore configuration compares with
-that of the hybrid one, and whether the comparison changes with concurrency.
-Second, how much transactional throughput each configuration gives up when
-analytical queries run alongside it. Third, whether the hybrid configuration
-gains transactional throughput over the purely in-memory configuration under
-a transaction-heavy mix, given that both rest on the same Hekaton engine.
+The study is organized around three questions. First, how the analytical
+latency of the disk-based columnstore configuration compares with that of
+the hybrid one, and whether that changes with concurrency. Second, how much
+transactional throughput each configuration gives up when analytical queries
+run alongside it. Third, whether the hybrid configuration gains transactional
+throughput over the purely in-memory one under a transaction-heavy mix, given
+that both rest on the same Hekaton engine.
 
 % =====================================================================
 \section{System Under Test}
@@ -400,9 +402,9 @@ analytics, and the preconditions below are met, the dual-store layout is
 preferable regardless of the ratio; CS remains the pragmatic choice for
 purely analytical workloads, RAM-constrained servers and editions such as
 SQL Server Express that lack In-Memory OLTP. The preconditions are
-substantial: roughly double the memory footprint, the engineering cost of
-operating the synchronization between the layers, and tolerance for
-analytics over data that is not real-time fresh.
+substantial: roughly double the memory footprint, the cost of operating the
+synchronization between the layers, and tolerance for analytics over data
+that is not real-time fresh.
 
 \subsection{Threats to Validity}
 \label{sec:threats}
