@@ -61,22 +61,27 @@ HALLUCINATION_PATTERNS = (
 # Odabir uređaja
 # ----------------------------------------------------------------
 def list_devices():
-    """Ispisuje ulazne uređaje i označava vjerovatne loopback kandidate."""
+    """Ispisuje uređaje i označava kandidate za snimanje sistemskog zvuka."""
     hostapis = sd.query_hostapis()
-    print(f"{'idx':>4}  {'ch':>3}  {'Hz':>7}  {'host API':<22}  naziv")
-    print("-" * 100)
+    loopback_ready = _wasapi_loopback_settings() is not None
+    print(f"{'idx':>4}  {'ul':>3}  {'iz':>3}  {'Hz':>7}  {'host API':<22}  naziv")
+    print("-" * 104)
     for idx, dev in enumerate(sd.query_devices()):
-        if dev["max_input_channels"] < 1:
-            continue
         host = hostapis[dev["hostapi"]]["name"]
-        mark = " ← loopback?" if _is_loopback_name(dev["name"]) else ""
+        mark = ""
+        if dev["max_input_channels"] > 0 and _is_loopback_name(dev["name"]):
+            mark = "  ← loopback ulaz"
+        elif dev["max_output_channels"] > 0 and loopback_ready and "wasapi" in host.lower():
+            mark = "  ← WASAPI loopback kandidat"
         print(
-            f"{idx:>4}  {dev['max_input_channels']:>3}  "
+            f"{idx:>4}  {dev['max_input_channels']:>3}  {dev['max_output_channels']:>3}  "
             f"{int(dev['default_samplerate']):>7}  {host:<22}  {dev['name']}{mark}"
         )
     print()
-    print("Na Windowsu loopback ne mora biti na listi — WASAPI loopback nad")
-    print("zadanim izlazom se koristi automatski ako nijedan kandidat ne postoji.")
+    print(f"sounddevice {sd.__version__}; WASAPI loopback "
+          f"{'dostupan' if loopback_ready else 'NIJE dostupan (potreban sounddevice >= 0.5.0)'}")
+    print("Uređaj se bira sa --device <idx>. Za WASAPI loopback zadaje se")
+    print("indeks IZLAZNOG uređaja (zvučnika), ne ulaznog.")
 
 
 def _is_loopback_name(name):
@@ -92,70 +97,121 @@ def _wasapi_loopback_settings():
     try:
         return settings_cls(loopback=True)
     except TypeError:
-        # Starije verzije sounddevice-a nemaju loopback parametar
+        # sounddevice < 0.5.0 nema loopback parametar
         return None
 
 
-def resolve_source(requested):
+def candidate_sources(requested):
     """
-    Određuje (device_index, channels, extra_settings) za snimanje.
+    Gradi listu kandidata [(opis, indeks, extra_settings)] po prioritetu.
 
-    Redoslijed: eksplicitan uređaj → prepoznat monitor/loopback ulaz →
-    WASAPI loopback nad zadanim izlazom (Windows).
+    Vraća se lista, a ne jedan uređaj, jer se na Windowsu uređaji poput
+    onemogućenog Stereo Mixa uredno enumerišu ali se ne daju otvoriti —
+    tada se prelazi na sljedećeg kandidata.
     """
     devices = sd.query_devices()
+    hostapis = sd.query_hostapis()
+    loopback = _wasapi_loopback_settings()
+    found = []
+
+    def add(idx, extra, label):
+        if not any(idx == i and (extra is None) == (e is None) for _, i, e in found):
+            found.append((label, idx, extra))
 
     if requested is not None:
         idx = requested if isinstance(requested, int) else sd.query_devices(requested)["index"]
         dev = devices[idx]
         if dev["max_input_channels"] > 0:
-            return idx, min(2, dev["max_input_channels"]), None
-        # Izlazni uređaj je zadan eksplicitno → jedini smislen način je loopback
-        extra = _wasapi_loopback_settings()
-        if extra is None:
+            add(idx, None, f"ulaz «{dev['name']}»")
+        if dev["max_output_channels"] > 0 and loopback is not None:
+            add(idx, loopback, f"WASAPI loopback «{dev['name']}»")
+        if not found:
             raise RuntimeError(
-                f"Uređaj {idx} nema ulaznih kanala, a WASAPI loopback nije dostupan."
+                f"Uređaj {idx} nema ulaznih kanala, a WASAPI loopback nije dostupan "
+                f"(sounddevice {sd.__version__}; potrebna verzija >= 0.5.0)."
             )
-        return idx, min(2, dev["max_output_channels"]), extra
+        return found
 
+    # 1) Ulazi koji su po nazivu monitor/loopback (PulseAudio, Stereo Mix, BlackHole…)
     for idx, dev in enumerate(devices):
         if dev["max_input_channels"] > 0 and _is_loopback_name(dev["name"]):
-            return idx, min(2, dev["max_input_channels"]), None
+            add(idx, None, f"ulaz «{dev['name']}»")
 
-    extra = _wasapi_loopback_settings()
-    if extra is not None:
-        for api in sd.query_hostapis():
-            if "wasapi" in api["name"].lower() and api["default_output_device"] >= 0:
-                idx = api["default_output_device"]
-                return idx, min(2, devices[idx]["max_output_channels"]), extra
+    # 2) WASAPI loopback: prvo zadani izlaz, pa ostali izlazni uređaji
+    if loopback is not None:
+        for api in hostapis:
+            if "wasapi" not in api["name"].lower():
+                continue
+            default_out = api.get("default_output_device", -1)
+            if default_out is not None and default_out >= 0:
+                add(default_out, loopback,
+                    f"WASAPI loopback «{devices[default_out]['name']}» (zadani izlaz)")
+            for idx in api.get("devices", ()):
+                if devices[idx]["max_output_channels"] > 0:
+                    add(idx, loopback, f"WASAPI loopback «{devices[idx]['name']}»")
 
+    if not found:
+        raise RuntimeError(
+            "Nije pronađen nijedan kandidat za snimanje sistemskog zvuka.\n"
+            "Pokreni --list-devices, pa zadaj uređaj sa --device <idx>.\n"
+            "Windows: uključi Stereo Mix ili instaliraj VB-Audio Virtual Cable.\n"
+            "macOS: instaliraj BlackHole i napravi Multi-Output Device."
+        )
+    return found
+
+
+def _channel_options(dev, extra_settings):
+    """Kanali koje vrijedi probati; WASAPI loopback traži tačan broj kanala miksa."""
+    limit = dev["max_output_channels"] if extra_settings is not None else dev["max_input_channels"]
+    order = (limit, 2, 1) if extra_settings is not None else (min(2, limit), 1, limit)
+    options = []
+    for channels in order:
+        if 0 < channels <= limit and channels not in options:
+            options.append(channels)
+    return options
+
+
+def _rate_options(dev):
+    """Frekvencije po prioritetu — nativna prva, jer je WASAPI ne konvertuje."""
+    options = []
+    for rate in (int(dev["default_samplerate"]), 48_000, 44_100, TARGET_SR):
+        if rate > 0 and rate not in options:
+            options.append(rate)
+    return options
+
+
+def open_stream(sources, callback):
+    """
+    Otvara prvi ulaz koji uspije, probajući kombinacije kanala i frekvencija.
+    Vraća (stream, samplerate, opis). Ako sve padne, greška nabraja pokušaje.
+    """
+    attempts = []
+    for label, idx, extra in sources:
+        dev = sd.query_devices(idx)
+        for channels in _channel_options(dev, extra):
+            for samplerate in _rate_options(dev):
+                try:
+                    stream = sd.InputStream(
+                        device=idx,
+                        channels=channels,
+                        samplerate=samplerate,
+                        blocksize=int(samplerate * BLOCK_SECONDS),
+                        dtype="float32",
+                        extra_settings=extra,
+                        callback=callback,
+                    )
+                    return stream, samplerate, f"{label}, {channels} kan. @ {samplerate} Hz"
+                except Exception as exc:
+                    attempts.append(f"{label}: {channels} kan. @ {samplerate} Hz → {exc}")
+
+    listing = "\n  ".join(attempts[:15])
     raise RuntimeError(
-        "Nije pronađen loopback uređaj. Pokreni --list-devices i zadaj ga preko "
-        "--device, ili pogledaj README za postavljanje (BlackHole / VB-Cable / "
-        "PulseAudio monitor)."
+        f"Nijedan ulaz se nije dao otvoriti (sounddevice {sd.__version__}).\n"
+        f"Pokušano:\n  {listing}\n\n"
+        "Sljedeći korak: pokreni --list-devices i zadaj uređaj ručno sa --device <idx>.\n"
+        "Windows: Postavke zvuka → Snimanje → desni klik → Prikaži onemogućene uređaje →\n"
+        "uključi Stereo Mix; ako ga nema, instaliraj VB-Audio Virtual Cable."
     )
-
-
-def open_stream(device, channels, extra_settings, callback):
-    """
-    Otvara ulazni stream, po mogućnosti odmah na 16 kHz.
-    Ako uređaj to ne prihvata, koristi svoju nativnu frekvenciju.
-    """
-    for samplerate in (TARGET_SR, int(sd.query_devices(device)["default_samplerate"])):
-        try:
-            stream = sd.InputStream(
-                device=device,
-                channels=channels,
-                samplerate=samplerate,
-                blocksize=int(samplerate * BLOCK_SECONDS),
-                dtype="float32",
-                extra_settings=extra_settings,
-                callback=callback,
-            )
-            return stream, samplerate
-        except (sd.PortAudioError, ValueError):
-            continue
-    raise RuntimeError("Uređaj nije prihvatio ni 16 kHz ni vlastitu frekvenciju.")
 
 
 # ----------------------------------------------------------------
@@ -195,7 +251,7 @@ def is_hallucination(text):
 # ----------------------------------------------------------------
 # Kalibracija
 # ----------------------------------------------------------------
-def calibrate(seconds, device, channels, extra_settings):
+def calibrate(seconds, sources):
     """Mjeri RMS razinu kroz zadani period kao pomoć pri izboru --silence-threshold."""
     levels = []
     blocks = queue.Queue()
@@ -203,8 +259,9 @@ def calibrate(seconds, device, channels, extra_settings):
     def callback(indata, frames, time_info, status):
         blocks.put(to_mono(indata.copy()))
 
-    stream, samplerate = open_stream(device, channels, extra_settings, callback)
-    print(f"Kalibracija {seconds} s na uređaju {device} @ {samplerate} Hz — pusti zvuk...")
+    stream, samplerate, label = open_stream(sources, callback)
+    print(f"Kalibracija {seconds} s — {label}")
+    print("Pusti zvuk (video, muziku, poziv)...")
     with stream:
         deadline = time.monotonic() + seconds
         while time.monotonic() < deadline:
@@ -234,10 +291,10 @@ def calibrate(seconds, device, channels, extra_settings):
 # Glavna petlja
 # ----------------------------------------------------------------
 def run(args):
-    device, channels, extra_settings = resolve_source(args.device)
+    sources = candidate_sources(args.device)
 
     if args.calibrate:
-        calibrate(args.calibrate, device, channels, extra_settings)
+        calibrate(args.calibrate, sources)
         return 0
 
     from faster_whisper import WhisperModel  # uvozi se tek kad zaista treba
@@ -256,8 +313,7 @@ def run(args):
             print(f"[audio] {status}", file=sys.stderr)
         blocks.put(to_mono(indata.copy()))
 
-    stream, samplerate = open_stream(device, channels, extra_settings, callback)
-    dev_name = sd.query_devices(device)["name"]
+    stream, samplerate, source_label = open_stream(sources, callback)
 
     # ── Transkripcija (odvojena nit, da snimanje nikad ne čeka model) ────
     def transcriber():
@@ -307,7 +363,7 @@ def run(args):
         silence_run = 0.0
         speech_seen = False
 
-    print(f"Slušam: {dev_name} @ {samplerate} Hz → {out_path}")
+    print(f"Slušam: {source_label} → {out_path}")
     print("Ctrl+C za prekid.\n")
 
     try:

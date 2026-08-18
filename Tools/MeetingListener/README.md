@@ -71,6 +71,9 @@ python listen.py --list-devices      # koji uređaji postoje
 python listen.py --calibrate 10      # pusti zvuk i gledaj RMS razine
 ```
 
+`--list-devices` ispisuje i ulazne i izlazne uređaje; za WASAPI loopback se
+zadaje indeks **izlaznog** uređaja (zvučnika).
+
 `--calibrate` ispisuje razinu signala i predlaže `--silence-threshold`.
 Ako su sve vrijednosti ~0.00000, loopback ne radi — vrati se na korak 2.
 
@@ -130,6 +133,7 @@ samo ako je neko postavio pitanje meni ili spomenuo rok
 
 | Simptom | Uzrok i rješenje |
 |---------|------------------|
+| `Nijedan ulaz se nije dao otvoriti` | Greška nabraja sve pokušaje; uzmi indeks iz `--list-devices` i zadaj `--device <idx>` |
 | Prazan transkript | Loopback ne radi → `--calibrate`, pa korak 2 |
 | Sve na engleskom | Zadaj `--language bs` |
 | Ponavljanje fraza tipa „Titlovi…" | Halucinacija na tišini; podigni `--silence-threshold` |
