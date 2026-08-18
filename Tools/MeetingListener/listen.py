@@ -21,6 +21,7 @@ import argparse
 import queue
 import threading
 import time
+import warnings
 from collections import deque
 from datetime import datetime
 from pathlib import Path
@@ -294,6 +295,10 @@ def open_soundcard(requested, callback):
     soundcard = _soundcard_module()
     if soundcard is None:
         raise RuntimeError("biblioteka nije instalirana → pip install soundcard")
+
+    # WASAPI loopback ne isporučuje uzorke dok se ništa ne pušta, pa soundcard
+    # svaku tišinu prijavi kao prekid u snimanju. Bezopasno, ali zatrpava ispis.
+    warnings.filterwarnings("ignore", message="data discontinuity in recording")
 
     if isinstance(requested, str):
         speaker = soundcard.get_speaker(requested)
