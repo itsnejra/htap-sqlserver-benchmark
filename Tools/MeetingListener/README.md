@@ -149,3 +149,6 @@ samo ako je neko postavio pitanje meni ili spomenuo rok
 | Presporo | `--model base`, ili GPU: `--device-type cuda --compute-type float16` |
 | Netačno kod stručnih pojmova | `--model medium` ili `large-v3` |
 | Odsječeni počeci riječi | Povećaj `--preroll` (npr. `0.6`) |
+
+> `requirements.txt` je namjerno bez naših slova — `pip` ga na Windowsu čita
+> kao cp1252 i puca na UTF-8 komentarima (`UnicodeDecodeError: 'charmap'`).
