@@ -78,10 +78,32 @@ def list_devices():
             f"{int(dev['default_samplerate']):>7}  {host:<22}  {dev['name']}{mark}"
         )
     print()
-    print(f"sounddevice {sd.__version__}; WASAPI loopback "
-          f"{'dostupan' if loopback_ready else 'NIJE dostupan (potreban sounddevice >= 0.5.0)'}")
+    print(f"sounddevice {sd.__version__}; WASAPI loopback kroz sounddevice "
+          f"{'dostupan' if loopback_ready else 'NIJE dostupan'}")
     print("Uređaj se bira sa --device <idx>. Za WASAPI loopback zadaje se")
     print("indeks IZLAZNOG uređaja (zvučnika), ne ulaznog.")
+
+    _list_soundcard_speakers()
+
+
+def _list_soundcard_speakers():
+    """Ispisuje zvučnike vidljive rezervnom backendu (bira se nazivom)."""
+    soundcard = _soundcard_module()
+    if soundcard is None:
+        print()
+        print("soundcard backend: nije instaliran → pip install soundcard")
+        return
+    try:
+        speakers = soundcard.all_speakers()
+        default = soundcard.default_speaker()
+    except Exception as exc:
+        print(f"\nsoundcard backend: greška pri nabrajanju ({exc})")
+        return
+    print()
+    print("soundcard backend (--backend soundcard, --device \"<naziv>\"):")
+    for speaker in speakers:
+        mark = "  ← zadani" if default is not None and speaker.name == default.name else ""
+        print(f"   {speaker.name}{mark}")
 
 
 def _is_loopback_name(name):
@@ -215,6 +237,118 @@ def open_stream(sources, callback):
 
 
 # ----------------------------------------------------------------
+# Rezervni backend: soundcard
+# ----------------------------------------------------------------
+# sounddevice do 0.5.6 ne izlaže WASAPI loopback, pa na Windowsu ostaje samo
+# Stereo Mix — koji je na većini mašina onemogućen ili ga uopšte nema.
+# Biblioteka soundcard otvara loopback nad zvučnicima direktno.
+def _soundcard_module():
+    try:
+        import soundcard
+    except ImportError:
+        return None
+    return soundcard
+
+
+class SoundCardCapture:
+    """
+    Snima izlazni uređaj preko soundcard-a i prosljeđuje blokove istom
+    callbacku kao sounddevice, da ostatak skripte ne zna za razliku.
+    """
+
+    def __init__(self, recorder, callback, block_frames, samplerate, label):
+        self._recorder = recorder
+        self._callback = callback
+        self._block_frames = block_frames
+        self._active = None
+        self._thread = None
+        self._stop = threading.Event()
+        self.samplerate = samplerate
+        self.label = label
+
+    def _pump(self):
+        while not self._stop.is_set():
+            try:
+                data = self._active.record(numframes=self._block_frames)
+            except Exception as exc:                     # uređaj nestao usred snimanja
+                print(f"[audio] snimanje prekinuto: {exc}", file=sys.stderr)
+                return
+            if data is not None and len(data):
+                self._callback(np.asarray(data, dtype=np.float32), len(data), None, None)
+
+    def __enter__(self):
+        self._active = self._recorder.__enter__()
+        self._thread = threading.Thread(target=self._pump, daemon=True)
+        self._thread.start()
+        return self
+
+    def __exit__(self, *exc_info):
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=2)
+        return self._recorder.__exit__(*exc_info)
+
+
+def open_soundcard(requested, callback):
+    """Otvara loopback nad zvučnicima preko soundcard biblioteke."""
+    soundcard = _soundcard_module()
+    if soundcard is None:
+        raise RuntimeError("biblioteka nije instalirana → pip install soundcard")
+
+    if isinstance(requested, str):
+        speaker = soundcard.get_speaker(requested)
+    else:
+        # Indeksi se razlikuju među backendima, pa se za soundcard uzima
+        # zadani izlaz; drugi zvučnik se bira nazivom (--device "Realtek").
+        speaker = soundcard.default_speaker()
+    if speaker is None:
+        raise RuntimeError("zvučnik nije pronađen")
+
+    mic = soundcard.get_microphone(id=str(speaker.name), include_loopback=True)
+    if mic is None:
+        raise RuntimeError(f"loopback nad «{speaker.name}» nije dostupan")
+
+    samplerate = 48_000
+    block_frames = int(samplerate * BLOCK_SECONDS)
+    channels = 2 if getattr(mic, "channels", 2) and mic.channels >= 2 else 1
+    recorder = mic.recorder(samplerate=samplerate, channels=channels, blocksize=block_frames)
+    label = f"soundcard loopback «{speaker.name}», {channels} kan. @ {samplerate} Hz"
+    return SoundCardCapture(recorder, callback, block_frames, samplerate, label)
+
+
+def open_capture(requested, backend, callback):
+    """
+    Otvara snimanje prvim backendom koji uspije.
+    Vraća (kontekst menadžer, samplerate, opis).
+    """
+    problems = []
+
+    if backend in ("auto", "sounddevice"):
+        try:
+            return open_stream(candidate_sources(requested), callback)
+        except RuntimeError as exc:
+            if backend == "sounddevice":
+                raise
+            problems.append(str(exc))
+
+    if backend in ("auto", "soundcard"):
+        try:
+            capture = open_soundcard(requested, callback)
+            return capture, capture.samplerate, capture.label
+        except Exception as exc:
+            problems.append(f"soundcard backend: {exc}")
+            if backend == "soundcard":
+                raise RuntimeError(f"soundcard backend: {exc}")
+
+    raise RuntimeError(
+        "\n\n".join(problems)
+        + "\n\nAko ni soundcard ne uspije: uključi Stereo Mix (Postavke zvuka →\n"
+        "Snimanje → desni klik → Prikaži onemogućene uređaje) ili instaliraj\n"
+        "VB-Audio Virtual Cable."
+    )
+
+
+# ----------------------------------------------------------------
 # Obrada zvuka
 # ----------------------------------------------------------------
 def to_mono(block):
@@ -251,7 +385,7 @@ def is_hallucination(text):
 # ----------------------------------------------------------------
 # Kalibracija
 # ----------------------------------------------------------------
-def calibrate(seconds, sources):
+def calibrate(seconds, requested, backend):
     """Mjeri RMS razinu kroz zadani period kao pomoć pri izboru --silence-threshold."""
     levels = []
     blocks = queue.Queue()
@@ -259,7 +393,7 @@ def calibrate(seconds, sources):
     def callback(indata, frames, time_info, status):
         blocks.put(to_mono(indata.copy()))
 
-    stream, samplerate, label = open_stream(sources, callback)
+    stream, samplerate, label = open_capture(requested, backend, callback)
     print(f"Kalibracija {seconds} s — {label}")
     print("Pusti zvuk (video, muziku, poziv)...")
     with stream:
@@ -291,10 +425,8 @@ def calibrate(seconds, sources):
 # Glavna petlja
 # ----------------------------------------------------------------
 def run(args):
-    sources = candidate_sources(args.device)
-
     if args.calibrate:
-        calibrate(args.calibrate, sources)
+        calibrate(args.calibrate, args.device, args.backend)
         return 0
 
     from faster_whisper import WhisperModel  # uvozi se tek kad zaista treba
@@ -313,7 +445,7 @@ def run(args):
             print(f"[audio] {status}", file=sys.stderr)
         blocks.put(to_mono(indata.copy()))
 
-    stream, samplerate, source_label = open_stream(sources, callback)
+    stream, samplerate, source_label = open_capture(args.device, args.backend, callback)
 
     # ── Transkripcija (odvojena nit, da snimanje nikad ne čeka model) ────
     def transcriber():
@@ -412,6 +544,8 @@ def parse_args(argv):
     parser.add_argument("--calibrate", type=float, metavar="SEK",
                         help="izmjeri RMS razinu kroz N sekundi i predloži prag šutnje")
     parser.add_argument("--device", help="indeks ili naziv uređaja (zadano: automatski loopback)")
+    parser.add_argument("--backend", default="auto", choices=["auto", "sounddevice", "soundcard"],
+                        help="način snimanja; auto prvo probava sounddevice pa soundcard")
     parser.add_argument("--out", default="transcript.md", help="izlazni fajl (zadano: transcript.md)")
 
     parser.add_argument("--model", default="small",

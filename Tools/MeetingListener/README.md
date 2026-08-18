@@ -42,14 +42,20 @@ vraća izlazni zvuk nazad kao ulaz.
 
 ### Windows
 
-Ništa se ne instalira: skripta automatski koristi **WASAPI loopback** nad
-zadanim izlaznim uređajem. Ako verzija `sounddevice`-a to ne podržava,
-uključi *Stereo Mix* (Sound → Recording → desni klik → Show Disabled Devices)
-ili instaliraj [VB-Audio Virtual Cable](https://vb-audio.com/Cable/).
+Ništa se ne instalira dodatno — `soundcard` iz `requirements.txt` otvara
+**WASAPI loopback** nad zadanim zvučnicima. `sounddevice` do verzije 0.5.6 taj
+režim ne izlaže, pa se koristi kao rezerva samo ako postoji ispravan loopback
+ulaz.
+
+Ako i to zakaže, ostaju dvije klasične opcije:
+
+- uključi *Stereo Mix*: Postavke zvuka → Snimanje → desni klik →
+  **Prikaži onemogućene uređaje** → Stereo Mix → Omogući
+- instaliraj [VB-Audio Virtual Cable](https://vb-audio.com/Cable/)
 
 ### macOS
 
-macOS ne dozvoljava snimanje sistemskog zvuka bez virtuelnog uređaja:
+`soundcard` na macOS-u nema loopback, pa je virtuelni uređaj obavezan:
 
 1. Instaliraj [BlackHole](https://existential.audio/blackhole/):
    `brew install blackhole-2ch`
@@ -92,6 +98,7 @@ Korisne opcije:
 | `--language` | auto | `bs`, `hr`, `sr`, `en` — fiksiranje jezika smanjuje greške |
 | `--model` | `small` | `medium` / `large-v3` su tačniji i sporiji, `base` brži |
 | `--device-type cuda --compute-type float16` | cpu/int8 | ako imaš NVIDIA GPU |
+| `--backend` | `auto` | `soundcard` ili `sounddevice` za prisilan izbor |
 | `--min-chunk` | 8 | manje = brži odgovor, lošija tačnost |
 | `--max-chunk` | 20 | tvrdi rez kad govornik ne pravi pauze |
 | `--silence-threshold` | 0.004 | prag tišine iz `--calibrate` |
@@ -133,6 +140,8 @@ samo ako je neko postavio pitanje meni ili spomenuo rok
 
 | Simptom | Uzrok i rješenje |
 |---------|------------------|
+| `WASAPI loopback ... NIJE dostupan` | Očekivano na `sounddevice` ≤ 0.5.6; posao preuzima `soundcard` |
+| `Invalid device [-9996]` | Uređaj je onemogućen u Windowsu (obično Stereo Mix); zanemari ako `soundcard` uspije |
 | `Nijedan ulaz se nije dao otvoriti` | Greška nabraja sve pokušaje; uzmi indeks iz `--list-devices` i zadaj `--device <idx>` |
 | Prazan transkript | Loopback ne radi → `--calibrate`, pa korak 2 |
 | Sve na engleskom | Zadaj `--language bs` |

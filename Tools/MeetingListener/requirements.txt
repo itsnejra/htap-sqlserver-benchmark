@@ -1,6 +1,10 @@
 # Snimanje sistemskog zvuka (PortAudio binding)
-sounddevice>=0.5.0          # WASAPI loopback (Windows) traži 0.5.0+
+sounddevice>=0.5.0
 numpy>=1.24
+
+# Rezervni backend: sounddevice ne izlaže WASAPI loopback, pa na Windowsu
+# bez uključenog Stereo Mixa snimanje ide preko soundcard-a
+soundcard>=0.4.2
 
 # Lokalna transkripcija (CTranslate2 backend, radi na CPU-u)
 faster-whisper>=1.0.0
