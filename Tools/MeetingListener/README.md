@@ -102,6 +102,7 @@ Korisne opcije:
 | `--min-chunk` | 8 | manje = brži odgovor, lošija tačnost |
 | `--max-chunk` | 20 | tvrdi rez kad govornik ne pravi pauze |
 | `--silence-threshold` | 0.004 | prag tišine iz `--calibrate` |
+| `--meter` | 0 | svakih N sekundi ispiše razinu i brojače — za dijagnostiku |
 | `--out` | `transcript.md` | putanja transkripta |
 
 Prekid je `Ctrl+C` — zadnji segment se transkribuje prije izlaza.
@@ -146,6 +147,8 @@ samo ako je neko postavio pitanje meni ili spomenuo rok
 | Prazan transkript | Loopback ne radi → `--calibrate`, pa korak 2 |
 | Sve na engleskom | Zadaj `--language bs` |
 | Ponavljanje fraza tipa „Titlovi…" | Halucinacija na tišini; podigni `--silence-threshold` |
+| Ništa se ne ispisuje | Pokreni s `--meter 2`; ako `blokova` raste a `segmenata` ne, zvuk je pretih ili ide na drugi izlaz |
+| `ceka` raste u mjeraču | Model je sporiji od govora → manji `--model` ili GPU |
 | Presporo | `--model base`, ili GPU: `--device-type cuda --compute-type float16` |
 | Netačno kod stručnih pojmova | `--model medium` ili `large-v3` |
 | Odsječeni počeci riječi | Povećaj `--preroll` (npr. `0.6`) |

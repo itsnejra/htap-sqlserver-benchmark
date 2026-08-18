@@ -444,6 +444,7 @@ def run(args):
 
     blocks = queue.Queue()
     chunks = queue.Queue()
+    stats = {"blokova": 0, "segmenata": 0, "transkribovano": 0, "razina": 0.0}
 
     def callback(indata, frames, time_info, status):
         if status:
@@ -462,6 +463,7 @@ def run(args):
                 if chunk is None:
                     break
                 audio = resample_to_16k(chunk, samplerate)
+                started = time.monotonic()
                 segments, _ = model.transcribe(
                     audio,
                     language=args.language,
@@ -471,6 +473,10 @@ def run(args):
                     condition_on_previous_text=False,
                 )
                 text = " ".join(seg.text.strip() for seg in segments).strip()
+                stats["transkribovano"] += 1
+                if args.meter:
+                    print(f"[mjerac] segment {len(audio) / TARGET_SR:.1f} s obradjen "
+                          f"za {time.monotonic() - started:.1f} s")
                 if not text or is_hallucination(text):
                     continue
                 line = f"[{datetime.now():%H:%M:%S}] {text}"
@@ -495,6 +501,7 @@ def run(args):
         nonlocal buffer, buffered_frames, silence_run, speech_seen
         if speech_seen and buffered_frames:
             chunks.put(np.concatenate(buffer))
+            stats["segmenata"] += 1
         buffer = []
         buffered_frames = 0
         silence_run = 0.0
@@ -503,16 +510,30 @@ def run(args):
     print(f"Slušam: {source_label} → {out_path}")
     print("Ctrl+C za prekid.\n")
 
+    last_meter = time.monotonic()
+
+    def show_meter():
+        print(f"[mjerac] razina {stats['razina']:.4f} | blokova {stats['blokova']} | "
+              f"segmenata {stats['segmenata']} | obradjeno {stats['transkribovano']} | "
+              f"ceka {chunks.qsize()}")
+
     try:
         with stream:
             while True:
+                if args.meter and time.monotonic() - last_meter >= args.meter:
+                    show_meter()
+                    last_meter = time.monotonic()
+
                 try:
                     block = blocks.get(timeout=0.5)
                 except queue.Empty:
                     continue
 
+                stats["blokova"] += 1
                 block_seconds = len(block) / samplerate
-                is_silent = float(np.sqrt(np.mean(block**2))) < args.silence_threshold
+                level = float(np.sqrt(np.mean(block**2)))
+                stats["razina"] = level
+                is_silent = level < args.silence_threshold
 
                 if not speech_seen:
                     if is_silent:
@@ -572,6 +593,8 @@ def parse_args(argv):
                         help="koliko šutnje zatvara segment (zadano: 0.6)")
     parser.add_argument("--silence-threshold", type=float, default=0.004,
                         help="RMS prag ispod kojeg je blok šutnja (zadano: 0.004)")
+    parser.add_argument("--meter", type=float, default=0.0, metavar="SEK",
+                        help="svakih N sekundi ispisi razinu i brojace (0 = iskljuceno)")
     parser.add_argument("--preroll", type=float, default=0.3,
                         help="koliko tišine se zadržava ispred prve riječi (zadano: 0.3)")
 
