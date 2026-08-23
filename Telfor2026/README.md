@@ -48,6 +48,9 @@ pa je dovoljno dva puta pokrenuti `pdflatex`.
 | Maksimalno 4 stranice A4 (redovni i studentski radovi) | 4 stranice |
 | Jezik rada | **engleski ili srpski** — šalje se engleska verzija |
 | Naslov i sažetak bez matematike, simbola i fusnota | provjereno, ispunjeno |
+| Fontovi i prored nepromijenjeni u odnosu na IEEEtran | popis literature vraćen na propisanih 8 pt |
+| Jedinice u zaglavljima tabela i na osama slika u zagradama | `(op/s)`, `(ms)`, `(%)` |
+| Oznake na slikama 8 pt | `make_figures.py`, `font.size = 8` |
 | Predaja u PDF formatu kroz TELFOR sistem | PDF se generiše `pdflatex`-om |
 | Bosanska verzija | **ne može se predati** (TELFOR prima samo engleski ili srpski) — služi za čitanje |
 
@@ -64,6 +67,10 @@ pa je dovoljno dva puta pokrenuti `pdflatex`.
    Xplore-kompatibilnosti (ugrađivanje fontova i sl.).
 4. **Obje verzije.** Svaka izmjena teksta mora se unijeti u oba `.tex` fajla,
    jer engleska i bosanska verzija nisu automatski povezane.
+5. **`et al.` u literaturi.** IEEE template traži da se navedu svi autori kad
+   ih je manje od šest. Reference [13] Wu, [15] Zhao, [16] Zhang i [17] Zhan
+   koriste `et al.`, a broj autora nije provjeren — provjeriti na stranicama
+   izdavača i, ako ih je pet ili manje, ispisati sva imena.
 
 ## Odnos prema izvornom istraživanju
 

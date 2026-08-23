@@ -109,7 +109,8 @@ pri visokoj konkurentnosti i uz stroge zahtjeve konzistentnosti; analitička
 obrada (OLAP) počiva na dugotrajnim upitima koji agregiraju milione zapisa i
 traže visok propusni opseg čitanja. Tri decenije standardni odgovor na tu
 napetost bila je arhitekturalna podjela: operativna baza premošćena prema
-skladištu podataka ETL procesom čije se kašnjenje mjeri satima ili danima.
+skladištu podataka ETL (extract-transform-load) procesom čije se kašnjenje
+mjeri satima ili danima.
 Hibridna transakcijsko-analitička obrada (HTAP), termin koji je Gartner uveo
 2014. godine, označava klasu sistema koja teži eliminaciji tog
 posrednika~\cite{ozcan2017}.
@@ -208,11 +209,10 @@ Opterećenje se izvršava nad skupom podataka StackOverflow2010, javnim dumpom
 produkcijske baze platforme Stack Overflow za razdoblje 2008--2010, koji je
 odabran umjesto sintetičkih alternativa jer pokazuje prirodnu Pareto
 raspodjelu aktivnosti svojstvenu web platformama~\cite{zhang2024survey}.
-Svaka shema sadrži $\approx$\,19,15 miliona zapisa: 10\,143\,364 glasa,
-3\,875\,183 komentara, 3\,729\,195 postova, 1\,102\,019 bedževa i 299\,398
-korisnika. Podaci su učitani u disk-zasnovane sheme ($>$\,15\,GB) i kopirani
-u memorijsko-optimizirane ($\approx$\,8\,GB po shemi), tako da izmjerene
-razlike odražavaju isključivo arhitekturu pohrane.
+Svaka shema sadrži $\approx$\,19,15 miliona zapisa: 10,14\,M glasova,
+3,88\,M komentara, 3,73\,M postova, 1,10\,M bedževa i 299\,398 korisnika. Podaci su učitani u disk-zasnovane sheme ($>$\,15\,GB) i kopirani
+u memorijsko-optimizirane ($\approx$\,8\,GB po shemi), tako da izmjerene razlike
+odražavaju isključivo arhitekturu pohrane.
 
 % =====================================================================
 \section{Metodologija eksperimenta}
@@ -221,18 +221,18 @@ Istraživanje slijedi puni faktorijalni dizajn $4\times3\times3$ s 30
 ponavljanja po ćeliji: četiri konfiguracije, tri omjera OLTP/OLAP (80/20,
 50/50, 20/80) i tri razine konkurentnosti ($C \in \{4, 16, 32\}$ radnih
 niti), dakle 1\,080 planiranih serija; takav dizajn omogućava procjenu
-interakcijskih efekata između faktora, posebno interakcije konfiguracija
-$\times$ konkurentnost~\cite{zhang2024hybench}. Deset serija (0,93\,\%)
-odbačeno je zbog nestabilnosti mjerenja, definisane kao stopa uspješnosti
-OLTP operacija ispod 90\,\%, pa je ostalo 1\,070 valjanih serija s 28--30
-ponavljanja po ćeliji.
+interakcijskih efekata, posebno interakcije konfiguracija $\times$
+konkurentnost~\cite{zhang2024hybench}. Deset serija (0,93\,\%) odbačeno je
+zbog nestabilnosti mjerenja (stopa uspješnosti OLTP operacija ispod
+90\,\%), pa je ostalo 1\,070 valjanih serija s 28--30 ponavljanja po
+ćeliji.
 
 Sva mjerenja izvedena su na jednoj mašini s procesorom Intel Core i9-14900HX
 (24 jezgra / 32 niti), 32\,GB DDR5-5600 memorije i NVMe SSD-om od 1\,TB, pod
 Windowsom 11 (24H2) i SQL Serverom 2022 Developer Edition.
 Mjerna aplikacija je namjenski razvijena u .NET 8 uz
 \texttt{Microsoft.Data.SqlClient} i Dapper micro-ORM; izvršava OLTP i OLAP
-radnike uporedo, odbacuje warmup fazu od 10\,s, mjeri 60\,s po seriji i
+radnike uporedo, odbacuje warmup od 10\,s, mjeri 60\,s po seriji i
 zapisuje latencije i ishode pojedinačnih operacija u CSV. Svaka sesija
 najprije učitava radni kontekst od 20\,000 nasumičnih identifikatora postova
 i 5\,000 identifikatora korisnika, tako da pristup slijedi prirodnu
@@ -271,7 +271,7 @@ svakoj razini konkurentnosti ($p < 0{,}001$).
 \footnotesize
 \begin{tabular}{@{}ll rrrr rrrr@{}}
 \toprule
-& & \multicolumn{4}{c}{\textbf{OLTP propusnost [op/s], srednja}} & \multicolumn{4}{c}{\textbf{OLAP latencija $P_{50}$ [ms], medijana}}\\
+& & \multicolumn{4}{c}{\textbf{OLTP propusnost (op/s), srednja}} & \multicolumn{4}{c}{\textbf{OLAP latencija $P_{50}$ (ms), medijana}}\\
 \cmidrule(lr){3-6}\cmidrule(l){7-10}
 \textbf{Omjer} & \textbf{$C$} & Baseline & CS & IM & HTAP & Baseline & CS & IM & HTAP\\
 \midrule
@@ -292,7 +292,7 @@ svakoj razini konkurentnosti ($p < 0{,}001$).
 Dual-store konfiguracija vodi u OLTP propusnosti na svakoj razini
 konkurentnosti i pri svakom omjeru. Agregirano po tri omjera dostiže 21\,920
 op/s pri $C = 32$, naspram 4\,726, 2\,477 i 2\,432 op/s za IM, CS i Baseline.
-Disk-zasnovane konfiguracije skaliraju nemonotono: pri omjeru 80/20 njihova
+Disk-zasnovane konfiguracije skaliraju nemonotono: pri 80/20 njihova
 propusnost pada između $C = 16$ i $C = 32$ (Baseline 9\,005 $\rightarrow$
 5\,727 op/s) kada kontencija za ulazom/izlazom i zaključavanje zasite
 podsistem pohrane, dok memorijsko-optimizirane nastavljaju skalirati.
@@ -311,7 +311,7 @@ Dual-store konfiguracija postiže i najnižu analitičku latenciju pri svakom
 omjeru --- medijanu $P_{50}$ od 924\,ms pri 80/20 naspram 3\,128\,ms za
 Baseline, te 1\,530\,ms naspram 7\,351\,ms pri 20/80 --- kao i najvišu
 analitičku propusnost, 6,84 upita/s pri $C = 32$ naspram 3,13 (IM), 2,80 (CS)
-i 0,85 upita/s (Baseline), što je 8,0$\times$ bolje od kontrolne grupe.
+i 0,85 upita/s (Baseline), što je 8,0$\times$ bolje.
 Robusnost slijedi isti poredak: stopa uspješnosti OLAP upita pri $C = 32$
 iznosi 99,4\,\% za HTAP i 97,8\,\% za CS, ali samo 83,6\,\% za Baseline,
 čiji upiti prekoračuju klijentski timeout.
@@ -395,13 +395,12 @@ $R^2$ & \multicolumn{2}{c}{0,881} & \multicolumn{2}{c}{0,854}\\
 % =====================================================================
 Mjerenja otkrivaju mehanizam koji dosad nije nezavisno kvantifikovan:
 columnstore sloj ne samo da ubrzava analitičke upite, nego i \emph{posredno
-štiti transakcijske resurse} od analitičke interferencije. To objašnjava
-zašto dual-store konfiguracija nadmašuje i disk-zasnovane konfiguracije i IM,
+štiti transakcijske resurse}. Zato dual-store konfiguracija nadmašuje i disk-zasnovane konfiguracije i IM,
 koja radi na istom Hekaton engineu. U IM
 konfiguraciji analitički upiti skeniraju memorijsko-optimizirane tabele u
 row-modu, trošeći znatno više procesorskih ciklusa po redu i zasićujući
-procesor pri $C = 16$ i $C = 32$; u dual-store rasporedu isti upiti se
-opslužuju u batch-modu iz columnstore kopije, pa se transakcije nikada ne
+procesor pri $C = 16$ i $C = 32$; u dual-store rasporedu opslužuju se
+u batch-modu iz columnstore kopije, pa se transakcije nikada ne
 natječu s analitičkim nitima za procesor. Ubrzanje analitike je stoga i
 sredstvo zaštite OLTP propusnosti --- poluga koja dopunjuje pristup
 usmjeren na izolaciju iz~\cite{zhao2023} i razdvojene arhitekture
@@ -410,15 +409,15 @@ iz~\cite{huang2020, yang2020}, ovdje ostvarena bez mrežne latencije.
 Praktično pravilo je jednostavno: kad god opterećenje spaja transakcije i
 analitiku, a preduslovi su ispunjeni, dual-store raspored je poželjniji bez
 obzira na omjer; CS ostaje pragmatičan izbor za isključivo analitička
-opterećenja, servere s ograničenom memorijom i izdanja poput SQL Server
-Express koja ne podržavaju In-Memory OLTP. Preduslovi nisu mali: otprilike
+opterećenja, servere s ograničenom memorijom i izdanja
+koja ne podržavaju In-Memory OLTP. Preduslovi nisu mali: otprilike
 dvostruka potrošnja memorije, trošak održavanja sinhronizacije između
 slojeva i tolerancija na analitiku nad podacima koji nisu svježi.
 
 \subsection{Ograničenja validnosti}
 \label{sec:threats}
 Četiri ograničenja omeđuju ove rezultate. Prvo i najvažnije, ispitana
-dual-store konfiguracija razdvaja dva sloja, ali tokom mjerenja ne izvršava
+dual-store konfiguracija razdvaja dva sloja, ali ne izvršava
 nikakav mehanizam sinhronizacije (change data capture, replikacija ili
 kompakcija), dok produkcijski sistemi tu cijenu plaćaju
 kontinuirano~\cite{huang2020, yang2020}; prikazani dobici stoga predstavljaju
@@ -428,8 +427,8 @@ konzistentnog sistema. Drugo, memorijsko-optimizirane konfiguracije koriste
 \texttt{DURABILITY = SCHEMA\_ONLY} i čitaju iz radne memorije, dok
 disk-zasnovane čitaju s NVMe SSD-a, pa usporedbe preko različitih medija i
 razina trajnosti miješaju efekt arhitekture s efektom medija; najčistije su
-usporedbe unutar istog medija (HTAP naspram IM, te CS naspram analitičkog
-sloja HTAP-a). Treće, asimetrija u \texttt{MAXDOP} postavci koju
+usporedbe unutar istog medija (HTAP naspram IM, CS naspram analitičkog sloja
+HTAP-a). Treće, asimetrija u \texttt{MAXDOP} postavci koju
 zahtijevaju engine-i predstavlja confounding varijablu u usporedbi HTAP--IM,
 a njen doprinos nije izolovan. Četvrto, objašnjenje putem zasićenja procesora
 izvedeno je iz modela izvršavanja upita, a ne iz direktnog profilisanja, a sva
@@ -444,21 +443,20 @@ dual-store konfiguracija SQL Servera 2022 dominirala je u svakom ispitanom
 scenariju mješovitog opterećenja, dostigavši 21\,920 op/s pri $C = 32$ ---
 4,6$\times$ više od memorijsko-optimizirane i 9,0$\times$ više od Baseline
 konfiguracije --- uz najnižu analitičku latenciju ($P_{50} = 924$\,ms pri
-80/20). Čisto memorijsko-optimizirana konfiguracija pokazala se neočekivano slabom
-pod mješovitim opterećenjem uprkos istom transakcijskom engineu, jer
-row-mode skeniranja zasićuju procesor, dok je disk-zasnovana columnstore
-konfiguracija izgubila dvije trećine kapaciteta čim je dodana analitika. Glavni uvid jeste da je ubrzanje analitike samo po sebi
+80/20). Čisto memorijsko-optimizirana konfiguracija pokazala se neočekivano
+slabom pod mješovitim opterećenjem uprkos istom transakcijskom engineu, jer
+row-mode skeniranja zasićuju procesor; disk-zasnovana columnstore
+konfiguracija izgubila je dvije trećine kapaciteta čim je dodana analitika. Glavni uvid jeste da je ubrzanje analitike samo po sebi
 sredstvo zaštite transakcijske propusnosti; taj posredni efekt, vrijedan
 faktora 3,3--6,9, zaslužuje pažnju pri podešavanju HTAP sistema. Buduća
-istraživanja mjerit će cijenu kontinuirane sinhronizacije između slojeva,
-dodati direktno profilisanje procesora i proširiti usporedbu na distribuirane
-sisteme i veće dumpove Stack Overflowa.
+istraživanja mjerit će cijenu kontinuirane sinhronizacije, dodati direktno
+profilisanje procesora i proširiti usporedbu na distribuirane sisteme.
 
 \balance
 
 % =====================================================================
 \begin{thebibliography}{99}
-\scriptsize  % 8 pt popis literature, kao u IEEE konferencijskom predlošku
+% popis literature u IEEEtran-ovoj propisanoj veličini od 8 pt (bez izmjene)
 \bibitem{diaconu2013}
 C. Diaconu \emph{et al.}, ``Hekaton: SQL Server's memory-optimized OLTP
 engine,'' in \emph{Proc. ACM SIGMOD}, 2013, pp. 1243--1254.

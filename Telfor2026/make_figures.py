@@ -35,12 +35,12 @@ plt.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Liberation Serif", "Times New Roman", "Nimbus Roman", "DejaVu Serif"],
     "mathtext.fontset": "stix",
-    "font.size": 7.5,
-    "axes.labelsize": 7.5,
-    "axes.titlesize": 7.5,
-    "xtick.labelsize": 7,
-    "ytick.labelsize": 7,
-    "legend.fontsize": 6.8,
+    "font.size": 8,
+    "axes.labelsize": 8,
+    "axes.titlesize": 8,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "legend.fontsize": 7,
     "axes.linewidth": 0.6,
     "grid.linewidth": 0.4,
     "lines.linewidth": 1.1,
@@ -117,7 +117,7 @@ def fig_oltp_scaling(df: pd.DataFrame) -> None:
         ax.set_title(RATIO_TITLE[ratio].replace("\\%", "%"), pad=3)
         ax.grid(True, which="major", ls=":", alpha=0.55)
         ax.grid(True, which="minor", ls=":", alpha=0.22)
-    axes[0].set_ylabel("OLTP throughput [ops/s]")
+    axes[0].set_ylabel("OLTP throughput (ops/s)")
     axes[0].legend(loc="lower right", frameon=True, framealpha=0.92,
                    handlelength=1.6, borderpad=0.28, labelspacing=0.22)
     fig.tight_layout(pad=0.25, w_pad=0.6)
@@ -149,7 +149,7 @@ def fig_olap_latency(df: pd.DataFrame) -> None:
     ax.set_yscale("log")
     ax.set_xticks(range(1, len(CONFIGS) + 1))
     ax.set_xticklabels(["Baseline", "CS", "IM", "HTAP"])
-    ax.set_ylabel("OLAP latency $P_{50}$ [ms]")
+    ax.set_ylabel("OLAP latency $P_{50}$ (ms)")
     ax.set_xlabel("Storage configuration ($C = 32$, all workload mixes)")
     ax.grid(True, axis="y", which="major", ls=":", alpha=0.55)
     fig.tight_layout(pad=0.25)
@@ -175,7 +175,7 @@ def fig_degradation(df: pd.DataFrame, lang: str = "en") -> None:
     ax.axhline(0, color="black", linewidth=0.5)
     ax.set_xticks(xs)
     ax.set_xticklabels([f"$C = {c}$" for c in LEVELS])
-    ax.set_ylabel("Pad OLTP propusnosti [%]" if bs else "OLTP throughput loss [%]")
+    ax.set_ylabel("Pad OLTP propusnosti (%)" if bs else "OLTP throughput loss (%)")
     ax.set_xlabel("Razina konkurentnosti" if bs else "Concurrency level")
     ax.grid(True, axis="y", ls=":", alpha=0.55)
     ax.legend(loc="lower left", ncol=2, frameon=True, framealpha=0.92,
