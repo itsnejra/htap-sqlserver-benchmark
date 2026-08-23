@@ -11,7 +11,6 @@
 %  USKLAĐENOST S TELFOR PRAVILIMA:
 %    * dvokolonski A4, standardni IEEE konferencijski template (IEEEtran, 10 pt)
 %    * najviše 4 stranice A4 za redovne i studentske radove
-%    * copyright napomena na dnu prve stranice (v. \IEEEpubid)
 %
 %  Build:  pdflatex telfor2026_htap_bs.tex   (pokrenuti dva puta)
 % =====================================================================
@@ -40,11 +39,13 @@
 \newcommand{\best}[1]{\textbf{#1}}
 
 % --- Copyright napomena na dnu prve stranice -------------------------
-% TELFOR svake godine objavi tačan IEEE copyright string u uputstvu za
-% autore; ovdje upisati taj niz umjesto rezerviranog mjesta.
-\IEEEpubid{\parbox{\columnwidth}{\footnotesize
-  978-1-XXXX-XXXX-X/26/\$31.00~\copyright2026 IEEE\hfill}
-  \hspace{\columnsep}\makebox[\columnwidth]{}}
+% TELFOR u uputstvu za autore ne trazi IEEE copyright liniju na radu koji se
+% predaje, a nema je ni zvanicni IEEE konferencijski template, pa se rad
+% predaje bez nje umjesto s rezerviranim mjestom. Ako TELFOR objavi copyright
+% string za finalnu verziju, otkomentarisati tri linije ispod i upisati ga.
+%\IEEEpubid{\parbox{\columnwidth}{\footnotesize
+%  978-1-XXXX-XXXX-X/26/\$31.00~\copyright2026 IEEE\hfill}
+%  \hspace{\columnsep}\makebox[\columnwidth]{}}
 
 \begin{document}
 

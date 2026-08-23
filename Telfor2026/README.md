@@ -46,19 +46,18 @@ pa je dovoljno dva puta pokrenuti `pdflatex`.
 |---|---|
 | Dvokolonski A4, standardni IEEE konferencijski template | `\documentclass[10pt,conference,a4paper]{IEEEtran}` |
 | Maksimalno 4 stranice A4 (redovni i studentski radovi) | 4 stranice |
-| Copyright napomena na dnu prve stranice | `\IEEEpubid` — **vidi napomenu ispod** |
+| Jezik rada | **engleski ili srpski** — šalje se engleska verzija |
+| Naslov i sažetak bez matematike, simbola i fusnota | provjereno, ispunjeno |
 | Predaja u PDF formatu kroz TELFOR sistem | PDF se generiše `pdflatex`-om |
-| Jezik rada | engleska verzija za slanje (IEEE Xplore); bosanska verzija za čitanje |
+| Bosanska verzija | **ne može se predati** (TELFOR prima samo engleski ili srpski) — služi za čitanje |
 
 ### ⚠️ Prije predaje obavezno provjeriti
 
-1. **Copyright string.** U preambuli stoji rezervirano mjesto
-   `978-1-XXXX-XXXX-X/26/$31.00 ©2026 IEEE`. TELFOR svake godine objavi tačan IEEE
-   ISBN/copyright string u *Instructions for Authors*
-   (<https://registration.telfor.rs/Info/InstructionsForAuthors>) — taj tačan niz
-   treba upisati umjesto `XXXX-XXXX`. (Domena telfor.rs nije bila dostupna iz
-   okruženja u kojem je rad pripremljen, pa string nije mogao biti automatski
-   preuzet.)
+1. **Copyright string.** TELFOR-ovo uputstvo za autore ne traži IEEE copyright
+   liniju na radu koji se predaje, a nema je ni zvanični IEEE konferencijski
+   template, pa je iz rada uklonjena (izvorni `\IEEEpubid` blok ostao je
+   zakomentarisan u preambuli). Ako TELFOR objavi copyright string za finalnu
+   (camera-ready) verziju, otkomentarisati taj blok i upisati niz.
 2. **Rok i sekcija.** Odabrati odgovarajuću TELFOR sekciju pri predaji i provjeriti
    aktuelne rokove na telfor.rs.
 3. **IEEE PDF eXpress.** Finalnu verziju propustiti kroz PDF eXpress radi
