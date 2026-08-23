@@ -1,4 +1,4 @@
-# TELFOR 2026 — konferencijski rad
+# TELFOR 2026 — konferencijski radovi
 
 Rad za **34. Telekomunikacioni forum TELFOR 2026** (Beograd, Srbija), izveden iz
 projekta *Evaluacija performansi hibridne transakcijsko-analitičke obrade (HTAP)
@@ -20,6 +20,9 @@ empirijska evaluacija*)
 | `telfor2026_htap_bs.pdf` | Kompajlirani rad, bosanski — **4 stranice A4** |
 | `make_figures.py` | Generiše slike direktno iz `Results/summary.csv` |
 | `figures/*.pdf` | Vektorske slike (Type-42 fontovi, IEEE širine kolona) |
+| `telfor2026_completus.tex` | Drugi rad za TELFOR 2026 (Completus), engleski |
+| `telfor2026_completus.pdf` | Kompajlirani rad — **4 stranice A4** |
+| `make_figures_completus.py` | Generiše `figures/fig_pipeline.pdf` |
 
 ## Kompajliranje
 
@@ -80,6 +83,42 @@ pa je dovoljno dva puta pokrenuti `pdflatex`.
    (Kang, Chen i Li u *BenchCouncil Trans. Benchmarks Standards Eval.*, ne
    Zhao i drugi u *Inf. Syst.*), pa je i ime u tekstu promijenjeno.
    Pri svakoj budućoj izmjeni literature ponoviti ovu provjeru.
+
+## Drugi rad: Completus
+
+`telfor2026_completus.tex` je rad *Completus: Consumer-GPU QLoRA Fine-Tuning of a
+1.5B Code Model for Local Autocompletion* (Nejra Smajlović, Adi Kadušić),
+prenesen iz IHCONCS formata u isti TELFOR/IEEEtran template i pod istim
+pravilima kao HTAP rad.
+
+```bash
+python3 Telfor2026/make_figures_completus.py
+cd Telfor2026 && pdflatex telfor2026_completus.tex && pdflatex telfor2026_completus.tex
+```
+
+Šta je promijenjeno u odnosu na izvornu verziju:
+
+- IEEEtran, A4, dvokolonski, **4 stranice** umjesto 6 jednokolonskih na Letteru;
+- struktura sažeta na šest sekcija: Uvod, Dosadašnja istraživanja, Pipeline
+  (3 podsekcije), Evaluacija (3 podsekcije), Diskusija s ograničenjima,
+  Zaključak — Diskusija i ograničenja su spojeni, kako se ne bi dobila sekcija
+  s jednim podnaslovom, što IEEE template zabranjuje;
+- **Acknowledgement uklonjen** na zahtjev autorice; link na repozitorij prebačen
+  u nenumerisanu fusnotu prve stranice, gdje ga IEEE template i traži;
+- četiri tabele svedene na tri, a slika pipeline-a preslikana iz rastera od
+  216 ppi u vektor (`make_figures_completus.py`);
+- iz sažetka uklonjeni matematika i specijalni znakovi (u izvorniku je
+  `\(q4\_k\_m\)` doslovno curilo kao LaTeX kod u tekst);
+- uklonjena referenca na nepostojeću „Fig. 3" iz izvornika;
+- akronimi GPU, QLoRA, CI, LLM, PEFT, LoRA, FIM i NF4 definisani pri prvom
+  pojavljivanju u tekstu;
+- ORCID nije upisan ni za jednog autora; izvornik je za drugog autora imao
+  rezervirano mjesto `0000-0000-0000-0000`, pa su ostavljene samo e-mail adrese.
+
+**Provjeriti prije predaje:** brojevi u donjem bloku Tabele III (CodeLlama,
+StarCoderBase, DeepSeek-Coder) pripisani su referenci [9]; potvrditi da su
+zaista preuzeti iz te usporedne tabele. Reference [3], [11] i [13] provjerene
+su na izvorima i tačne su.
 
 ## Odnos prema izvornom istraživanju
 

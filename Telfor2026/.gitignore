@@ -1,4 +1,6 @@
-# The parent .gitignore excludes *.pdf; the paper and its vector figures are
+# The parent .gitignore excludes *.pdf; the papers and their vector figures are
 # deliverables, so they are re-included here. LaTeX scratch files stay ignored.
 !telfor2026_htap.pdf
+!telfor2026_htap_bs.pdf
+!telfor2026_completus.pdf
 !figures/*.pdf

@@ -1,0 +1,496 @@
+% =====================================================================
+%  TELFOR 2026 -- Telecommunications Forum, Belgrade, Serbia
+%  Paper: Completus: Consumer-GPU QLoRA Fine-Tuning of a 1.5B Code
+%         Model for Local Autocompletion
+%  Authors: Nejra Smajlovic (University of Zenica, Polytechnic Faculty)
+%           Adi Kadusic    (University of Zenica, Polytechnic Faculty)
+%
+%  FORMAT COMPLIANCE (TELFOR instructions for authors):
+%    * double-column A4, standard IEEE conference template (IEEEtran, 10 pt)
+%    * maximum 4 A4 pages for regular and student papers
+%    * submitted as PDF through the TELFOR online submission system
+%
+%  Figure:  python3 Telfor2026/make_figures_completus.py
+%  Build:   pdflatex telfor2026_completus.tex   (run twice)
+% =====================================================================
+\documentclass[10pt,conference,a4paper]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{cite}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{balance}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage{upgreek}   % uspravna grcka slova: IEEE ne kurzivira grcke simbole
+
+% --- Table typography -------------------------------------------------
+\newcommand{\best}[1]{\textbf{#1}}
+
+% --- Copyright notice at the bottom of the first page ------------------
+% TELFOR's Instructions for Authors do not ask for an IEEE copyright line on
+% the submitted paper, and the official IEEE conference template does not
+% contain one, so the paper is submitted without it rather than with a
+% placeholder ISBN. If TELFOR later publishes a copyright string for the
+% camera-ready version, uncomment the three lines below and paste it in.
+%\IEEEpubid{\parbox{\columnwidth}{\footnotesize
+%  978-1-XXXX-XXXX-X/26/\$31.00~\copyright2026 IEEE\hfill}
+%  \hspace{\columnsep}\makebox[\columnwidth]{}}
+
+\begin{document}
+
+\title{Completus: Consumer-GPU QLoRA Fine-Tuning\\
+of a 1.5B Code Model for Local Autocompletion}
+
+\author{\IEEEauthorblockN{Nejra Smajlovi\'c}
+\IEEEauthorblockA{\textit{University of Zenica}\\
+\textit{Polytechnic Faculty}\\
+Zenica, Bosnia and Herzegovina\\
+nejra.smajlovic.22@size.ba}
+\and
+\IEEEauthorblockN{Adi Kadu\v{s}i\'c}
+\IEEEauthorblockA{\textit{University of Zenica}\\
+\textit{Polytechnic Faculty}\\
+Zenica, Bosnia and Herzegovina\\
+adi.kadusic.22@size.ba}%
+\thanks{Both authors are with the Polytechnic Faculty, University of Zenica,
+Bosnia and Herzegovina. Training code, Modelfiles and evaluation scripts:
+\url{https://github.com/kadusic1/completus}.}}
+
+\maketitle
+
+\begin{abstract}
+This paper presents Completus, a reproducible pipeline that specializes a
+1.5-billion-parameter open code model for local, network-isolated
+autocompletion on a single consumer graphics card. Qwen2.5-Coder-1.5B is
+fine-tuned with a fixed-rank QLoRA adapter on curated Python and Go subsets
+of CodeSearchNet, after a preparation stage combining near-deduplication,
+code-smell filtering, docstring quality checks and a fill-in-the-middle
+transformation. The trained adapter is merged into the base weights,
+exported to a four-bit K-quantized GGUF build and served through Ollama,
+which makes the model reachable from a standard editor extension without any
+network call. Evaluated on HumanEval under a deployment-faithful zero-shot
+protocol in which the prompt is the bare function signature, the fine-tuned
+Python model solves 42.68 percent of the problems on the first attempt,
+against 10.98 percent for the untuned baseline under the same protocol. The
+gain is therefore a recovery, in the prompt format the local deployment
+actually uses, of capability the base model already reports under its own
+more favourable protocol, and not a net capability increase. The complete
+workflow runs on an eight-gigabyte laptop graphics card in under two hours
+per language.
+\end{abstract}
+
+\begin{IEEEkeywords}
+code completion, QLoRA, parameter-efficient fine-tuning, Qwen2.5-Coder,
+CodeSearchNet, GGUF quantization, local inference.
+\end{IEEEkeywords}
+
+% =====================================================================
+\section{Introduction}
+% =====================================================================
+\IEEEPARstart{L}{arge} language models (LLMs) specialized for code deliver
+accurate autocompletion and multi-file contextual awareness, but the
+commercial systems that lead on those metrics are reached through
+cloud-hosted endpoints. That delivery model carries three costs which are
+prohibitive in regulated industries, air-gapped environments and
+budget-constrained teams: a persistent network connection, exposure of
+proprietary source code to third-party infrastructure, and a per-token
+operational charge that never ends. A model small enough to run on the
+developer's own workstation, on a single consumer graphics processing unit
+(GPU), removes all three at once.
+
+Local deployment substitutes a different constraint. The model must be
+compact enough to answer within the latency budget of an editor plugin on
+commodity hardware, yet capable enough that its completions are worth
+accepting. Two developments make that trade-off tractable. Parameter-efficient
+fine-tuning (PEFT), and in particular Low-Rank Adaptation
+(LoRA)~\cite{hu2022lora}, specializes a pretrained model at a small fraction
+of the cost of full fine-tuning; quantized weight formats such as GGUF,
+served by optimized runtimes, execute those weights within a few gigabytes
+of video memory.
+
+This paper reports an end-to-end realization of that recipe, named Completus,
+and evaluates it in the conditions under which it is actually served. Two
+gaps motivate the work. First, published studies report either raw model
+capability or adaptation technique in isolation; few carry a single model
+from raw corpus through data curation, adaptation and quantization to a live,
+editor-integrated endpoint, and report every stage. Second, code models are
+usually scored under few-shot, chat-formatted protocols that do not resemble
+the bare-signature prompts an editor plugin emits, so a published score does
+not predict what a developer will experience. The contributions are the
+complete pipeline of Fig.~\ref{fig:pipeline}, reported with the parameters
+needed to reproduce it; a quantification of the effect of a single QLoRA
+epoch measured in the deployment prompt format; and an explicit separation of
+capability recovery from capability gain, which the evaluation protocol
+determines and which published scores routinely conflate.
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_pipeline.pdf}
+\caption{The Completus pipeline. Raw CodeSearchNet functions pass through
+quality filtering and a fill-in-the-middle transform, specialize
+Qwen2.5-Coder-1.5B through QLoRA, and are merged and exported to a four-bit
+K-quantized GGUF build that Ollama serves to an editor plugin over the
+local loopback interface.}
+\label{fig:pipeline}
+\end{figure*}
+
+% =====================================================================
+\section{Related Work}
+% =====================================================================
+Building on the decoder-only Transformer~\cite{vaswani2017}, a succession of
+open code models has narrowed the gap to proprietary systems.
+StarCoder~\cite{li2023starcoder} trains on the permissively licensed Stack
+corpus with multi-query attention and a fill-in-the-middle (FIM) objective;
+Code Llama~\cite{roziere2023} extends Llama~2 with infilling and long-context
+support; DeepSeek-Coder~\cite{guo2024} trains on a project-level corpus with
+an infilling objective; and Qwen2.5-Coder~\cite{hui2024} reports the leading
+scores among open models at the 1.5-billion-parameter scale adopted here.
+Completus differs in goal rather than in technique: it does not pretrain a
+new model but specializes an existing small one for a narrow,
+latency-sensitive task.
+
+On the adaptation side, LoRA~\cite{hu2022lora} freezes the pretrained weights
+and injects trainable rank-decomposition matrices, cutting the number of
+trainable parameters by orders of magnitude. Quantized LoRA (QLoRA)~\cite{dettmers2023}
+quantizes the frozen base to four-bit NormalFloat (NF4), which brings
+fine-tuning within the memory budget of a single consumer card.
+AdaLoRA~\cite{zhang2023adalora} refines the allocation of rank by importance.
+Weyssow \emph{et al.}~\cite{weyssow2025} evaluate PEFT specifically for code
+generation and confirm that LoRA recovers most of the quality of full
+fine-tuning at a fraction of its cost, and the survey of Han \emph{et
+al.}~\cite{han2024} situates LoRA within the wider PEFT family.
+
+A third line concerns the training data rather than the model. Xue \emph{et
+al.}~\cite{xue2025} show that removing code smells from the training set
+improves model quality; Lee \emph{et al.}~\cite{lee2022} show that
+near-deduplication reduces memorization and test-set leakage; Bavarian
+\emph{et al.}~\cite{bavarian2022} show that models acquire infilling ability
+at no cost to left-to-right generation; and WizardCoder~\cite{luo2024}
+shows that instruction-style fine-tuning lifts code quality further. The
+quantization build used here follows the unified evaluation of llama.cpp
+formats by Kurt~\cite{kurt2026}. What these works share is that each is
+developed and reported in a research or cloud-serving setting, under a
+protocol chosen by its own authors. None delivers a recipe that carries a
+small open model all the way to an editor-integrated endpoint on commodity
+hardware, and reports its quality in the prompt format that endpoint receives.
+
+
+% =====================================================================
+\section{The Completus Pipeline}
+% =====================================================================
+The pipeline has five stages, shown in Fig.~\ref{fig:pipeline}: data
+preparation, QLoRA fine-tuning, adapter merging, GGUF export and local
+registration for serving. Each stage is scripted and parameterized, so that
+the whole path from public corpus to running endpoint can be re-executed on
+one machine.
+
+
+\subsection{Data Preparation}
+The corpus is CodeSearchNet~\cite{husain2019}, whose full splits contain
+412\,178 Python and 317\,832 Go functions. To keep preparation tractable on
+one workstation the input is capped at the first 50\,000 functions per
+language, which are then passed through five filters. Near-duplicates are
+removed by locality-sensitive hashing over MinHash sketches (128
+permutations, five-token shingles, Jaccard threshold 0.8). A code-smell
+filter drops lines longer than 120 characters, functions shorter than 30
+tokens, and bodies that do nothing. A docstring filter requires at least 15
+tokens and two words and rejects any docstring carrying a TODO, FIXME or XXX
+marker. A fill-in-the-middle transform is then applied to 80~\% of the
+surviving samples, and the remainder are truncated to 2048 tokens.
+
+Each filter targets a documented failure mode rather than general
+tidiness. Near-deduplication is applied because duplicated training text
+increases memorization and leaks test material into training~\cite{lee2022};
+the code-smell filter because models trained on smell-cleaned corpora produce
+better code~\cite{xue2025}; and the FIM transform because it buys infilling
+ability, which is what an editor plugin needs, at no measured cost to
+left-to-right generation~\cite{bavarian2022}.
+
+Table~\ref{tab:data} reports what survives. Retention differs sharply
+between the two languages, 63.9~\% for Python against 42.6~\%~for Go, and
+the gap is dominated by the docstring filter, since idiomatic Go comments are
+frequently shorter than the 15-token floor. The consequence is that the two
+adapters are not trained on comparable amounts of data, which must be kept in
+view when the two models are compared.
+
+\begin{table}[b]
+\caption{Training data surviving the preparation pipeline}
+\label{tab:data}
+\centering
+\footnotesize
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Language} & \textbf{Input cap} & \textbf{After pipeline} & \textbf{Retained}\\
+\midrule
+Python & 50\,000  & 31\,966 & 63.9~\%\\
+Go     & 50\,000  & 21\,284 & 42.6~\%\\
+\midrule
+Total  & 100\,000 & 53\,250 & 53.3~\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{QLoRA Fine-Tuning}
+Qwen2.5-Coder-1.5B~\cite{hui2024} is loaded in four-bit NF4 quantization and
+adapted with QLoRA~\cite{dettmers2023} through the Unsloth runtime. Adapters
+are attached to all seven linear projection matrices, at a fixed rank rather
+than an adaptively allocated one, so that the memory ceiling is known in
+advance on an eight-gigabyte card. Table~\ref{tab:config} lists the full
+configuration.
+
+\begin{table}[b]
+\caption{QLoRA fine-tuning configuration}
+\label{tab:config}
+\centering
+\footnotesize
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Parameter} & \textbf{Value}\\
+\midrule
+Base model                & Qwen2.5-Coder-1.5B\\
+Quantization              & four-bit NF4\\
+LoRA rank / scaling       & 16 / 32\\
+Target modules            & q, k, v, o, gate, up, down\\
+Batch size / accumulation & 2 / 8 (effective 16)\\
+Learning rate / schedule  & 0.0002 / cosine\\
+Optimizer                 & AdamW, eight-bit\\
+Epochs / max.\ seq.\ length & 1 / 2048\\
+Random seed               & 3407\\
+Hardware                  & NVIDIA RTX 4060 Laptop (8\,GB)\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Each language is trained for a single epoch: 1998 optimizer steps for Python
+and 1331 for Go at an effective batch size of 16. The Go run completed in
+3713~s (62~min) and the Python run in approximately 2.2~h, so a full
+language fits inside a working session on a laptop. Training loss falls from
+1.674 at the start of the Python run, and the Go run ends at a mean training
+loss of 1.111.
+
+\subsection{Merging, Export and Local Serving}
+After training, the LoRA weights are merged into the base checkpoint and
+exported as a quantized GGUF binary in the \texttt{q4\_k\_m}
+scheme~\cite{kurt2026}, which the unified evaluation of llama.cpp formats
+identifies as the best size-quality compromise at this scale. Each binary is
+registered with Ollama through a Modelfile that fixes the FIM prompt
+template, a decoding temperature of 0, a context window of 2048 tokens and a
+generation limit of 256 tokens. The result is an endpoint on the local
+loopback interface, consumed directly by the Continue.dev editor extension;
+no request leaves the machine.
+
+% =====================================================================
+\section{Evaluation}
+% =====================================================================
+\subsection{Protocol}
+Evaluation uses HumanEval, whose 164 Python problems each pair a function
+signature with hidden unit tests. Generation is greedy, one deterministic
+sample per problem and at most 512 new tokens, and the reported metric is
+pass@1: the fraction of problems whose generated body passes every test.
+
+Only pass@1 is reported, and not pass@k for larger k. Sampling several
+completions per problem and counting a problem solved if any of them passes
+measures a property no editor plugin exposes: the developer sees one
+suggestion, accepts it or does not. Reporting pass@1 under greedy decoding
+therefore measures the quantity the deployment actually delivers, at the cost
+of a wider confidence interval than repeated sampling would give.
+
+The prompt matters more than the decoding here. Rather than the few-shot,
+chat-formatted prompt used in the base model's own report, the prompt is the
+bare function signature, which is what an editor plugin sends. Both
+checkpoints are evaluated under identical conditions, so the comparison
+between them is internally valid even though neither number is comparable to
+a published score obtained under a different protocol. Because decoding is
+deterministic, the only source of uncertainty is the finite problem set, and
+95~\% Wilson confidence intervals (CIs) are reported accordingly.
+
+\subsection{Results}
+The fine-tuned Python model solves 70 of the 164 problems, a pass@1 of
+42.68~\% with a 95~\% confidence interval of [35.4, 50.3]. The untuned
+baseline solves 18, a pass@1 of 10.98~\% with an interval of [7.1, 16.7].
+The intervals do not overlap, so the difference of 31.7 percentage points is
+distinguishable from sampling noise under this protocol.
+
+\subsection{Reading the Result Against Published Scores}
+The interpretation of that difference depends entirely on what the baseline
+number measures. Under its own few-shot protocol, the same base model is
+reported at 43.9~\%~\cite{hui2024} --- almost exactly what the fine-tuned
+model reaches here. The 10.98~\% baseline therefore does not describe a weak
+model; it describes a capable model penalized by a prompt format it was not
+prepared for. One QLoRA epoch teaches it to emit a function body directly
+from a signature, which recovers that latent capability in the format the
+deployment uses. Table~\ref{tab:humaneval} places both numbers next to
+published scores for comparable models; those scores were obtained under
+protocols set by their own authors and are context, not a controlled
+comparison.
+
+\begin{table}[b]
+\caption{HumanEval pass@1. The upper block is measured here under a single
+protocol; the lower block reproduces published scores obtained under
+protocols that differ from it and from each other}
+\label{tab:humaneval}
+\centering
+\footnotesize
+\begin{tabular}{@{}llrl@{}}
+\toprule
+\textbf{Model} & \textbf{Params} & \textbf{pass@1} & \textbf{95~\% CI}\\
+\midrule
+\multicolumn{4}{@{}l}{\emph{Measured here, bare-signature zero-shot protocol}}\\
+Qwen2.5-Coder-1.5B (baseline) & 1.5B & 10.98~\% & [7.1, 16.7]\\
+Completus Python (fine-tuned) & 1.5B & \best{42.68~\%} & [35.4, 50.3]\\
+\midrule
+\multicolumn{4}{@{}l}{\emph{Published, each under its own protocol}}\\
+CodeLlama-Base~\cite{guo2024}       & 7B    & 31.7~\% & ---\\
+StarCoderBase~\cite{guo2024}        & 15.5B & 31.7~\% & ---\\
+DeepSeek-Coder-Base~\cite{guo2024}  & 1.3B  & 34.8~\% & ---\\
+Qwen2.5-Coder base~\cite{hui2024}   & 1.5B  & 43.9~\% & ---\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =====================================================================
+\section{Discussion and Threats to Validity}
+% =====================================================================
+The practical reading is that a compact open model, adapted for two hours on
+a laptop card, serves autocompletion at a quality close to what its
+publishers report, with no network dependency and no per-token cost. What
+the fine-tuning buys is not intelligence but format alignment, and that
+distinction is the paper's main methodological point: a benchmark score is a
+property of a model and a prompt protocol jointly, so a score obtained under
+a favourable protocol does not transfer to a deployment that prompts
+differently. This is consistent with the finding of Weyssow \emph{et
+al.}~\cite{weyssow2025} that LoRA recovers most of the quality of full
+fine-tuning, and it argues for evaluating under the protocol a system will
+actually receive.
+
+For a team choosing between a hosted endpoint and a local one, the
+numbers frame the decision in concrete terms. The cost of going local is one
+laptop-class card, two hours of training per language and a quality level
+some way below the largest hosted models; what is bought is the removal of
+the network dependency, of third-party exposure of the source code, and of a
+per-token charge that scales with use. The comparison in
+Table~\ref{tab:humaneval} also shows that model size is not the whole story
+at this scale: the adapted 1.5-billion-parameter model reaches a score
+comparable to published figures for models four to ten times larger, though
+under protocols that differ and therefore only as an indication.
+
+Four limitations bound these results. First, only the Python model is
+evaluated quantitatively; the Go model is assessed qualitatively, so the
+retention gap reported in Section~III-A is not tied to a measured quality
+difference. Second, HumanEval scores self-contained function synthesis, not
+the cursor-aware infilling that the FIM objective trains and that the editor
+plugin actually issues, so the reported figure does not measure the deployed
+task directly. Third, the pipeline input is capped at 50\,000 functions per
+language and the filter thresholds are fixed, so the retention rates are a
+single operating point rather than a tuned optimum, and the trade-off between
+data quality and dataset size is left unexamined. Fourth, one training run
+per language was executed under a fixed seed, so run-to-run variance is not
+quantified.
+
+% =====================================================================
+\section{Conclusion}
+% =====================================================================
+Completus carries a 1.5-billion-parameter open code model from a public
+corpus to an editor-integrated endpoint that runs entirely on an
+eight-gigabyte consumer card, and reports every stage of that path. A single
+QLoRA epoch raises HumanEval pass@1 from 10.98~\% to 42.68~\% under a
+bare-signature zero-shot protocol, approaching the 43.9~\% the base model
+reports under its own more favourable protocol. That result is best read as
+recovery rather than gain: the fine-tuning aligns the model with the prompt
+format the deployment emits, and the size of the effect is a measure of how
+much a protocol mismatch can suppress an otherwise capable model. Future work
+will evaluate the Go model on HumanEval-X, adopt an infilling-aware benchmark
+that matches the deployed usage, and extend the context to repository-level
+completion so that cross-file dependencies can be exploited during ordinary
+editing.
+
+\balance
+
+% =====================================================================
+\begin{thebibliography}{99}
+% popis literature u IEEEtran-ovoj propisanoj velicini od 8 pt (bez izmjene)
+\bibitem{hu2022lora}
+E. J. Hu, Y. Shen, P. Wallis, Z. Allen-Zhu, Y. Li, S. Wang, L. Wang, and
+W. Chen, ``LoRA: Low-rank adaptation of large language models,'' in
+\emph{Proc. Int. Conf. Learning Representations (ICLR)}, 2022.
+
+\bibitem{dettmers2023}
+T. Dettmers, A. Pagnoni, A. Holtzman, and L. Zettlemoyer, ``QLoRA: Efficient
+finetuning of quantized LLMs,'' in \emph{Advances in Neural Information
+Processing Systems 36}, 2023, pp. 10088--10115.
+
+\bibitem{kurt2026}
+U. Kurt, ``Which quantization should I use? A unified evaluation of
+llama.cpp quantization on Llama-3.1-8B-Instruct,'' arXiv:2601.14277, 2026.
+
+\bibitem{husain2019}
+H. Husain, H.-H. Wu, T. Gazit, M. Allamanis, and M. Brockschmidt,
+``CodeSearchNet challenge: Evaluating the state of semantic code search,''
+Microsoft Research, Tech. Rep. MSR-TR-2019-45, 2019.
+
+\bibitem{hui2024}
+B. Hui \emph{et al.}, ``Qwen2.5-Coder technical report,'' 2024,
+arXiv:2409.12186.
+
+\bibitem{vaswani2017}
+A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez,
+{\L}. Kaiser, and I. Polosukhin, ``Attention is all you need,'' in
+\emph{Advances in Neural Information Processing Systems 30}, 2017, pp.
+5998--6008.
+
+\bibitem{li2023starcoder}
+R. Li \emph{et al.}, ``StarCoder: May the source be with you!,''
+\emph{Trans. Mach. Learn. Res.}, 2023.
+
+\bibitem{roziere2023}
+B. Rozi\`ere \emph{et al.}, ``Code Llama: Open foundation models for code,''
+2023, arXiv:2308.12950.
+
+\bibitem{guo2024}
+D. Guo \emph{et al.}, ``DeepSeek-Coder: When the large language model meets
+programming --- the rise of code intelligence,'' 2024, arXiv:2401.14196.
+
+\bibitem{zhang2023adalora}
+Q. Zhang, M. Chen, A. Bukharin, N. Karampatziakis, P. He, Y. Cheng, W. Chen,
+and T. Zhao, ``AdaLoRA: Adaptive budget allocation for parameter-efficient
+fine-tuning,'' in \emph{Proc. Int. Conf. Learning Representations (ICLR)},
+2023.
+
+\bibitem{weyssow2025}
+M. Weyssow, X. Zhou, K. Kim, D. Lo, and H. Sahraoui, ``Exploring
+parameter-efficient fine-tuning techniques for code generation with large
+language models,'' \emph{ACM Trans. Softw. Eng. Methodol.}, vol. 34, no. 7,
+2025, Art. no. 204.
+
+\bibitem{han2024}
+Z. Han, C. Gao, J. Liu, J. Zhang, and S. Q. Zhang, ``Parameter-efficient
+fine-tuning for large models: A comprehensive survey,'' \emph{Trans. Mach.
+Learn. Res.}, 2024.
+
+\bibitem{xue2025}
+Z. Xue, X. Zhang, Z. Gao, X. Hu, S. Gao, X. Xia, and S. Li, ``Clean code,
+better models: Enhancing LLM performance with smell-cleaned dataset,''
+\emph{ACM Trans. Softw. Eng. Methodol.}, 2025.
+
+\bibitem{lee2022}
+K. Lee, D. Ippolito, A. Nystrom, C. Zhang, D. Eck, C. Callison-Burch, and
+N. Carlini, ``Deduplicating training data makes language models better,'' in
+\emph{Proc. 60th Annu. Meeting Assoc. Comput. Linguistics}, vol. 1, 2022,
+pp. 8424--8445.
+
+\bibitem{bavarian2022}
+M. Bavarian, H. Jun, N. Tezak, J. Schulman, C. McLeavey, J. Tworek, and
+M. Chen, ``Efficient training of language models to fill in the middle,''
+2022, arXiv:2207.14255.
+
+\bibitem{luo2024}
+Z. Luo \emph{et al.}, ``WizardCoder: Empowering code large language models
+with Evol-Instruct,'' in \emph{Proc. Int. Conf. Learning Representations
+(ICLR)}, 2024.
+\end{thebibliography}
+
+\end{document}
