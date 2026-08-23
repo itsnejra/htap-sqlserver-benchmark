@@ -236,16 +236,16 @@ over a user's recent posts (10\,\%) and two point lookups (15\,\%), i.e.
 75\,\% writes and 25\,\% reads. The OLAP workload comprises five full-scan
 aggregation queries drawn uniformly at random, including a join of the
 10.1\,M-row \texttt{Votes} and 3.7\,M-row \texttt{Posts} tables and a user
-cohort query with a CTE and double aggregation.
+cohort query with a common table expression and double aggregation.
 
 Because latency distributions are strongly right-skewed --- confirmed by the
 Shapiro--Wilk test ($p < 0.001$ for every metric) --- the analysis is
-non-parametric: the Kruskal--Wallis $H$ test per metric and concurrency
+nonparametric: the Kruskal--Wallis $H$ test per metric and concurrency
 level ($\alpha = 0.05$), pairwise Mann--Whitney $U$ tests with Bonferroni
 correction for the $C(4,2) = 6$ pairs ($\alpha' \approx 0.0083$), and
 Cohen's $d$ as effect size, with $|d| > 0.8$ treated as practically
-relevant. Two log-linear OLS models quantify the contribution of individual
-factors.
+relevant. Two log-linear ordinary least squares (OLS) models
+quantify the contribution of individual factors.
 
 % =====================================================================
 \section{Results}
@@ -282,7 +282,7 @@ configurations for every metric at every concurrency level ($p < 0.001$).
 The dual-store configuration leads in OLTP throughput at every concurrency
 level and every mix. Aggregated over the three mixes it reaches 21\,920
 ops/s at $C = 32$, against 4\,726, 2\,477 and 2\,432 ops/s for IM, CS and
-Baseline. The disk-based configurations scale non-monotonically: at 80/20
+Baseline. The disk-based configurations scale nonmonotonically: at 80/20
 their throughput falls between $C = 16$ and $C = 32$ (Baseline
 9\,005 $\rightarrow$ 5\,727 ops/s) once I/O contention and locking saturate
 the storage subsystem, whereas the memory-optimized ones keep scaling.
@@ -319,7 +319,7 @@ $C = 32$ despite having no columnstore index, since memory-grant waits
 (\texttt{RESOURCE\_SEMAPHORE}) beyond six concurrent batch-mode queries cost
 more than batch mode saves~\cite{zeng2023}.
 
-\begin{figure}[t]
+\begin{figure}[b]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig3_degradation.pdf}
 \caption{OLTP throughput loss when the workload mix changes from 80/20 to
@@ -406,7 +406,7 @@ substantial: roughly double the memory footprint, the cost of operating the
 synchronization between the layers, and tolerance for analytics over data
 that is not real-time fresh.
 
-\subsection{Threats to Validity}
+\section{Threats to Validity}
 \label{sec:threats}
 Four limitations bound these results. First, and most importantly, the
 evaluated dual-store configuration separates the two layers but runs no

@@ -245,8 +245,8 @@ skeniranje zadnjih postova korisnika (10\,\%) i dva točkasta čitanja
 (15\,\%), dakle 75\,\% pisanja i 25\,\% čitanja. OLAP opterećenje
 čini pet agregacijskih upita s punim skeniranjem, biranih uniformno
 nasumično, uključujući spajanje tabela \texttt{Votes} (10,1 miliona redova)
-i \texttt{Posts} (3,7 miliona redova) te kohortni upit s CTE-om i dvostrukom
-agregacijom.
+i \texttt{Posts} (3,7 miliona redova) te kohortni upit s CTE-om (common table
+expression) i dvostrukom agregacijom.
 
 Budući da su distribucije latencije izrazito desno-asimetrične --- što
 potvrđuje Shapiro--Wilkov test ($p < 0{,}001$ za svaku metriku) --- analiza
@@ -254,8 +254,8 @@ je neparametarska: Kruskal--Wallisov $H$ test po metrici i razini
 konkurentnosti ($\alpha = 0{,}05$), parne usporedbe Mann--Whitneyevim $U$
 testom s Bonferroni korekcijom za $C(4,2) = 6$ parova
 ($\alpha' \approx 0{,}0083$) i Cohenov $d$, pri čemu se $|d| > 0{,}8$ smatra
-praktično relevantnim. Dva log-linearna OLS modela
-kvantifikuju doprinos pojedinih faktora.
+praktično relevantnim. Dva log-linearna OLS (ordinary least
+squares) modela kvantifikuju doprinos pojedinih faktora.
 
 % =====================================================================
 \section{Rezultati}
@@ -330,7 +330,7 @@ propusnosti pri $C = 32$ uprkos tome što nema columnstore indeks, jer čekanje
 na dodjelu memorije (\texttt{RESOURCE\_SEMAPHORE}) iznad šest istovremenih
 upita košta više nego što batch-mode donosi~\cite{zeng2023}.
 
-\begin{figure}[t]
+\begin{figure}[b]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig3_degradation_bs.pdf}
 \caption{Pad OLTP propusnosti pri prelasku s omjera 80/20 na 50/50, po
@@ -414,7 +414,7 @@ koja ne podržavaju In-Memory OLTP. Preduslovi nisu mali: otprilike
 dvostruka potrošnja memorije, trošak održavanja sinhronizacije između
 slojeva i tolerancija na analitiku nad podacima koji nisu svježi.
 
-\subsection{Ograničenja validnosti}
+\section{Ograničenja validnosti}
 \label{sec:threats}
 Četiri ograničenja omeđuju ove rezultate. Prvo i najvažnije, ispitana
 dual-store konfiguracija razdvaja dva sloja, ali ne izvršava

@@ -51,6 +51,10 @@ pa je dovoljno dva puta pokrenuti `pdflatex`.
 | Fontovi i prored nepromijenjeni u odnosu na IEEEtran | popis literature vraćen na propisanih 8 pt |
 | Jedinice u zaglavljima tabela i na osama slika u zagradama | `(op/s)`, `(ms)`, `(%)` |
 | Oznake na slikama 8 pt | `make_figures.py`, `font.size = 8` |
+| Podnaslovi samo ako ih ima najmanje dva | "Ograničenja validnosti" promovirano u zasebnu sekciju |
+| Slike i tabele umetnute nakon prvog spominjanja | Slika 1 pomjerena na dno kolone (`[b]`) |
+| Akronimi definisani pri prvom pojavljivanju u tekstu | ETL, OLS, CTE dopunjeni |
+| Prefiks "non" bez crtice | `nonparametric`, `nonmonotonically` |
 | Predaja u PDF formatu kroz TELFOR sistem | PDF se generiše `pdflatex`-om |
 | Bosanska verzija | **ne može se predati** (TELFOR prima samo engleski ili srpski) — služi za čitanje |
 
