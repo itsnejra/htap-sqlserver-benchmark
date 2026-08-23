@@ -87,8 +87,8 @@ pa je dovoljno dva puta pokrenuti `pdflatex`.
 ## Drugi rad: Completus
 
 `telfor2026_completus.tex` je rad *Completus: Consumer-GPU QLoRA Fine-Tuning of a
-1.5B Code Model for Local Autocompletion* (Nejra Smajlović, Adi Kadušić),
-prenesen iz IHCONCS formata u isti TELFOR/IEEEtran template i pod istim
+1.5B Code Model for Local Autocompletion* (Nejra Smajlović, Adi Kadušić,
+Alen Begović), prenesen iz IHCONCS formata u isti TELFOR/IEEEtran template i pod istim
 pravilima kao HTAP rad.
 
 ```bash
