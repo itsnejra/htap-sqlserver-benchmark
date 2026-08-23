@@ -69,15 +69,15 @@ ETL-bridged data warehouse: disk-based tables with B-tree indexes
 memory-optimized tables on the Hekaton engine (IM), and a dual-store hybrid
 configuration combining a memory-optimized transactional layer with a
 columnstore analytical layer (HTAP). The experiment is a full factorial
-$4\times3\times3$ design (configuration $\times$ OLTP/OLAP mix $\times$
-concurrency level) with 30 repetitions per cell over the StackOverflow2010
-dataset ($\approx$\,19.2 million rows per schema); 1\,070 valid runs were
-analyzed with the Kruskal--Wallis $H$ test, Mann--Whitney $U$ tests with
-Bonferroni correction, Cohen's $d$ and log-linear OLS regression. The
-dual-store configuration dominates every tested scenario: it delivers
-3.3--6.9$\times$ the OLTP throughput of the purely memory-optimized
-configuration under a transaction-heavy mix and cuts median analytical
-latency by a factor of 4.0 relative to the baseline. Because it separates
+design over four configurations, three OLTP/OLAP mixes and three concurrency
+levels, with 30 repetitions per cell on the StackOverflow2010 dataset of
+about 19.2 million rows per schema; 1,070 valid runs were analyzed with the
+Kruskal-Wallis H test, Mann-Whitney U tests with Bonferroni correction,
+Cohen's d and log-linear OLS regression. The dual-store configuration
+dominates every tested scenario: it delivers 3.3 to 6.9 times the OLTP
+throughput of the purely memory-optimized configuration under a
+transaction-heavy mix and cuts median analytical latency by a factor of four
+relative to the baseline. Because it separates
 the two layers without paying any synchronization cost during measurement,
 the reported gains represent an upper bound of the approach.
 \end{abstract}

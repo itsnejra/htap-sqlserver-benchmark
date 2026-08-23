@@ -79,16 +79,16 @@ indeksima (Baseline), disk-zasnovane tabele
 s nonclustered columnstore indeksom (CS), memorijsko-optimizirane tabele na
 Hekaton engineu (IM) i hibridnu dual-store konfiguraciju koja
 memorijsko-optimizirani transakcijski sloj kombinuje s columnstore
-analitičkim slojem (HTAP). Eksperiment je puni faktorijalni dizajn
-$4\times3\times3$ (konfiguracija $\times$ omjer OLTP/OLAP $\times$ razina
-konkurentnosti) s 30 ponavljanja po ćeliji, nad skupom podataka
-StackOverflow2010 ($\approx$\,19,2 miliona zapisa po shemi); 1\,070 valjanih
-serija analizirano je Kruskal--Wallisovim $H$ testom, Mann--Whitneyevim $U$
-testom s Bonferroni korekcijom, Cohenovim $d$ i log-linearnom OLS regresijom.
-Dual-store konfiguracija dominira u svakom ispitanom scenariju: ostvaruje
-3,3--6,9$\times$ veću OLTP propusnost od čisto memorijsko-optimizirane
-konfiguracije pri transakcijski intenzivnom opterećenju i smanjuje medijanu
-analitičke latencije za faktor 4,0 u odnosu na Baseline. Budući da razdvaja
+analitičkim slojem (HTAP). Eksperiment je puni faktorijalni dizajn nad
+četiri konfiguracije, tri omjera OLTP/OLAP i tri razine konkurentnosti, s 30
+ponavljanja po ćeliji, nad skupom podataka StackOverflow2010 od približno
+19,2 miliona zapisa po shemi; 1.070 valjanih serija analizirano je
+Kruskal-Wallisovim H testom, Mann-Whitneyevim U testom s Bonferroni
+korekcijom, Cohenovim d i log-linearnom OLS regresijom. Dual-store
+konfiguracija dominira u svakom ispitanom scenariju: ostvaruje 3,3 do 6,9
+puta veću OLTP propusnost od čisto memorijsko-optimizirane konfiguracije pri
+transakcijski intenzivnom opterećenju i smanjuje medijanu analitičke
+latencije za faktor četiri u odnosu na Baseline. Budući da razdvaja
 dva sloja bez ikakve cijene sinhronizacije tokom mjerenja, prikazani dobici
 predstavljaju gornju granicu pristupa.
 \end{abstract}
