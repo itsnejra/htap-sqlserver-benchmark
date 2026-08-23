@@ -284,8 +284,10 @@ loss of 1.111.
 \subsection{Merging, Export and Local Serving}
 After training, the LoRA weights are merged into the base checkpoint and
 exported as a quantized GGUF binary in the \texttt{q4\_k\_m}
-scheme~\cite{kurt2026}, which the unified evaluation of llama.cpp formats
-identifies as the best size-quality compromise at this scale. Each binary is
+scheme, which the unified evaluation of llama.cpp
+formats~\cite{kurt2026} identifies as a favourable size-quality compromise,
+although that evaluation covers an eight-billion-parameter model, so its
+conclusions are carried to a smaller one unverified. Each binary is
 registered with Ollama through a Modelfile that fixes the FIM prompt
 template, a decoding temperature of 0, a context window of 2048 tokens and a
 generation limit of 256 tokens. The result is an endpoint on the local
@@ -395,10 +397,15 @@ the cursor-aware infilling that the FIM objective trains and that the editor
 plugin actually issues, so the reported figure does not measure the deployed
 task directly. Third, the pipeline input is capped at 50\,000 functions per
 language and the filter thresholds are fixed, so the retention rates are a
-single operating point rather than a tuned optimum, and the trade-off between
-data quality and dataset size is left unexamined. Fourth, one training run
+single operating point rather than a tuned optimum. Fourth, one training run
 per language was executed under a fixed seed, so run-to-run variance is not
-quantified.
+quantified. Fifth, and most relevant to the stated motivation, the deployed
+artifact is described but not measured: no completion latency, throughput or
+inference memory footprint is reported, and the effect of four-bit
+quantization on answer quality is not separated from that of the
+fine-tuning. The claim that the endpoint is fast enough for interactive
+editing therefore rests on the design of the system rather than on evidence
+gathered here.
 
 % =====================================================================
 \section{Conclusion}

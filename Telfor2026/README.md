@@ -115,10 +115,26 @@ cd Telfor2026 && pdflatex telfor2026_completus.tex && pdflatex telfor2026_comple
 - ORCID nije upisan ni za jednog autora; izvornik je za drugog autora imao
   rezervirano mjesto `0000-0000-0000-0000`, pa su ostavljene samo e-mail adrese.
 
-**Provjeriti prije predaje:** brojevi u donjem bloku Tabele III (CodeLlama,
-StarCoderBase, DeepSeek-Coder) pripisani su referenci [9]; potvrditi da su
-zaista preuzeti iz te usporedne tabele. Reference [3], [11] i [13] provjerene
-su na izvorima i tačne su.
+**Provjeriti prije predaje:**
+
+1. Brojevi u donjem bloku Tabele III (CodeLlama, StarCoderBase,
+   DeepSeek-Coder) pripisani su referenci [9]; potvrditi da su zaista preuzeti
+   iz te usporedne tabele. Reference [3], [11] i [13] provjerene su na
+   izvorima i tačne su.
+2. **Nad kojim artefaktom je pokrenut HumanEval?** Izvorni rad kaže da izvoz
+   piše i `safetensors` checkpoint i kvantizovani GGUF, a evaluacija govori
+   samo o „both checkpoints". Ako je mjereno nad FP16 checkpointom, onda
+   42,68 % nije kvalitet onoga što Ollama servira, i to treba reći. Jedna
+   rečenica u sekciji IV-A rješava pitanje.
+
+Peto ograničenje u sekciji V eksplicitno navodi da latencija, propusnost i
+zauzeće memorije servisiranog modela nisu mjereni. To je najveća stvarna
+praznina rada i prva stvar koju vrijedi dodati ako bude prostora.
+
+Napomena o kompajliranju: `balance` paket ostavlja upozorenje
+`Overfull \vbox (1.33 pt)` na zadnjoj stranici. Provjereno je da tekst završava
+na oko 450 pt, daleko iznad dna bloka (718 pt) — upozorenje dolazi iz internog
+računa paketa, ne iz prelijevanja sadržaja.
 
 ## Odnos prema izvornom istraživanju
 
