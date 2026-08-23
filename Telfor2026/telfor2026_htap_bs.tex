@@ -27,13 +27,16 @@
 \usepackage{balance}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
+\usepackage{upgreek}   % uspravna grčka slova: IEEE ne kurzivira grčke simbole
 
 % --- Nazivi elemenata na bosanskom -----------------------------------
-\renewcommand{\abstractname}{Sažetak}
-\renewcommand{\IEEEkeywordsname}{Ključne riječi}
-\renewcommand{\refname}{Literatura}
-\renewcommand{\figurename}{Slika}
-\renewcommand{\tablename}{Tabela}
+\addto\captionscroatian{%
+  \renewcommand{\abstractname}{Sažetak}%
+  \renewcommand{\IEEEkeywordsname}{Ključne riječi}%
+  \renewcommand{\refname}{Literatura}%
+  \renewcommand{\figurename}{Slika}%
+  \renewcommand{\tablename}{Tabela}%
+}
 
 % --- Tipografija tabela ----------------------------------------------
 \newcommand{\best}[1]{\textbf{#1}}
@@ -163,9 +166,9 @@ prikazani dizajn i interni mikro-benchmarkovi autora samog sistema.
 Metodološki, HyBench~\cite{zhang2024hybench} spaja TPC-C transakcije s
 analitičkim upitima, Wu i drugi~\cite{wu2025} potvrđuju da dodatni
 analitički klijenti izazivaju pad OLTP propusnosti koji se pojačava s
-konkurentnošću, a Zhao i drugi~\cite{zhao2023} tvrde da izolacija
+konkurentnošću, a Kang i drugi~\cite{kang2023} tvrde da izolacija
 performansi treba biti primarni kriterij; noviji
-sistemi~\cite{zhao2025pushtap, zhang2025synchro, zhan2025} pokazuju da
+sistemi~\cite{zhao2025pushtap, zhang2025synchro, chen2025vedb} pokazuju da
 optimalna konfiguracija ovisi o interakciji profila opterećenja i
 konkurentnosti, što motiviše primijenjeni faktorijalni dizajn.
 Nezavisne evaluacije mehanizama SQL Servera ipak su rijetke, a nijedna
@@ -251,9 +254,9 @@ expression) i dvostrukom agregacijom.
 Budući da su distribucije latencije izrazito desno-asimetrične --- što
 potvrđuje Shapiro--Wilkov test ($p < 0{,}001$ za svaku metriku) --- analiza
 je neparametarska: Kruskal--Wallisov $H$ test po metrici i razini
-konkurentnosti ($\alpha = 0{,}05$), parne usporedbe Mann--Whitneyevim $U$
+konkurentnosti ($\upalpha = 0{,}05$), parne usporedbe Mann--Whitneyevim $U$
 testom s Bonferroni korekcijom za $C(4,2) = 6$ parova
-($\alpha' \approx 0{,}0083$) i Cohenov $d$, pri čemu se $|d| > 0{,}8$ smatra
+($\upalpha' \approx 0{,}0083$) i Cohenov $d$, pri čemu se $|d| > 0{,}8$ smatra
 praktično relevantnim. Dva log-linearna OLS (ordinary least
 squares) modela kvantifikuju doprinos pojedinih faktora.
 
@@ -403,7 +406,7 @@ procesor pri $C = 16$ i $C = 32$; u dual-store rasporedu opslužuju se
 u batch-modu iz columnstore kopije, pa se transakcije nikada ne
 natječu s analitičkim nitima za procesor. Ubrzanje analitike je stoga i
 sredstvo zaštite OLTP propusnosti --- poluga koja dopunjuje pristup
-usmjeren na izolaciju iz~\cite{zhao2023} i razdvojene arhitekture
+usmjeren na izolaciju iz~\cite{kang2023} i razdvojene arhitekture
 iz~\cite{huang2020, yang2020}, ovdje ostvarena bez mrežne latencije.
 
 Praktično pravilo je jednostavno: kad god opterećenje spaja transakcije i
@@ -482,12 +485,13 @@ C. Zhang, G. Li, and T. Lv, ``HyBench: A new benchmark for HTAP databases,''
 \emph{Proc. VLDB Endow.}, vol. 17, no. 5, pp. 939--951, 2024.
 
 \bibitem{zhang2024survey}
-C. Zhang, J. Zhou, H. Chen, Z. Wang, and T. Li, ``HTAP databases: A survey,''
-\emph{IEEE Trans. Knowl. Data Eng.}, 2024.
+C. Zhang, G. Li, J. Zhang, X. Zhang, and J. Feng, ``HTAP databases: A
+survey,'' \emph{IEEE Trans. Knowl. Data Eng.}, 2024.
 
 \bibitem{song2024}
-H. Song, Z. Zhao, X. Ding, and R. Chen, ``A survey on hybrid transactional
-and analytical processing,'' \emph{VLDB J.}, 2024.
+H. Song, W. Zhou, H. Cui, X. Peng, and F. Li, ``A survey on hybrid
+transactional and analytical processing,'' \emph{VLDB J.}, vol. 33, pp.
+1485--1515, 2024.
 
 \bibitem{farber2012}
 F. F\"arber, S. K. Cha, J. Primsch, C. Bornh\"ovd, S. Sigg, and W. Lehner,
@@ -500,8 +504,8 @@ database,'' in \emph{Proc. IEEE 31st Int. Conf. Data Eng. (ICDE)}, 2015, pp.
 1253--1258.
 
 \bibitem{zeng2023}
-X. Zeng, M. Abebe, J. Waudby, and A. Pavlo, ``An empirical evaluation of
-columnar storage formats,'' \emph{Proc. VLDB Endow.}, vol. 17, no. 2, pp.
+X. Zeng \emph{et al.}, ``An empirical evaluation of columnar storage
+formats,'' \emph{Proc. VLDB Endow.}, vol. 17, no. 2, pp.
 148--161, 2023.
 
 \bibitem{larson2015}
@@ -509,24 +513,26 @@ P.-{\AA}. Larson \emph{et al.}, ``Real-time analytical processing with SQL
 Server,'' \emph{Proc. VLDB Endow.}, vol. 8, no. 12, pp. 1740--1751, 2015.
 
 \bibitem{wu2025}
-Y. Wu \emph{et al.}, ``HTAP benchmark in financial scenarios,''
-\emph{Security and Safety}, vol. 4, 2025.
+W. Wu \emph{et al.}, ``HTAP benchmark in financial scenarios,''
+\emph{Security and Safety}, vol. 4, 2025, Art. no. 2025010.
 
-\bibitem{zhao2023}
-Y. Zhao, J. Chen, Y. Wang, and X. Shi, ``Benchmarking HTAP databases for
-performance isolation and real-time analytics,'' \emph{Inf. Syst.}, 2023.
+\bibitem{kang2023}
+G. Kang, S. Chen, and H. Li, ``Benchmarking HTAP databases for performance
+isolation and real-time analytics,'' \emph{BenchCouncil Trans. Benchmarks
+Standards Eval.}, vol. 3, no. 2, 2023, Art. no. 100122.
 
 \bibitem{zhao2025pushtap}
-P. Zhao \emph{et al.}, ``PUSHtap: PIM-based in-memory HTAP with unified data
+Y. Zhao \emph{et al.}, ``PUSHtap: PIM-based in-memory HTAP with unified data
 storage format,'' in \emph{Proc. 30th ACM ASPLOS}, 2025.
 
 \bibitem{zhang2025synchro}
-Y. Zhang \emph{et al.}, ``SynchroStore: A cost-based fine-grained incremental
-compaction for hybrid workloads,'' arXiv:2503.18688, 2025.
+Y. Zhang, H. Hu, and X. Zhou, ``SynchroStore: A cost-based fine-grained
+incremental compaction for hybrid workloads,'' arXiv:2503.18688, 2025.
 
-\bibitem{zhan2025}
-C. Zhan \emph{et al.}, ``veDB-HTAP: A highly integrated, efficient and
-adaptive HTAP system,'' \emph{Proc. VLDB Endow.}, 2025.
+\bibitem{chen2025vedb}
+J. Chen \emph{et al.}, ``veDB-HTAP: A highly integrated, efficient and
+adaptive HTAP system,'' \emph{Proc. VLDB Endow.}, vol. 18, no. 12, pp.
+4896--4909, 2025.
 \end{thebibliography}
 
 \end{document}

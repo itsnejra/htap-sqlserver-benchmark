@@ -24,6 +24,7 @@
 \usepackage{balance}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
+\usepackage{upgreek}   % uspravna grcka slova: IEEE ne kurzivira grcke simbole
 
 % --- Table typography -------------------------------------------------
 \newcommand{\best}[1]{\textbf{#1}}
@@ -154,14 +155,14 @@ micro-benchmarks.
 Methodologically, HyBench~\cite{zhang2024hybench} couples TPC-C transactions
 with analytical queries, Wu \emph{et al.}~\cite{wu2025} confirm that
 additional analytical clients cause an OLTP throughput drop that intensifies
-with concurrency, and Zhao \emph{et al.}~\cite{zhao2023} argue that
+with concurrency, and Kang \emph{et al.}~\cite{kang2023} argue that
 performance isolation should be the primary evaluation criterion; recent
-systems~\cite{zhao2025pushtap, zhang2025synchro, zhan2025} show that the
+systems~\cite{zhao2025pushtap, zhang2025synchro, chen2025vedb} show that the
 optimal configuration depends on the interaction between workload profile
 and concurrency, which motivates the factorial design adopted here.
 Independent evaluations of the SQL Server mechanisms nevertheless remain
-rare, and no study known to the author covers three concurrency levels and
-three mixes on this platform with a non-parametric analysis.
+rare, and no study known to the authors covers three concurrency levels and
+three mixes on this platform with a nonparametric analysis.
 
 The study is organized around three questions. First, how the analytical
 latency of the disk-based columnstore configuration compares with that of
@@ -241,8 +242,8 @@ cohort query with a common table expression and double aggregation.
 Because latency distributions are strongly right-skewed --- confirmed by the
 Shapiro--Wilk test ($p < 0.001$ for every metric) --- the analysis is
 nonparametric: the Kruskal--Wallis $H$ test per metric and concurrency
-level ($\alpha = 0.05$), pairwise Mann--Whitney $U$ tests with Bonferroni
-correction for the $C(4,2) = 6$ pairs ($\alpha' \approx 0.0083$), and
+level ($\upalpha = 0.05$), pairwise Mann--Whitney $U$ tests with Bonferroni
+correction for the $C(4,2) = 6$ pairs ($\upalpha' \approx 0.0083$), and
 Cohen's $d$ as effect size, with $|d| > 0.8$ treated as practically
 relevant. Two log-linear ordinary least squares (OLS) models
 quantify the contribution of individual factors.
@@ -393,7 +394,7 @@ at $C = 16$ and $C = 32$; in the dual-store layout they are
 served in batch mode from the columnstore copy, so transactions never
 compete with analytical threads for CPU. Accelerating analytics is therefore
 also a means of protecting OLTP throughput --- a lever that complements the
-isolation-first perspective of~\cite{zhao2023} and the decoupled
+isolation-first perspective of~\cite{kang2023} and the decoupled
 architectures of~\cite{huang2020, yang2020}, obtained here without network
 latency.
 
@@ -475,12 +476,13 @@ C. Zhang, G. Li, and T. Lv, ``HyBench: A new benchmark for HTAP databases,''
 \emph{Proc. VLDB Endow.}, vol. 17, no. 5, pp. 939--951, 2024.
 
 \bibitem{zhang2024survey}
-C. Zhang, J. Zhou, H. Chen, Z. Wang, and T. Li, ``HTAP databases: A survey,''
-\emph{IEEE Trans. Knowl. Data Eng.}, 2024.
+C. Zhang, G. Li, J. Zhang, X. Zhang, and J. Feng, ``HTAP databases: A
+survey,'' \emph{IEEE Trans. Knowl. Data Eng.}, 2024.
 
 \bibitem{song2024}
-H. Song, Z. Zhao, X. Ding, and R. Chen, ``A survey on hybrid transactional
-and analytical processing,'' \emph{VLDB J.}, 2024.
+H. Song, W. Zhou, H. Cui, X. Peng, and F. Li, ``A survey on hybrid
+transactional and analytical processing,'' \emph{VLDB J.}, vol. 33, pp.
+1485--1515, 2024.
 
 \bibitem{farber2012}
 F. F\"arber, S. K. Cha, J. Primsch, C. Bornh\"ovd, S. Sigg, and W. Lehner,
@@ -493,8 +495,8 @@ database,'' in \emph{Proc. IEEE 31st Int. Conf. Data Eng. (ICDE)}, 2015, pp.
 1253--1258.
 
 \bibitem{zeng2023}
-X. Zeng, M. Abebe, J. Waudby, and A. Pavlo, ``An empirical evaluation of
-columnar storage formats,'' \emph{Proc. VLDB Endow.}, vol. 17, no. 2, pp.
+X. Zeng \emph{et al.}, ``An empirical evaluation of columnar storage
+formats,'' \emph{Proc. VLDB Endow.}, vol. 17, no. 2, pp.
 148--161, 2023.
 
 \bibitem{larson2015}
@@ -502,24 +504,26 @@ P.-{\AA}. Larson \emph{et al.}, ``Real-time analytical processing with SQL
 Server,'' \emph{Proc. VLDB Endow.}, vol. 8, no. 12, pp. 1740--1751, 2015.
 
 \bibitem{wu2025}
-Y. Wu \emph{et al.}, ``HTAP benchmark in financial scenarios,''
-\emph{Security and Safety}, vol. 4, 2025.
+W. Wu \emph{et al.}, ``HTAP benchmark in financial scenarios,''
+\emph{Security and Safety}, vol. 4, 2025, Art. no. 2025010.
 
-\bibitem{zhao2023}
-Y. Zhao, J. Chen, Y. Wang, and X. Shi, ``Benchmarking HTAP databases for
-performance isolation and real-time analytics,'' \emph{Inf. Syst.}, 2023.
+\bibitem{kang2023}
+G. Kang, S. Chen, and H. Li, ``Benchmarking HTAP databases for performance
+isolation and real-time analytics,'' \emph{BenchCouncil Trans. Benchmarks
+Standards Eval.}, vol. 3, no. 2, 2023, Art. no. 100122.
 
 \bibitem{zhao2025pushtap}
-P. Zhao \emph{et al.}, ``PUSHtap: PIM-based in-memory HTAP with unified data
+Y. Zhao \emph{et al.}, ``PUSHtap: PIM-based in-memory HTAP with unified data
 storage format,'' in \emph{Proc. 30th ACM ASPLOS}, 2025.
 
 \bibitem{zhang2025synchro}
-Y. Zhang \emph{et al.}, ``SynchroStore: A cost-based fine-grained incremental
-compaction for hybrid workloads,'' arXiv:2503.18688, 2025.
+Y. Zhang, H. Hu, and X. Zhou, ``SynchroStore: A cost-based fine-grained
+incremental compaction for hybrid workloads,'' arXiv:2503.18688, 2025.
 
-\bibitem{zhan2025}
-C. Zhan \emph{et al.}, ``veDB-HTAP: A highly integrated, efficient and
-adaptive HTAP system,'' \emph{Proc. VLDB Endow.}, 2025.
+\bibitem{chen2025vedb}
+J. Chen \emph{et al.}, ``veDB-HTAP: A highly integrated, efficient and
+adaptive HTAP system,'' \emph{Proc. VLDB Endow.}, vol. 18, no. 12, pp.
+4896--4909, 2025.
 \end{thebibliography}
 
 \end{document}

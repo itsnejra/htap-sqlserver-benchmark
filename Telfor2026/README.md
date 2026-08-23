@@ -55,6 +55,8 @@ pa je dovoljno dva puta pokrenuti `pdflatex`.
 | Slike i tabele umetnute nakon prvog spominjanja | Slika 1 pomjerena na dno kolone (`[b]`) |
 | Akronimi definisani pri prvom pojavljivanju u tekstu | ETL, OLS, CTE dopunjeni |
 | Prefiks "non" bez crtice | `nonparametric`, `nonmonotonically` |
+| Grčki simboli uspravni (ne kurziv) | paket `upgreek`, `\upalpha` |
+| Svi autori navedeni kad ih je manje od šest | provjereno na izvorima za svih 17 referenci |
 | Predaja u PDF formatu kroz TELFOR sistem | PDF se generiše `pdflatex`-om |
 | Bosanska verzija | **ne može se predati** (TELFOR prima samo engleski ili srpski) — služi za čitanje |
 
@@ -71,10 +73,13 @@ pa je dovoljno dva puta pokrenuti `pdflatex`.
    Xplore-kompatibilnosti (ugrađivanje fontova i sl.).
 4. **Obje verzije.** Svaka izmjena teksta mora se unijeti u oba `.tex` fajla,
    jer engleska i bosanska verzija nisu automatski povezane.
-5. **`et al.` u literaturi.** IEEE template traži da se navedu svi autori kad
-   ih je manje od šest. Reference [13] Wu, [15] Zhao, [16] Zhang i [17] Zhan
-   koriste `et al.`, a broj autora nije provjeren — provjeriti na stranicama
-   izdavača i, ako ih je pet ili manje, ispisati sva imena.
+5. **Literatura je provjerena na izvorima** (august 2026). Ispravljeni su
+   pogrešni popisi autora u [7], [8], [11] i [14], pogrešna prezimena prvog
+   autora u [13], [15] i [17], te dopunjeni nedostajući volumeni i stranice.
+   Referenca [14] je bila pripisana pogrešnim autorima i pogrešnom časopisu
+   (Kang, Chen i Li u *BenchCouncil Trans. Benchmarks Standards Eval.*, ne
+   Zhao i drugi u *Inf. Syst.*), pa je i ime u tekstu promijenjeno.
+   Pri svakoj budućoj izmjeni literature ponoviti ovu provjeru.
 
 ## Odnos prema izvornom istraživanju
 
