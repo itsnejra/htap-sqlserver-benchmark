@@ -22,7 +22,9 @@ empirijska evaluacija*)
 | `figures/*.pdf` | Vektorske slike (Type-42 fontovi, IEEE širine kolona) |
 | `telfor2026_completus.tex` | Drugi rad za TELFOR 2026 (Completus), engleski |
 | `telfor2026_completus.pdf` | Kompajlirani rad — **4 stranice A4** |
-| `make_figures_completus.py` | Generiše `figures/fig_pipeline.pdf` |
+| `telfor2026_completus_bs.tex` | Bosanska verzija Completusa (isti template) |
+| `telfor2026_completus_bs.pdf` | Kompajlirani rad, bosanski — **4 stranice A4** |
+| `make_figures_completus.py` | Generiše `figures/fig_pipeline.pdf` i `_bs.pdf` |
 
 ## Kompajliranje
 
@@ -93,7 +95,9 @@ pravilima kao HTAP rad.
 
 ```bash
 python3 Telfor2026/make_figures_completus.py
-cd Telfor2026 && pdflatex telfor2026_completus.tex && pdflatex telfor2026_completus.tex
+cd Telfor2026
+pdflatex telfor2026_completus.tex    && pdflatex telfor2026_completus.tex
+pdflatex telfor2026_completus_bs.tex && pdflatex telfor2026_completus_bs.tex
 ```
 
 Šta je promijenjeno u odnosu na izvornu verziju:

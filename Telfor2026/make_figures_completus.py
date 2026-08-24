@@ -53,20 +53,32 @@ STAGES = [
     ("Editor\nplugin", DATA, "black"),
 ]
 
+# Bosanska varijanta oznaka za prijevod rada
+STAGES_BS = [
+    ("CodeSearch-\nNet", DATA, "black"),
+    ("Filter\nkvaliteta", PREP, "black"),
+    ("FIM\ntransformacija", PREP, "black"),
+    ("QLoRA\nfine-tuning", TRAIN, "white"),
+    ("Spajanje i\nGGUF izvoz", TRAIN, "white"),
+    ("Ollama\nserviranje", SERVE, "white"),
+    ("Dodatak za\neditor", DATA, "black"),
+]
 
-def main() -> None:
+
+def draw(lang: str = "en") -> None:
+    stages = STAGES_BS if lang == "bs" else STAGES
     fig, ax = plt.subplots(figsize=(DBL_W, 0.78))
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.axis("off")
 
-    n = len(STAGES)
+    n = len(stages)
     gap = 0.022
     box_w = (1.0 - gap * (n - 1)) / n
     box_h = 0.86
     y0 = 0.07
 
-    for i, (label, face, textcolor) in enumerate(STAGES):
+    for i, (label, face, textcolor) in enumerate(stages):
         x0 = i * (box_w + gap)
         ax.add_patch(FancyBboxPatch(
             (x0, y0), box_w, box_h,
@@ -83,9 +95,15 @@ def main() -> None:
                 arrowstyle="-|>", mutation_scale=6,
                 linewidth=0.7, color="black", shrinkA=0, shrinkB=0))
 
-    fig.savefig(OUTDIR / "fig_pipeline.pdf")
+    name = "fig_pipeline_bs.pdf" if lang == "bs" else "fig_pipeline.pdf"
+    fig.savefig(OUTDIR / name)
     plt.close(fig)
-    print(f"Figure written to {OUTDIR / 'fig_pipeline.pdf'}")
+    print(f"Figure written to {OUTDIR / name}")
+
+
+def main() -> None:
+    draw("en")
+    draw("bs")
 
 
 if __name__ == "__main__":
