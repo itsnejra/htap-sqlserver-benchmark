@@ -129,7 +129,13 @@ pdflatex telfor2026_completus_bs.tex && pdflatex telfor2026_completus_bs.tex
    DeepSeek-Coder) pripisani su referenci [9]; potvrditi da su zaista preuzeti
    iz te usporedne tabele. Reference [3], [11] i [13] provjerene su na
    izvorima i tačne su.
-2. **Nad kojim artefaktom je pokrenut HumanEval?** Izvorni rad kaže da izvoz
+2. **Literatura Completusa provjerena je referencu po referencu** (august
+   2026) — svih 16 unosa tačno: autori, mjesto objave, volumen, stranice,
+   arXiv brojevi i godine. Nije bilo ispravki. Jedina sitnica: [10] koristi
+   arXiv naslov (`AdaLoRA: Adaptive budget allocation...`) uz ICLR kao mjesto
+   objave, gdje je zvanični naslov bez prefiksa `AdaLoRA:`. Bezopasno, ali se
+   može uskladiti.
+3. **Nad kojim artefaktom je pokrenut HumanEval?** Izvorni rad kaže da izvoz
    piše i `safetensors` checkpoint i kvantizovani GGUF, a evaluacija govori
    samo o „both checkpoints". Ako je mjereno nad FP16 checkpointom, onda
    42,68 % nije kvalitet onoga što Ollama servira, i to treba reći. Jedna
