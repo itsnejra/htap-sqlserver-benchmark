@@ -129,7 +129,14 @@ cd Telfor2026 && pdflatex telfor2026_completus.tex && pdflatex telfor2026_comple
 
 Peto ograničenje u sekciji V eksplicitno navodi da latencija, propusnost i
 zauzeće memorije servisiranog modela nisu mjereni. To je najveća stvarna
-praznina rada i prva stvar koju vrijedi dodati ako bude prostora.
+praznina rada i prva stvar koju vrijedi dodati ako bude mjerenja.
+
+Hardverska argumentacija (sekcije III-B i III-C) objašnjava *zašto* postavke iz
+Tabele II izgledaju kako izgledaju: memorijski budžet od 8 GB, razlog za podjelu
+serije 2 × 8 umjesto 16 odjednom, mješovita preciznost `q4_k_m` sheme, i to da
+je latencija dekodiranja pri seriji od jednog uzorka ograničena propusnošću
+memorije, a ne računom. Nijedan od tih pasusa ne uvodi novo mjerenje —
+objašnjavaju postojeće brojeve i eksplicitno upućuju na peto ograničenje.
 
 Napomena o kompajliranju: `balance` paket ostavlja upozorenje
 `Overfull \vbox (1.33 pt)` na zadnjoj stranici. Provjereno je da tekst završava

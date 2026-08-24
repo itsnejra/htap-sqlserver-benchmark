@@ -274,6 +274,21 @@ Hardware                  & NVIDIA RTX 4060 Laptop (8\,GB)\\
 \end{tabular}
 \end{table}
 
+The eight-gigabyte budget is what dictates that configuration. Fine-tuning
+every parameter of a model this size in mixed precision needs on the order of
+16 bytes per parameter once half-precision weights, their gradients, a
+single-precision master copy and the two AdamW moments are all resident,
+which is roughly 24\,GB, or three times what the card offers. QLoRA removes
+almost all of it: the frozen base held in four-bit NF4 occupies under a
+gigabyte, and since only the injected low-rank matrices are trained,
+gradients and optimizer state exist for a small fraction of the parameters,
+halved again by the eight-bit optimizer. What remains of the budget is spent
+on activations, whose peak is set by the 2048-token sequence length and the
+micro-batch. That is why the batch is split into two samples with eightfold
+gradient accumulation rather than sixteen at once: the split leaves the
+effective batch size unchanged while keeping the activation peak inside the
+card, and it is the setting that decides whether the run fits at all.
+
 Each language is trained for a single epoch: 1998 optimizer steps for Python
 and 1331 for Go at an effective batch size of 16. The Go run completed in
 3713~s (62~min) and the Python run in approximately 2.2~h, so a full
@@ -287,7 +302,24 @@ exported as a quantized GGUF binary in the \texttt{q4\_k\_m}
 scheme, which the unified evaluation of llama.cpp
 formats~\cite{kurt2026} identifies as a favourable size-quality compromise,
 although that evaluation covers an eight-billion-parameter model, so its
-conclusions are carried to a smaller one unverified. Each binary is
+conclusions are carried to a smaller one unverified. The K-quant schemes are not uniform four-bit formats: \texttt{q4\_k\_m}
+keeps part of the attention value and feed-forward projections at six bits
+and rounds the remainder to four, spending the extra bits where the accuracy
+cost of rounding is highest. That non-uniformity, rather than the nominal bit
+width, is what makes it the usual choice at this quantization level.
+
+Quantization matters for serving, not only for fitting. Autoregressive
+decoding at a batch size of one must read every weight out of memory to
+produce each token, so single-user completion latency on a card of this class
+is governed by memory bandwidth rather than by arithmetic throughput.
+Reducing the resident weights from two bytes each to well under one cuts the
+traffic per token by a comparable factor, and that, rather than any reduction
+in the number of operations, is the mechanism by which the quantized build is
+expected to answer faster than the merged half-precision checkpoint. Whether
+it does so by enough to stay inside an interactive latency budget is not
+measured here, as Section~\ref{sec:limits} notes.
+
+Each binary is
 registered with Ollama through a Modelfile that fixes the FIM prompt
 template, a decoding temperature of 0, a context window of 2048 tokens and a
 generation limit of 256 tokens. The result is an endpoint on the local
@@ -365,6 +397,7 @@ Qwen2.5-Coder base~\cite{hui2024}   & 1.5B  & 43.9~\% & ---\\
 
 % =====================================================================
 \section{Discussion and Threats to Validity}
+\label{sec:limits}
 % =====================================================================
 The practical reading is that a compact open model, adapted for two hours on
 a laptop card, serves autocompletion at a quality close to what its
