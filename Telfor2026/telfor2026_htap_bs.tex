@@ -142,22 +142,20 @@ vrijede.
 Zhang i drugi~\cite{zhang2024survey} klasifikuju HTAP sisteme prema
 arhitekturi pohrane u četiri porodice, od primarne redne pohrane s in-memory
 stupčastim indeksom do primarne stupčaste pohrane s rednim delta slojem.
-Song i drugi~\cite{song2024} razdvajaju monolitne arhitekture, u kojima jedan
+Song i drugi~\cite{song2024} razdvajaju monolitne arhitekture, gdje jedan
 engine opslužuje oba radna toka, od hibridnih s razdvojenim engineima, i
-zaključuju da je sposobnost održavanja stabilnih OLTP performansi pod
-analitičkim opterećenjem smislenija mjera kvalitete od vršne propusnosti.
+zaključuju da su stabilne OLTP performanse pod analitičkim opterećenjem
+smislenija mjera kvalitete od vršne propusnosti.
 
 Komercijalni sistemi pokrivaju taj raspon. SAP HANA~\cite{farber2012} i
 Oracle Database In-Memory~\cite{lahiri2015} drže redni i stupčasti format
 unutar jednog in-memory enginea, dok TiDB~\cite{huang2020} razdvaja
-transakcijski sloj (TiKV) od analitičkog (TiFlash) i sinhronizuje ih
-asinhronom Raft replikacijom, postižući izolaciju po cijenu mrežne
-latencije, a Google F1 Lightning~\cite{yang2020} pušta transakcijske
+transakcijski sloj od analitičkog i sinhronizuje ih asinhronom Raft
+replikacijom, postižući izolaciju po cijenu mrežne latencije, a Google F1 Lightning~\cite{yang2020} pušta transakcijske
 promjene u delta strukture koje kompakcija prepisuje u analitički format. SQL Server 2022 ostvaruje in-process varijantu istog obrasca i ne
 plaća mrežnu latenciju. Njegovi gradivni elementi dobro su dokumentovani:
 Hekaton engine~\cite{diaconu2013}, koji donosi ubrzanja od 10 do 30 puta za
-točkaste upite, ali ne podržava ni indeksiranje pogodno za rasponska
-skeniranja ni batch-mode izvršavanje, te columnstore
+točkaste upite, ali ne podržava batch-mode izvršavanje, te columnstore
 indeksi~\cite{larson2013}, čiji batch-mode executor obrađuje oko 1\,000
 redova odjednom i daje ubrzanja od 10 do 100 puta na tipičnim skladišnim
 upitima. Njihova kombinacija opisana je u~\cite{larson2015}, gdje su
@@ -171,9 +169,11 @@ performansi treba biti primarni kriterij; noviji
 sistemi~\cite{zhao2025pushtap, zhang2025synchro, chen2025vedb} pokazuju da
 optimalna konfiguracija ovisi o interakciji profila opterećenja i
 konkurentnosti, što motiviše primijenjeni faktorijalni dizajn.
-Nezavisne evaluacije mehanizama SQL Servera ipak su rijetke, a nijedna
-autorima poznata studija ne obuhvata tri razine konkurentnosti i tri omjera
-uz neparametarsku analizu.
+Tim radovima je zajedničko to što njihovi dokazi dolaze od proizvođača, iz
+distribuiranih arhitektura čiju cijenu određuje mreža, ili iz sintetičkih
+opterećenja s uniformnim pristupom. Nijedan ne govori inženjeru koji bira
+raspored pohrane unutar jedne SQL Server instance šta da očekuje pri
+stvarnom, asimetričnom opterećenju.
 
 Istraživanje je organizovano oko tri pitanja. Prvo, kako se analitička
 latencija disk-zasnovane columnstore konfiguracije odnosi prema hibridnoj i

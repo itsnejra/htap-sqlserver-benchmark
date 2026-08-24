@@ -130,25 +130,24 @@ preconditions under which it holds.
 Zhang \emph{et al.}~\cite{zhang2024survey} classify HTAP systems by storage
 architecture into four families, from a primary row store with an in-memory
 column index to a primary column store with a row-oriented delta layer. Song
-\emph{et al.}~\cite{song2024} separate monolithic architectures, in which
-one engine serves both workloads, from hybrid ones with decoupled engines,
-and conclude that sustaining stable OLTP performance under analytical load
-is a more meaningful quality measure than peak throughput.
+\emph{et al.}~\cite{song2024} separate monolithic architectures, where one
+engine serves both workloads, from hybrid ones with decoupled engines, and
+conclude that stable OLTP performance under analytical load is a more
+meaningful quality measure than peak throughput.
 
 Commercial systems span that space. SAP HANA~\cite{farber2012} and Oracle
 Database In-Memory~\cite{lahiri2015} keep row and column formats inside one
 in-memory engine, whereas TiDB~\cite{huang2020} separates the transactional
-layer (TiKV) from the analytical one (TiFlash) and synchronizes them by
-asynchronous Raft replication, obtaining isolation at the price of network
-latency, and Google F1 Lightning~\cite{yang2020} lets transactional changes
-flow into delta structures that periodic compaction rewrites into an
-analytical format. SQL Server 2022 realizes an in-process variant of the
+layer from the analytical one and synchronizes them by asynchronous Raft
+replication, buying isolation at the price of network latency, and Google F1
+Lightning~\cite{yang2020} lets transactional changes flow into delta
+structures that compaction rewrites into an analytical format. SQL Server 2022 realizes an in-process variant of the
 same pattern and pays no network latency. Its building blocks are well
 documented: the Hekaton engine~\cite{diaconu2013}, reporting 10--30$\times$
-speed-ups for point queries but supporting neither range-friendly indexing
-nor batch-mode execution, and columnstore indexes~\cite{larson2013}, whose
-batch-mode executor processes about 1\,000 rows at a time for
-10--100$\times$ speed-ups on warehouse queries. Their combination is
+speed-ups for point queries but supporting no batch-mode execution, and
+columnstore indexes~\cite{larson2013}, whose batch-mode executor processes
+about 1\,000 rows at a time for 10--100$\times$ speed-ups on warehouse
+queries. Their combination is
 described in~\cite{larson2015}, which reports the vendor's own design and
 micro-benchmarks.
 
@@ -160,17 +159,19 @@ performance isolation should be the primary evaluation criterion; recent
 systems~\cite{zhao2025pushtap, zhang2025synchro, chen2025vedb} show that the
 optimal configuration depends on the interaction between workload profile
 and concurrency, which motivates the factorial design adopted here.
-Independent evaluations of the SQL Server mechanisms nevertheless remain
-rare, and no study known to the authors covers three concurrency levels and
-three mixes on this platform with a nonparametric analysis.
+What this work shares is that its evidence comes from the vendor, from
+distributed architectures whose cost is dominated by the network, or from
+synthetic workloads with uniform access. None of it tells an engineer
+choosing a storage layout inside one SQL Server instance what to expect on a
+real, skewed workload.
 
-The study is organized around three questions. First, how the analytical
-latency of the disk-based columnstore configuration compares with that of
-the hybrid one, and whether that changes with concurrency. Second, how much
+Three questions organize the study. First, how the analytical latency of
+the disk-based columnstore configuration compares with that of the hybrid
+one, and whether that changes with concurrency. Second, how much
 transactional throughput each configuration gives up when analytical queries
-run alongside it. Third, whether the hybrid configuration gains transactional
-throughput over the purely in-memory one under a transaction-heavy mix, given
-that both rest on the same Hekaton engine.
+run alongside it. Third, whether the hybrid configuration outperforms the
+purely in-memory one under a transaction-heavy mix, given that both rest on
+the same Hekaton engine.
 
 % =====================================================================
 \section{System Under Test}
