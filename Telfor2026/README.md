@@ -78,7 +78,11 @@ pa je dovoljno dva puta pokrenuti `pdflatex`.
    Xplore-kompatibilnosti (ugrađivanje fontova i sl.).
 4. **Obje verzije.** Svaka izmjena teksta mora se unijeti u oba `.tex` fajla,
    jer engleska i bosanska verzija nisu automatski povezane.
-5. **Literatura je provjerena na izvorima** (august 2026). Ispravljeni su
+5. **Literatura je provjerena referencu po referencu na izvorima** (august
+   2026). Svih 17 referenci provjereno; osim ranije ispravljenih autora,
+   ispravljeni su i: [2] str. 1159--1168 (bilo 1170), [5] str. 3313--3325
+   (bilo 3326) i [9] godina 2011 (bilo 2012, SIGMOD Record 40(4) je izašao u
+   decembru 2011). Ispravljeni su
    pogrešni popisi autora u [7], [8], [11] i [14], pogrešna prezimena prvog
    autora u [13], [15] i [17], te dopunjeni nedostajući volumeni i stranice.
    Referenca [14] je bila pripisana pogrešnim autorima i pogrešnom časopisu
