@@ -184,15 +184,14 @@ za generisanje koda i potvrđuju da LoRA vraća najveći dio kvaliteta potpunog
 podešavanja uz dio njegove cijene, a pregled Hana i drugih~\cite{han2024}
 smješta LoRA-u u širu PEFT porodicu.
 
-Treća linija tiče se podataka za treniranje, a ne modela. Xue i
-drugi~\cite{xue2025} pokazuju da uklanjanje mirisa koda iz skupa za treniranje
-poboljšava kvalitet modela; Lee i drugi~\cite{lee2022} pokazuju da uklanjanje
-bliskih duplikata smanjuje memorisanje i curenje testnog materijala; Bavarian
-i drugi~\cite{bavarian2022} pokazuju da modeli stiču sposobnost popunjavanja
-bez gubitka u generisanju slijeva nadesno; a WizardCoder~\cite{luo2024}
-pokazuje da fino podešavanje u stilu instrukcija dalje podiže kvalitet koda.
-Izbor kvantizacije ovdje slijedi objedinjenu evaluaciju llama.cpp formata koju
-daje Kurt~\cite{kurt2026}. Ovim radovima zajedničko je to da je svaki razvijen
+Treća linija tiče se podataka za treniranje. Xue i drugi~\cite{xue2025}
+pokazuju da uklanjanje mirisa koda poboljšava kvalitet modela; Lee i
+drugi~\cite{lee2022} da uklanjanje bliskih duplikata smanjuje memorisanje i
+curenje testnog materijala; Bavarian i drugi~\cite{bavarian2022} da modeli
+stiču sposobnost popunjavanja bez gubitka u generisanju slijeva nadesno; a
+WizardCoder~\cite{luo2024} da podešavanje u stilu instrukcija dalje podiže
+kvalitet koda. Izbor kvantizacije slijedi objedinjenu evaluaciju llama.cpp
+formata koju daje Kurt~\cite{kurt2026}. Ovim radovima zajedničko je to da je svaki razvijen
 i prikazan u istraživačkom ili cloud okruženju, pod protokolom koji su
 odabrali njihovi autori. Nijedan ne daje recept koji mali otvoreni model vodi
 sve do tačke pristupa integrisane u editor na uobičajenom hardveru, uz
@@ -316,22 +315,42 @@ bita, a ostatak zaokružuje na četiri, trošeći dodatne bitove tamo gdje je
 cijena zaokruživanja po tačnost najveća. Ta neuniformnost, a ne nominalna
 širina u bitovima, čini je uobičajenim izborom na ovom nivou kvantizacije.
 
-Kvantizacija je bitna i za serviranje, ne samo da bi model stao.
-Autoregresivno dekodiranje pri veličini serije od jedan mora pročitati svaku
-težinu iz memorije da bi proizvelo svaki token, pa je kašnjenje dopune za
-jednog korisnika na kartici ove klase određeno propusnošću memorije, a ne
-računskom propusnošću. Smanjenje prisutnih težina s dva bajta po težini na
-znatno ispod jednog smanjuje saobraćaj po tokenu za usporediv faktor, i to je,
-a ne smanjenje broja operacija, mehanizam kojim se od kvantizovanog izdanja
-očekuje brži odgovor od spojenog polupreciznog checkpointa. Da li je ta
-razlika dovoljna da se ostane unutar interaktivnog vremenskog budžeta ovdje
-nije mjereno, kako navodi odjeljak~\ref{sec:limits}.
-
 Svaki binarni fajl registruje se s Ollamom kroz Modelfile koji fiksira FIM
 predložak upita, temperaturu dekodiranja 0, kontekstni prozor od 2048 tokena i
 granicu generisanja od 256 tokena. Rezultat je tačka pristupa na lokalnoj
 loopback petlji, koju direktno koristi Continue.dev dodatak za editor; nijedan
 zahtjev ne napušta mašinu.
+
+\subsection{Hardverska ograničenja lokalnog serviranja}
+Kvantizacija je bitna i za serviranje, ne samo da bi model stao, a razlog leži
+u uređaju, a ne u modelu. Autoregresivno dekodiranje pri seriji od jednog
+uzorka svodi svako množenje matricom na proizvod matrice i vektora, u kojem
+se svaka težina pročita jednom i jednom upotrijebi. Ne preostaje ponovna
+upotreba koju bi tenzorske jedinice iskoristile, pa aritmetički intenzitet
+pada na oko jedne operacije po bajtu, a brzinu dekodiranja određuje propusnost
+memorije, a ne računska propusnost.
+
+Plafon je zato unaprijed izračunljiv. Korištena kartica spaja 8\,GB GDDR6
+memorije sa 128-bitnom magistralom pri 16\,Gbit/s po pinu, što daje
+256\,GB/s. \texttt{q4\_k\_m} izdanje modela od 1,54 milijarde parametara
+zauzima oko 1\,GB, pa se i uz potpuno zasićen memorijski podsistem može
+proizvesti najviše oko 250 tokena u sekundi; spojeni poluprecizni checkpoint
+zauzima 3,1\,GB i ograničen je na oko 80. Faktor tri između njih posljedica je
+propusnosti, a ne manjeg broja izvršenih operacija.
+
+Dva člana korigiraju tu granicu u suprotnim smjerovima. Keš ključeva i
+vrijednosti čita se uz težine, oko 28\,kB po tokenu za ovu arhitekturu, pa
+pun prozor od 2048 tokena dodaje oko 60\,MB po koraku, ispod desetine
+saobraćaja težina. Nasuprot tome, K-kvantizovani blokovi moraju se raspakovati
+prije množenja, trošeći račun koji poluprecizni put ne troši, pa je ostvareno
+ubrzanje manje nego što omjer saobraćaja sugeriše. Prefill se opet ponaša
+drugačije: prompt se obrađuje u jednom prolazu, čime se vraća ponovna
+upotreba i ta faza postaje računski ograničena, pa vrijeme do prvog prijedloga
+i razmak između tokena ograničavaju različiti dijelovi uređaja.
+
+Sve navedeno su granice izvedene iz objavljenih parametara uređaja i modela, a
+ne mjerenja; odjeljak~\ref{sec:limits} bilježi da ostvarene vrijednosti nisu
+prikupljene.
 
 % =====================================================================
 \section{Evaluacija}
@@ -342,12 +361,10 @@ funkcije sa skrivenim jediničnim testovima. Generisanje je pohlepno, jedan
 determinističan uzorak po problemu i najviše 512 novih tokena, a prikazana
 metrika je pass@1: udio problema čije generisano tijelo prolazi sve testove.
 
-Prikazuje se samo pass@1, a ne pass@k za veće k. Uzorkovanje više dopuna po
-problemu i brojanje problema riješenim ako bilo koja prođe mjeri svojstvo koje
-nijedan dodatak za editor ne izlaže: programer vidi jedan prijedlog i
-prihvata ga ili ne. Prikaz pass@1 uz pohlepno dekodiranje stoga mjeri veličinu
-koju isporuka zaista daje, po cijenu šireg intervala povjerenja nego što bi
-ga dalo ponovljeno uzorkovanje.
+Prikazuje se samo pass@1. Brojanje problema riješenim ako prođe bilo koja od
+više uzorkovanih dopuna mjeri svojstvo koje nijedan dodatak za editor ne
+izlaže: programer vidi jedan prijedlog i prihvata ga ili ne. Pohlepni pass@1
+stoga mjeri ono što isporuka daje, po cijenu šireg intervala povjerenja.
 
 Format upita ovdje je važniji od dekodiranja. Umjesto few-shot upita u formatu
 razgovora, kakav koristi izvještaj samog osnovnog modela, upit je goli potpis
@@ -416,13 +433,10 @@ nalazom Weyssowa i drugih~\cite{weyssow2025} da LoRA vraća najveći dio
 kvaliteta potpunog podešavanja, i govori u prilog evaluaciji pod protokolom
 koji će sistem zaista primati.
 
-Za tim koji bira između hostovane i lokalne tačke pristupa, brojevi postavljaju
-odluku u konkretne okvire. Cijena odlaska u lokalno je jedna kartica laptop
-klase, dva sata treniranja po jeziku i nivo kvaliteta osjetno ispod najvećih
-hostovanih modela; ono što se dobija je uklanjanje mrežne ovisnosti,
-izlaganja izvornog koda trećoj strani i naplate po tokenu koja raste s
-upotrebom. Poređenje u Tabeli~\ref{tab:humaneval} pokazuje i da veličina
-modela nije cijela priča na ovoj skali: adaptirani model od 1,5 milijardi
+Za tim koji vaga hostovanu naspram lokalne tačke pristupa, cijena odlaska u
+lokalno je jedna kartica laptop klase i dva sata treniranja po jeziku.
+Poređenje u Tabeli~\ref{tab:humaneval} pokazuje i da veličina modela nije
+cijela priča na ovoj skali: adaptirani model od 1,5 milijardi
 parametara dostiže ocjenu usporedivu s objavljenim brojevima za modele četiri
 do deset puta veće, mada pod protokolima koji se razlikuju, pa samo kao
 naznaka.
@@ -437,12 +451,10 @@ ograničen je na 50\,000 funkcija po jeziku, a pragovi filtera su fiksni, pa su
 stope zadržavanja jedna radna tačka, a ne podešeni optimum. Četvrto, po jednom
 jeziku izvedeno je jedno treniranje uz fiksno sjeme, pa varijansa između
 izvođenja nije kvantifikovana. Peto, i najvažnije za navedenu motivaciju,
-isporučeni artefakt je opisan, ali nije izmjeren: nisu prikazani ni kašnjenje
-dopune, ni propusnost, ni zauzeće memorije pri inferenciji, a efekat
-četverobitne kvantizacije na kvalitet odgovora nije odvojen od efekta finog
-podešavanja. Tvrdnja da je tačka pristupa dovoljno brza za interaktivno
-uređivanje stoga počiva na dizajnu sistema, a ne na dokazima prikupljenim
-ovdje.
+isporučeni artefakt je analitički omeđen u odjeljku~III-D, ali nikad izmjeren:
+nisu prikazani ni kašnjenje dopune, ni propusnost, ni zauzeće memorije pri
+inferenciji, a efekat četverobitne kvantizacije na kvalitet odgovora nije
+odvojen od efekta finog podešavanja.
 
 % =====================================================================
 \section{Zaključak}
@@ -455,11 +467,10 @@ protokolom s golim potpisom, približavajući se vrijednosti od 43,9~\% koju
 osnovni model prijavljuje pod vlastitim, povoljnijim protokolom. Taj rezultat
 najbolje je čitati kao oporavak, a ne kao prirast: fino podešavanje usklađuje
 model s formatom upita koji isporuka šalje, a veličina efekta mjeri koliko
-neusklađenost protokola može prigušiti inače sposoban model. Buduća
-istraživanja evaluirat će Go model na HumanEval-X, uvesti benchmark svjestan
-popunjavanja koji odgovara isporučenoj upotrebi, i proširiti kontekst na
-dopunjavanje na nivou repozitorija, kako bi se ovisnosti između datoteka
-mogle iskoristiti tokom svakodnevnog uređivanja.
+neusklađenost protokola može prigušiti inače sposoban model. Buduća istraživanja
+izmjerit će servisiranu tačku pristupa naspram granica iz odjeljka~III-D,
+evaluirati Go model na HumanEval-X i uvesti benchmark svjestan popunjavanja
+koji odgovara isporučenoj upotrebi.
 
 \balance
 

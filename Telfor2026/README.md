@@ -145,6 +145,21 @@ Peto ograničenje u sekciji V eksplicitno navodi da latencija, propusnost i
 zauzeće memorije servisiranog modela nisu mjereni. To je najveća stvarna
 praznina rada i prva stvar koju vrijedi dodati ako bude mjerenja.
 
+**Sekcija III-D „Hardware Constraints on Local Serving"** izvodi analitičku
+granicu brzine serviranja iz objavljenih specifikacija: RTX 4060 Laptop ima
+256 GB/s (8 GB GDDR6, 128-bitna magistrala, 16 Gbit/s po pinu); `q4_k_m`
+izdanje modela zauzima ~1 GB, pa je plafon ~250 tokena/s, dok je poluprecizni
+checkpoint od 3,1 GB ograničen na ~80. Uzrok je što dekodiranje pri seriji od
+jednog uzorka nema ponovne upotrebe podataka, pa je aritmetički intenzitet
+~1 op/bajt i ograničava propusnost memorije, ne račun. Navedeni su i korektivni
+članovi: keš ključeva/vrijednosti (~28 kB po tokenu, ~60 MB pri punom prozoru
+od 2048) i cijena raspakivanja K-kvantova.
+
+**Ovo su izvedene granice, ne mjerenja.** Sekcija to izričito kaže i upućuje na
+peto ograničenje. Prirodan sljedeći korak: izmjeriti tokena/s, vrijeme do
+prvog prijedloga i zauzeće VRAM-a, pa uporediti s ovim plafonom — time se peto
+ograničenje briše umjesto da se zaobilazi.
+
 Hardverska argumentacija (sekcije III-B i III-C) objašnjava *zašto* postavke iz
 Tabele II izgledaju kako izgledaju: memorijski budžet od 8 GB, razlog za podjelu
 serije 2 × 8 umjesto 16 odjednom, mješovita preciznost `q4_k_m` sheme, i to da
