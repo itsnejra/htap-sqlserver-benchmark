@@ -72,6 +72,7 @@ Hercegovina. Izvorni kod benchmarka, SQL skripte i mjerenja:
 \url{https://github.com/itsnejra/htap-sqlserver-benchmark}.}}
 
 \maketitle
+\bstctlcite{bstctl:htap}
 
 \begin{abstract}
 Ovaj rad donosi nezavisnu empirijsku evaluaciju četiri strategije pohrane
@@ -140,18 +141,18 @@ vrijede.
 \section{Dosadašnja istraživanja}
 % =====================================================================
 Zhang i drugi~\cite{zhang2024survey} klasifikuju HTAP sisteme prema
-arhitekturi pohrane u četiri porodice, od primarne redne pohrane s in-memory
-stupčastim indeksom do primarne stupčaste pohrane s rednim delta slojem.
+arhitekturi pohrane u četiri porodice, od redne pohrane s in-memory stupčastim
+indeksom do stupčaste pohrane s rednim delta slojem.
 Song i drugi~\cite{song2024} razdvajaju monolitne arhitekture, gdje jedan
 engine opslužuje oba radna toka, od hibridnih s razdvojenim engineima, i
 zaključuju da su stabilne OLTP performanse pod analitičkim opterećenjem
 smislenija mjera kvalitete od vršne propusnosti.
 
 Komercijalni sistemi pokrivaju taj raspon. SAP HANA~\cite{farber2012} i
-Oracle Database In-Memory~\cite{lahiri2015} drže redni i stupčasti format
-unutar jednog in-memory enginea, dok TiDB~\cite{huang2020} razdvaja
-transakcijski sloj od analitičkog i sinhronizuje ih asinhronom Raft
-replikacijom, postižući izolaciju po cijenu mrežne latencije, a Google F1 Lightning~\cite{yang2020} pušta transakcijske
+Oracle Database In-Memory~\cite{lahiri2015} drže redni i stupčasti format u
+jednom in-memory engineu, dok TiDB~\cite{huang2020} razdvaja transakcijski
+sloj od analitičkog i sinhronizuje ih asinhronom Raft replikacijom, uz
+izolaciju po cijenu mrežne latencije, a Google F1 Lightning~\cite{yang2020} pušta transakcijske
 promjene u delta strukture koje kompakcija prepisuje u analitički format. SQL Server 2022 ostvaruje in-process varijantu istog obrasca i ne
 plaća mrežnu latenciju. Njegovi gradivni elementi dobro su dokumentovani:
 Hekaton engine~\cite{diaconu2013}, koji donosi ubrzanja od 10 do 30 puta za
@@ -450,89 +451,14 @@ konfiguracije --- uz najnižu analitičku latenciju ($P_{50} = 924$\,ms pri
 slabom pod mješovitim opterećenjem uprkos istom transakcijskom engineu, jer
 row-mode skeniranja zasićuju procesor; disk-zasnovana columnstore
 konfiguracija izgubila je dvije trećine kapaciteta čim je dodana analitika. Glavni uvid jeste da je ubrzanje analitike samo po sebi
-sredstvo zaštite transakcijske propusnosti; taj posredni efekt, vrijedan
-faktora 3,3--6,9, zaslužuje pažnju pri podešavanju HTAP sistema. Buduća
-istraživanja mjerit će cijenu kontinuirane sinhronizacije, dodati direktno
-profilisanje procesora i proširiti usporedbu na distribuirane sisteme.
+sredstvo zaštite transakcijske propusnosti; taj efekt, vrijedan faktora
+3,3--6,9, zaslužuje pažnju pri podešavanju HTAP sistema. Buduća istraživanja
+mjerit će cijenu kontinuirane sinhronizacije i dodati profilisanje procesora.
 
 \balance
 
 % =====================================================================
-\begin{thebibliography}{99}
-% popis literature u IEEEtran-ovoj propisanoj veličini od 8 pt (bez izmjene)
-\bibitem{diaconu2013}
-C. Diaconu \emph{et al.}, ``Hekaton: SQL Server's memory-optimized OLTP
-engine,'' in \emph{Proc. ACM SIGMOD}, 2013, pp. 1243--1254.
-
-\bibitem{larson2013}
-P.-{\AA}. Larson \emph{et al.}, ``Enhancements to SQL Server column stores,''
-in \emph{Proc. ACM SIGMOD}, 2013, pp. 1159--1168.
-
-\bibitem{ozcan2017}
-F. \"Ozcan, Y. Tian, and P. T\"oz\"un, ``Hybrid transactional/analytical
-processing: A survey,'' in \emph{Proc. ACM SIGMOD}, 2017, pp. 1771--1775.
-
-\bibitem{huang2020}
-D. Huang \emph{et al.}, ``TiDB: A Raft-based HTAP database,'' \emph{Proc.
-VLDB Endow.}, vol. 13, no. 12, pp. 3072--3084, 2020.
-
-\bibitem{yang2020}
-J. Yang \emph{et al.}, ``F1 Lightning: HTAP as a service,'' \emph{Proc. VLDB
-Endow.}, vol. 13, no. 12, pp. 3313--3325, 2020.
-
-\bibitem{zhang2024hybench}
-C. Zhang, G. Li, and T. Lv, ``HyBench: A new benchmark for HTAP databases,''
-\emph{Proc. VLDB Endow.}, vol. 17, no. 5, pp. 939--951, 2024.
-
-\bibitem{zhang2024survey}
-C. Zhang, G. Li, J. Zhang, X. Zhang, and J. Feng, ``HTAP databases: A
-survey,'' \emph{IEEE Trans. Knowl. Data Eng.}, 2024.
-
-\bibitem{song2024}
-H. Song, W. Zhou, H. Cui, X. Peng, and F. Li, ``A survey on hybrid
-transactional and analytical processing,'' \emph{VLDB J.}, vol. 33, pp.
-1485--1515, 2024.
-
-\bibitem{farber2012}
-F. F\"arber, S. K. Cha, J. Primsch, C. Bornh\"ovd, S. Sigg, and W. Lehner,
-``SAP HANA database: Data management for modern business applications,''
-\emph{ACM SIGMOD Rec.}, vol. 40, no. 4, pp. 45--51, 2011.
-
-\bibitem{lahiri2015}
-T. Lahiri \emph{et al.}, ``Oracle Database In-Memory: A dual format in-memory
-database,'' in \emph{Proc. IEEE 31st Int. Conf. Data Eng. (ICDE)}, 2015, pp.
-1253--1258.
-
-\bibitem{zeng2023}
-X. Zeng \emph{et al.}, ``An empirical evaluation of columnar storage
-formats,'' \emph{Proc. VLDB Endow.}, vol. 17, no. 2, pp.
-148--161, 2023.
-
-\bibitem{larson2015}
-P.-{\AA}. Larson \emph{et al.}, ``Real-time analytical processing with SQL
-Server,'' \emph{Proc. VLDB Endow.}, vol. 8, no. 12, pp. 1740--1751, 2015.
-
-\bibitem{wu2025}
-W. Wu \emph{et al.}, ``HTAP benchmark in financial scenarios,''
-\emph{Security and Safety}, vol. 4, 2025, Art. no. 2025010.
-
-\bibitem{kang2023}
-G. Kang, S. Chen, and H. Li, ``Benchmarking HTAP databases for performance
-isolation and real-time analytics,'' \emph{BenchCouncil Trans. Benchmarks
-Standards Eval.}, vol. 3, no. 2, 2023, Art. no. 100122.
-
-\bibitem{zhao2025pushtap}
-Y. Zhao \emph{et al.}, ``PUSHtap: PIM-based in-memory HTAP with unified data
-storage format,'' in \emph{Proc. 30th ACM ASPLOS}, 2025.
-
-\bibitem{zhang2025synchro}
-Y. Zhang, H. Hu, and X. Zhou, ``SynchroStore: A cost-based fine-grained
-incremental compaction for hybrid workloads,'' arXiv:2503.18688, 2025.
-
-\bibitem{chen2025vedb}
-J. Chen \emph{et al.}, ``veDB-HTAP: A highly integrated, efficient and
-adaptive HTAP system,'' \emph{Proc. VLDB Endow.}, vol. 18, no. 12, pp.
-4896--4909, 2025.
-\end{thebibliography}
+\bibliographystyle{IEEEtran}
+\bibliography{refs_htap}
 
 \end{document}

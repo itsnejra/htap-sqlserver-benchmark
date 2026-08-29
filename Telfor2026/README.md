@@ -25,25 +25,39 @@ empirijska evaluacija*)
 | `telfor2026_completus_bs.tex` | Bosanska verzija Completusa (isti template) |
 | `telfor2026_completus_bs.pdf` | Kompajlirani rad, bosanski — **4 stranice A4** |
 | `make_figures_completus.py` | Generiše `figures/fig_pipeline.pdf` i `_bs.pdf` |
+| `refs_htap.bib` | Literatura HTAP rada — dijele je **obje** jezičke verzije |
+| `refs_completus.bib` | Literatura Completusa — dijele je **obje** jezičke verzije |
+| `build.sh` | Kompajlira sva četiri rada (uključuje bibtex korak) |
 
 ## Kompajliranje
 
+Najlakše: `./Telfor2026/build.sh` — generiše slike i kompajlira sva četiri rada.
+
+Ručno, po radu (literatura je u `.bib`, pa je **obavezan** bibtex korak):
+
 ```bash
-python3 Telfor2026/make_figures.py     # iz korijena repozitorija
 cd Telfor2026
 pdflatex telfor2026_htap.tex
-pdflatex telfor2026_htap.tex           # drugi prolaz zbog referenci
-
-pdflatex telfor2026_htap_bs.tex        # bosanska verzija
-pdflatex telfor2026_htap_bs.tex
+bibtex   telfor2026_htap
+pdflatex telfor2026_htap.tex
+pdflatex telfor2026_htap.tex
 ```
 
 Bosanska verzija dodatno traži `texlive-lang-european` (babel obrazac za
 prelamanje riječi; koristi se `croatian`, jer bosanski nema zaseban obrazac).
 
-Potreban je TeX Live s paketima `texlive-publishers` (IEEEtran), `texlive-latex-recommended`
-i `texlive-latex-extra`. Bibliografija je upisana kao `thebibliography` (bez BibTeX-a),
-pa je dovoljno dva puta pokrenuti `pdflatex`.
+Potreban je TeX Live s paketima `texlive-publishers` (IEEEtran i `IEEEtran.bst`),
+`texlive-latex-recommended` i `texlive-latex-extra`.
+
+**O literaturi.** Svaki par radova (engleski + bosanski) dijeli jedan `.bib`, pa se
+ispravka reference unosi na jednom mjestu umjesto na dva. Skraćivanje na
+`et al.` kontroliše `IEEEtranBSTCTL` unos na dnu svakog `.bib`: radovi s pet ili
+manje autora ispisuju se u cijelosti, sa šest i više skraćuju se na prvog autora,
+kako IEEE template i traži. Reference se numerišu po redoslijedu prvog citiranja,
+što BibTeX radi automatski.
+
+Napomena: BibTeX nema komentare u smislu `%` — znak `@` bilo gdje u fajlu započinje
+unos, pa ga u komentarima ne smije biti.
 
 ## Usklađenost s TELFOR pravilima
 
