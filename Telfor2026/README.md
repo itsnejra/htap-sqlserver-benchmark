@@ -81,18 +81,32 @@ unos, pa ga u komentarima ne smije biti.
 
 ### ⚠️ Prije predaje obavezno provjeriti
 
-1. **Copyright string.** TELFOR-ovo uputstvo za autore ne traži IEEE copyright
-   liniju na radu koji se predaje, a nema je ni zvanični IEEE konferencijski
-   template, pa je iz rada uklonjena (izvorni `\IEEEpubid` blok ostao je
-   zakomentarisan u preambuli). Ako TELFOR objavi copyright string za finalnu
-   (camera-ready) verziju, otkomentarisati taj blok i upisati niz.
-2. **Rok i sekcija.** Odabrati odgovarajuću TELFOR sekciju pri predaji i provjeriti
+1. **Copyright string.** Provjereno u punom tekstu TELFOR-ovog *Instructions
+   for Authors* (august 2026): copyright linija na radu se **ne spominje**.
+   Nema je ni u zvaničnom IEEE konferencijskom template-u, pa je iz radova
+   uklonjena (`\IEEEpubid` blok ostao je zakomentarisan u preambuli).
+   Zasebna stavka „IEEE copyright info" u TELFOR meniju odnosi se na
+   elektronski copyright obrazac koji autori potpisuju, ne na štampanu liniju.
+
+2. **Studentska sekcija — bitno.** Uputstvo kaže: *„Only the bachelor's degree
+   and master's degree students can be authors and can present their papers in
+   this section, with the arbitrary notification of a teacher-mentor."*
+   Autori dakle moraju biti samo studenti, ali se **mentor smije navesti**.
+   Ako Alen jeste mentor a ne koautor, radovi mogu u studentsku sekciju (bez
+   kotizacije) uz njegovo navođenje u fusnoti prve stranice.
+
+3. **Popis autora se ne smije mijenjati nakon prihvatanja** (*„it is not
+   acceptable to change the authors' list"*), pa odluku o autorstvu treba
+   donijeti prije predaje.
+
+4. **Najviše tri rada po osobi**, kao autor ili koautor.
+5. **Rok i sekcija.** Odabrati odgovarajuću TELFOR sekciju pri predaji i provjeriti
    aktuelne rokove na telfor.rs.
-3. **IEEE PDF eXpress.** Finalnu verziju propustiti kroz PDF eXpress radi
+6. **IEEE PDF eXpress.** Finalnu verziju propustiti kroz PDF eXpress radi
    Xplore-kompatibilnosti (ugrađivanje fontova i sl.).
-4. **Obje verzije.** Svaka izmjena teksta mora se unijeti u oba `.tex` fajla,
+7. **Obje verzije.** Svaka izmjena teksta mora se unijeti u oba `.tex` fajla,
    jer engleska i bosanska verzija nisu automatski povezane.
-5. **Literatura je provjerena referencu po referencu na izvorima** (august
+8. **Literatura je provjerena referencu po referencu na izvorima** (august
    2026). Svih 17 referenci provjereno; osim ranije ispravljenih autora,
    ispravljeni su i: [2] str. 1159--1168 (bilo 1170), [5] str. 3313--3325
    (bilo 3326) i [9] godina 2011 (bilo 2012, SIGMOD Record 40(4) je izašao u
