@@ -88,7 +88,7 @@ Python model solves 42.68 percent of the problems on the first attempt,
 against 10.98 percent for the untuned baseline under the same protocol. The
 gain is therefore a recovery, in the prompt format the local deployment
 actually uses, of capability the base model already reports under its own
-more favourable protocol, and not a net capability increase. The complete
+more favorable protocol, and not a net capability increase. The complete
 workflow runs on an eight-gigabyte laptop graphics card in under two hours
 per language.
 \end{abstract}
@@ -300,7 +300,7 @@ loss of 1.111.
 After training, the LoRA weights are merged into the base checkpoint and
 exported as a quantized GGUF binary in the \texttt{q4\_k\_m}
 scheme, which the unified evaluation of llama.cpp
-formats~\cite{kurt2026} identifies as a favourable size-quality compromise,
+formats~\cite{kurt2026} identifies as a favorable size-quality compromise,
 although that evaluation covers an eight-billion-parameter model, so its
 conclusions are carried to a smaller one unverified. The K-quant schemes are not uniform four-bit formats: \texttt{q4\_k\_m}
 keeps part of the attention value and feed-forward projections at six bits
@@ -423,7 +423,7 @@ publishers report, with no network dependency and no per-token cost. What the
 fine-tuning buys is not intelligence but format alignment, and that
 distinction is the paper's main methodological point: a benchmark score is a
 property of a model and a prompt protocol jointly, so a score obtained under a
-favourable protocol does not transfer to a deployment that prompts
+favorable protocol does not transfer to a deployment that prompts
 differently. That argues for evaluating under the protocol a system will
 actually receive.
 
@@ -458,7 +458,7 @@ corpus to an editor-integrated endpoint that runs entirely on an
 eight-gigabyte consumer card, and reports every stage of that path. A single
 QLoRA epoch raises HumanEval pass@1 from 10.98~\% to 42.68~\% under a
 bare-signature zero-shot protocol, approaching the 43.9~\% the base model
-reports under its own more favourable protocol. That result is best read as
+reports under its own more favorable protocol. That result is best read as
 recovery rather than gain: the fine-tuning aligns the model with the prompt
 format the deployment emits, and the size of the effect is a measure of how
 much a protocol mismatch can suppress an otherwise capable model. Future work will
@@ -467,8 +467,9 @@ Go model on HumanEval-X, and adopt an infilling-aware benchmark matching the
 deployed usage.
 
 \section*{Acknowledgment}
-This work was carried out as a course project in Data Mining on the Software
-Engineering master's programme, Polytechnic Faculty, University of Zenica.
+This work was carried out as a project for the Data Mining course in the
+Software Engineering master's program at the Polytechnic Faculty, University
+of Zenica.
 
 \balance
 
