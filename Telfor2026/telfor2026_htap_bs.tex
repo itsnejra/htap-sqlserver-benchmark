@@ -210,9 +210,9 @@ procedure u CS i HTAP, čime se uklanjaju \texttt{RESOURCE\_SEMAPHORE}
 (odjeljak~\ref{sec:threats}).
 
 Opterećenje se izvršava nad skupom podataka StackOverflow2010, javnim dumpom
-produkcijske baze platforme Stack Overflow za razdoblje 2008--2010, koji je
-odabran umjesto sintetičkih alternativa jer pokazuje prirodnu Pareto
-raspodjelu aktivnosti svojstvenu web platformama~\cite{zhang2024survey}.
+produkcijske baze platforme Stack Overflow za razdoblje 2008--2010, odabranim
+umjesto sintetičkih alternativa zbog prirodne Pareto raspodjele
+aktivnosti~\cite{zhang2024survey}.
 Svaka shema sadrži $\approx$\,19,15 miliona zapisa: 10,14\,M glasova,
 3,88\,M komentara, 3,73\,M postova, 1,10\,M bedževa i 299\,398 korisnika. Podaci su učitani u disk-zasnovane sheme ($>$\,15\,GB) i kopirani
 u memorijsko-optimizirane ($\approx$\,8\,GB po shemi), tako da izmjerene razlike
@@ -429,9 +429,9 @@ uklanja fizička separacija, a ne neto dobit konzistentnog sistema. Drugo, memor
 disk-zasnovane čitaju s NVMe SSD-a, pa usporedbe preko različitih medija i
 razina trajnosti miješaju efekt arhitekture s efektom medija; najčistije su
 usporedbe unutar istog medija (HTAP naspram IM, CS naspram analitičkog sloja
-HTAP-a). Treće, asimetrija u \texttt{MAXDOP} postavci koju
-zahtijevaju engine-i predstavlja confounding varijablu u usporedbi HTAP--IM,
-a njen doprinos nije izolovan. Četvrto, objašnjenje putem zasićenja procesora
+HTAP-a). Treće, asimetrija u \texttt{MAXDOP} postavci koju engine-i zahtijevaju
+predstavlja confounding varijablu u usporedbi HTAP--IM, a njen doprinos nije
+izolovan. Četvrto, objašnjenje putem zasićenja procesora
 izvedeno je iz modela izvršavanja upita, a ne iz direktnog profilisanja, a sva
 mjerenja potiču s jedne instance i jednog skupa podataka, pa generalizacija
 zahtijeva opreznost.
@@ -447,14 +447,14 @@ konfiguracije --- uz najnižu analitičku latenciju ($P_{50} = 924$\,ms pri
 80/20). Čisto memorijsko-optimizirana konfiguracija pokazala se neočekivano
 slabom pod mješovitim opterećenjem uprkos istom transakcijskom engineu, jer
 row-mode skeniranja zasićuju procesor; disk-zasnovana columnstore
-konfiguracija izgubila je dvije trećine kapaciteta čim je dodana analitika. Glavni uvid jeste da je ubrzanje analitike samo po sebi
-sredstvo zaštite transakcijske propusnosti; taj efekt, vrijedan faktora
-3,3--6,9, zaslužuje pažnju pri podešavanju HTAP sistema. Buduća istraživanja
+konfiguracija izgubila je dvije trećine kapaciteta čim je dodana analitika. Taj zaštitni efekt, vrijedan faktora 3,3--6,9,
+zaslužuje pažnju pri podešavanju HTAP sistema. Buduća istraživanja
 mjerit će cijenu sinhronizacije i dodati profilisanje procesora.
 
 \section*{Zahvala}
-Rad je nastao kao projekat iz predmeta Optimizacija baza podataka na
-Politehničkom fakultetu Univerziteta u Zenici.
+Rad je nastao kao projekat iz predmeta Optimizacija baza podataka na master
+studiju odsjeka Softversko inženjerstvo Politehničkog fakulteta Univerziteta
+u Zenici.
 
 \balance
 

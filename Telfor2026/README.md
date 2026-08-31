@@ -200,6 +200,25 @@ Napomena o kompajliranju: `balance` paket ostavlja upozorenje
 na oko 450 pt, daleko iznad dna bloka (718 pt) — upozorenje dolazi iz internog
 računa paketa, ne iz prelijevanja sadržaja.
 
+## Zahvala
+
+Oba rada imaju kratku sekciju *Acknowledgment* / *Zahvala* prije literature, s
+jednom rečenicom o predmetu iz kojeg je rad nastao. Predmeti se razlikuju:
+
+| Rad | Predmet |
+|---|---|
+| HTAP | Optimizacija baza podataka |
+| Completus | Data Mining |
+
+Ostatak rečenice je isti u oba: master studij, odsjek Softversko inženjerstvo,
+Politehnički fakultet Univerziteta u Zenici.
+
+**Napomena o prostoru:** sekcija košta oko sedam redova bez obzira na dužinu
+rečenice, jer naslov i razmaci oko njega troše više od teksta. Da bi stala,
+zaključci oba HTAP-a više ne ponavljaju glavni uvid koji Diskusija ionako
+razrađuje, a nekoliko formulacija je zbijeno. Nijedan broj, statistika ni
+zaključak nisu mijenjani.
+
 ## Odnos prema izvornom istraživanju
 
 Svi brojevi u radu (propusnost, latencije, veličine efekta, regresijski koeficijenti)
