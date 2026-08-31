@@ -69,10 +69,7 @@ alen.begovic@etf.unsa.ba}%
 \thanks{N. Smajlović je s Politehničkog fakulteta Univerziteta u Zenici, a
 A. Begović s Elektrotehničkog fakulteta Univerziteta u Sarajevu, Bosna i
 Hercegovina. Izvorni kod benchmarka, SQL skripte i mjerenja:
-\url{https://github.com/itsnejra/htap-sqlserver-benchmark}.
-Rad je nastao kao projekat iz predmeta Optimizacija baza podataka na master
-studiju Softverskog inženjerstva Politehničkog fakulteta Univerziteta u
-Zenici.}}
+\url{https://github.com/itsnejra/htap-sqlserver-benchmark}.}}
 
 \maketitle
 \bstctlcite{bstctl:htap}
@@ -159,11 +156,11 @@ izolaciju po cijenu mrežne latencije, a Google F1 Lightning~\cite{yang2020} pu�
 promjene u delta strukture koje kompakcija prepisuje u analitički format. SQL Server 2022 ostvaruje in-process varijantu istog obrasca i ne
 plaća mrežnu latenciju. Njegovi gradivni elementi dobro su dokumentovani:
 Hekaton engine~\cite{diaconu2013}, koji donosi ubrzanja od 10 do 30 puta za
-točkaste upite, ali ne podržava batch-mode izvršavanje, te columnstore
+točkaste upite ali ne podržava batch-mode izvršavanje, te columnstore
 indeksi~\cite{larson2013}, čiji batch-mode executor obrađuje oko 1\,000
-redova odjednom i daje ubrzanja od 10 do 100 puta na tipičnim skladišnim
-upitima. Njihova kombinacija opisana je u~\cite{larson2015}, gdje su
-prikazani dizajn i interni mikro-benchmarkovi autora samog sistema.
+redova odjednom i daje ubrzanja od 10 do 100 puta. Njihova kombinacija
+opisana je u~\cite{larson2015}, gdje su prikazani dizajn i interni
+mikro-benchmarkovi proizvođača.
 
 Metodološki, HyBench~\cite{zhang2024hybench} spaja TPC-C transakcije s
 analitičkim upitima, Wu i drugi~\cite{wu2025} potvrđuju da dodatni
@@ -403,23 +400,21 @@ $R^2$ & \multicolumn{2}{c}{0,881} & \multicolumn{2}{c}{0,854}\\
 Mjerenja otkrivaju mehanizam koji dosad nije nezavisno kvantifikovan:
 columnstore sloj ne samo da ubrzava analitičke upite, nego i \emph{posredno
 štiti transakcijske resurse}. Zato dual-store konfiguracija nadmašuje i disk-zasnovane konfiguracije i IM,
-koja radi na istom Hekaton engineu. U IM
-konfiguraciji analitički upiti skeniraju memorijsko-optimizirane tabele u
-row-modu, trošeći znatno više procesorskih ciklusa po redu i zasićujući
-procesor pri $C = 16$ i $C = 32$; u dual-store rasporedu opslužuju se
-u batch-modu iz columnstore kopije, pa se transakcije nikada ne
-natječu s analitičkim nitima za procesor. Ubrzanje analitike je stoga i
+koja radi na istom Hekaton engineu. U IM konfiguraciji analitički upiti skeniraju
+memorijsko-optimizirane tabele u row-modu, trošeći znatno više procesorskih
+ciklusa po redu i zasićujući procesor pri $C = 16$ i $C = 32$; u dual-store
+rasporedu opslužuju se u batch-modu iz columnstore kopije, pa se transakcije
+nikada ne natječu za procesor. Ubrzanje analitike je stoga i
 sredstvo zaštite OLTP propusnosti --- poluga koja dopunjuje pristup
 usmjeren na izolaciju iz~\cite{kang2023} i razdvojene arhitekture
 iz~\cite{huang2020, yang2020}, ovdje ostvarena bez mrežne latencije.
 
 Praktično pravilo je jednostavno: kad god opterećenje spaja transakcije i
-analitiku, a preduslovi su ispunjeni, dual-store raspored je poželjniji bez
-obzira na omjer; CS ostaje pragmatičan izbor za isključivo analitička
-opterećenja, servere s ograničenom memorijom i izdanja
-koja ne podržavaju In-Memory OLTP. Preduslovi nisu mali: otprilike
-dvostruka potrošnja memorije, trošak održavanja sinhronizacije između
-slojeva i tolerancija na analitiku nad podacima koji nisu svježi.
+analitiku, dual-store raspored je poželjniji bez obzira na omjer, dok CS
+ostaje pragmatičan izbor za isključivo analitička opterećenja, servere s
+ograničenom memorijom i izdanja bez In-Memory OLTP-a. Preduslovi nisu mali:
+otprilike dvostruka potrošnja memorije, trošak sinhronizacije slojeva i
+tolerancija na analitiku nad podacima koji nisu svježi.
 
 \section{Ograničenja validnosti}
 \label{sec:threats}
@@ -427,10 +422,9 @@ slojeva i tolerancija na analitiku nad podacima koji nisu svježi.
 dual-store konfiguracija razdvaja dva sloja, ali ne izvršava
 nikakav mehanizam sinhronizacije (change data capture, replikacija ili
 kompakcija), dok produkcijski sistemi tu cijenu plaćaju
-kontinuirano~\cite{huang2020, yang2020}; prikazani dobici stoga predstavljaju
-gornju granicu ostvarivu uz nultu cijenu sinhronizacije i kvantifikuju
-koliko interferencije uklanja fizička separacija, a ne neto dobit potpuno
-konzistentnog sistema. Drugo, memorijsko-optimizirane konfiguracije koriste
+kontinuirano~\cite{huang2020, yang2020}; prikazani dobici stoga predstavljaju gornju
+granicu uz nultu cijenu sinhronizacije i kvantifikuju koliko interferencije
+uklanja fizička separacija, a ne neto dobit konzistentnog sistema. Drugo, memorijsko-optimizirane konfiguracije koriste
 \texttt{DURABILITY = SCHEMA\_ONLY} i čitaju iz radne memorije, dok
 disk-zasnovane čitaju s NVMe SSD-a, pa usporedbe preko različitih medija i
 razina trajnosti miješaju efekt arhitekture s efektom medija; najčistije su
@@ -456,7 +450,11 @@ row-mode skeniranja zasićuju procesor; disk-zasnovana columnstore
 konfiguracija izgubila je dvije trećine kapaciteta čim je dodana analitika. Glavni uvid jeste da je ubrzanje analitike samo po sebi
 sredstvo zaštite transakcijske propusnosti; taj efekt, vrijedan faktora
 3,3--6,9, zaslužuje pažnju pri podešavanju HTAP sistema. Buduća istraživanja
-mjerit će cijenu kontinuirane sinhronizacije i dodati profilisanje procesora.
+mjerit će cijenu sinhronizacije i dodati profilisanje procesora.
+
+\section*{Zahvala}
+Rad je nastao kao projekat iz predmeta Optimizacija baza podataka na
+Politehničkom fakultetu Univerziteta u Zenici.
 
 \balance
 

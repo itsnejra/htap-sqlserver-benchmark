@@ -58,10 +58,7 @@ alen.begovic@etf.unsa.ba}%
 \thanks{N. Smajlovi\'c is with the Polytechnic Faculty, University of Zenica,
 and A. Begovi\'c with the Faculty of Electrical Engineering, University of
 Sarajevo, Bosnia and Herzegovina. Benchmark code, SQL scripts and
-measurements: \url{https://github.com/itsnejra/htap-sqlserver-benchmark}.
-This work was carried out as a course project in Database Optimization,
-master's programme in Software Engineering, Polytechnic Faculty, University
-of Zenica.}}
+measurements: \url{https://github.com/itsnejra/htap-sqlserver-benchmark}.}}
 
 \maketitle
 \bstctlcite{bstctl:htap}
@@ -147,12 +144,11 @@ replication, buying isolation at the price of network latency, and Google F1
 Lightning~\cite{yang2020} lets transactional changes flow into delta
 structures that compaction rewrites into an analytical format. SQL Server 2022 realizes an in-process variant of the
 same pattern and pays no network latency. Its building blocks are well
-documented: the Hekaton engine~\cite{diaconu2013}, reporting 10--30$\times$
-speed-ups for point queries but supporting no batch-mode execution, and
-columnstore indexes~\cite{larson2013}, whose batch-mode executor processes
-about 1\,000 rows at a time for 10--100$\times$ speed-ups on warehouse
-queries. Their combination is
-described in~\cite{larson2015}, which reports the vendor's own design and
+documented: the Hekaton engine~\cite{diaconu2013}, giving 10--30$\times$
+speed-ups for point queries but no batch-mode execution, and columnstore
+indexes~\cite{larson2013}, whose batch-mode executor processes about 1\,000
+rows at a time for 10--100$\times$ speed-ups on warehouse queries. Their
+combination is described in~\cite{larson2015}, the vendor's own design and
 micro-benchmarks.
 
 Methodologically, HyBench~\cite{zhang2024hybench} couples TPC-C transactions
@@ -204,8 +200,8 @@ tables (Section~\ref{sec:threats}).
 
 The workload runs over StackOverflow2010, a public dump of the production
 Stack Overflow database covering 2008--2010, preferred to synthetic
-alternatives because it exhibits the natural Pareto distribution of activity
-typical of web platforms~\cite{zhang2024survey}. Each schema holds
+alternatives for its natural Pareto distribution of
+activity~\cite{zhang2024survey}. Each schema holds
 $\approx$\,19.15 million rows: 10.14\,M votes, 3.88\,M comments,
 3.73\,M posts, 1.10\,M badges and 299\,398 users. Data were loaded
 into the disk-based schemas ($>$\,15\,GB) and copied into the
@@ -244,9 +240,8 @@ aggregation queries drawn uniformly at random, including a join of the
 10.1\,M-row \texttt{Votes} and 3.7\,M-row \texttt{Posts} tables and a user
 cohort query with a common table expression and double aggregation.
 
-Because latency distributions are strongly right-skewed --- confirmed by the
-Shapiro--Wilk test ($p < 0.001$ for every metric) --- the analysis is
-nonparametric: the Kruskal--Wallis $H$ test per metric and concurrency
+Because latency distributions are strongly right-skewed --- Shapiro--Wilk
+$p < 0.001$ for every metric --- the analysis is nonparametric: the Kruskal--Wallis $H$ test per metric and concurrency
 level ($\upalpha = 0.05$), pairwise Mann--Whitney $U$ tests with Bonferroni
 correction for the $C(4,2) = 6$ pairs ($\upalpha' \approx 0.0083$), and
 Cohen's $d$ as effect size, with $|d| > 0.8$ treated as practically
@@ -261,7 +256,7 @@ Kruskal--Wallis test confirms globally significant differences between the
 configurations for every metric at every concurrency level ($p < 0.001$).
 
 \begin{table*}[t]
-\caption{Mean OLTP throughput and median OLAP $P_{50}$ latency ($n = 28$--$30$ runs per cell)}
+\caption{Mean OLTP throughput and median OLAP $P_{50}$ latency ($n = 28$--$30$ per cell)}
 \label{tab:main}
 \centering
 \footnotesize
@@ -391,26 +386,22 @@ $R^2$ & \multicolumn{2}{c}{0.881} & \multicolumn{2}{c}{0.854}\\
 % =====================================================================
 The measurements expose a mechanism not quantified independently before: the
 columnstore layer does not merely accelerate analytical queries, it also
-\emph{indirectly protects transactional resources}. That is why the dual-store configuration outperforms not only
-the disk-based configurations but also IM, which runs the same Hekaton
-engine. In IM, analytical queries scan memory-optimized tables in
-row mode, spending far more CPU cycles per row and saturating the processor
-at $C = 16$ and $C = 32$; in the dual-store layout they are
-served in batch mode from the columnstore copy, so transactions never
-compete with analytical threads for CPU. Accelerating analytics is therefore
-also a means of protecting OLTP throughput --- a lever that complements the
-isolation-first perspective of~\cite{kang2023} and the decoupled
-architectures of~\cite{huang2020, yang2020}, obtained here without network
-latency.
+\emph{indirectly protects transactional resources}. That is why the
+dual-store configuration outperforms not only the disk-based configurations
+but also IM, on the same Hekaton engine. In IM, analytical queries scan memory-optimized tables in row mode,
+spending far more CPU cycles per row and saturating the processor at
+$C = 16$ and $C = 32$; in the dual-store layout they are served in batch mode
+from the columnstore copy, so transactions never compete for CPU. Accelerating analytics is therefore also a means of protecting OLTP
+throughput --- a lever complementing the isolation-first perspective
+of~\cite{kang2023} and the decoupled architectures of~\cite{huang2020,
+yang2020}, here without network latency.
 
-The practical rule is simple: whenever the workload mixes transactions and
-analytics, and the preconditions below are met, the dual-store layout is
-preferable regardless of the ratio; CS remains the pragmatic choice for
-purely analytical workloads, RAM-constrained servers and editions lacking
-In-Memory OLTP. The preconditions are
-substantial: roughly double the memory footprint, the cost of operating the
-synchronization between the layers, and tolerance for analytics over data
-that is not real-time fresh.
+The practical rule is simple: when the workload mixes transactions and
+analytics the dual-store layout is preferable at any ratio, while CS remains
+the choice for purely analytical workloads and for servers lacking the memory
+or the edition for In-Memory OLTP. Its preconditions are substantial: roughly
+twice the memory, the cost of synchronizing the layers, and tolerance for
+analytics over data that is not fresh.
 
 \section{Threats to Validity}
 \label{sec:threats}
@@ -418,37 +409,38 @@ Four limitations bound these results. First, and most importantly, the
 evaluated dual-store configuration separates the two layers but runs no
 synchronization mechanism (change data capture, replication or compaction),
 whereas production systems pay that cost
-continuously~\cite{huang2020, yang2020}; the reported gains are therefore an
-upper bound obtained at zero synchronization cost, quantifying how much
-interference physical separation removes rather than the net benefit of a
-fully consistent system. Second, the memory-optimized configurations use
-\texttt{DURABILITY = SCHEMA\_ONLY} and read from RAM while the disk-based
-ones read from an NVMe SSD, so comparisons across media and durability mix
-the effect of architecture with that of the medium; the cleanest comparisons
-are those within one medium (HTAP vs. IM, CS vs. the HTAP analytical
-layer). Third, the \texttt{MAXDOP} asymmetry required by the engines
-confounds the HTAP--IM comparison, and its contribution was not isolated.
+continuously~\cite{huang2020, yang2020}; the reported gains are therefore an upper
+bound at zero synchronization cost, quantifying how much interference
+physical separation removes rather than the net benefit of a consistent
+system. Second, the memory-optimized configurations use
+\texttt{DURABILITY = SCHEMA\_ONLY} and read from RAM while the disk-based ones
+read from an NVMe SSD, so comparisons across media mix the effect of
+architecture with that of the medium; the cleanest are those within one
+medium (HTAP vs. IM, CS vs. the HTAP analytical layer). Third, the \texttt{MAXDOP} asymmetry the engines require confounds the
+HTAP--IM comparison, and its contribution was not isolated.
 Fourth, the CPU-saturation explanation is derived from the query execution
-model rather than direct processor profiling, and all measurements come from
-one instance and dataset, so generalization requires caution.
+model rather than direct profiling, and all measurements come from one
+instance and dataset, so generalization requires caution.
 
 % =====================================================================
 \section{Conclusion}
 % =====================================================================
-Across 1\,070 valid runs over a 19.2-million-row real dataset, the
-dual-store configuration of SQL Server 2022 dominated every tested
-mixed-workload scenario, reaching 21\,920 ops/s at $C = 32$ --- 4.6$\times$
-the in-memory configuration and 9.0$\times$ the baseline --- with the lowest
-analytical latency ($P_{50} = 924$\,ms under 80/20). The purely in-memory
+Across 1\,070 valid runs over a 19.2-million-row real dataset, the dual-store
+configuration of SQL Server 2022 dominated every tested mixed-workload
+scenario, reaching 21\,920 ops/s at $C = 32$ --- 4.6$\times$ the in-memory
+configuration and 9.0$\times$ the baseline --- at the lowest analytical
+latency ($P_{50} = 924$\,ms under 80/20). The purely in-memory
 configuration proved unexpectedly weak under mixed load despite the same
-transactional engine, because row-mode analytical scans saturate the CPU;
-the disk-based columnstore configuration lost two thirds of its
-transactional capacity once analytical load was added. The principal insight
-is that accelerating analytics is itself a means of protecting transactional
-throughput; this indirect effect, worth a factor of 3.3--6.9 here, deserves
-attention when HTAP systems are tuned. Future work will measure the cost of
-continuous synchronization, add direct CPU profiling, and extend the
-comparison to distributed HTAP engines.
+transactional engine, because row-mode analytical scans saturate the CPU,
+while the disk-based columnstore configuration lost two thirds of its
+transactional capacity once analytical load was added. That protective
+effect, worth a factor of 3.3--6.9 here, deserves attention when HTAP systems
+are tuned. Future work will measure the cost of continuous synchronization
+and add direct CPU profiling.
+
+\section*{Acknowledgment}
+This work was carried out as a course project in Database Optimization at the
+Polytechnic Faculty, University of Zenica.
 
 \balance
 
