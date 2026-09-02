@@ -234,10 +234,19 @@ pdflatex telfor2026_completus_bs.tex && pdflatex telfor2026_completus_bs.tex
 
 **Provjeriti prije predaje:**
 
-1. Brojevi u donjem bloku Tabele III (CodeLlama, StarCoderBase,
-   DeepSeek-Coder) pripisani su referenci [9]; potvrditi da su zaista preuzeti
-   iz te usporedne tabele. Reference [3], [11] i [13] provjerene su na
-   izvorima i tačne su.
+1. ~~Brojevi u donjem bloku Tabele III~~ **RIJEŠENO (septembar 2026).** Sve
+   četiri objavljene brojke provjerene su na izvorima i tačne su:
+   CodeLlama-Base 7B = 31,7 %, StarCoderBase 15,5B = 31,7 % i
+   DeepSeek-Coder-Base 1,3B = 34,8 % dolaze iz usporedne tabele
+   DeepSeek-Coder rada [5]; Qwen2.5-Coder base 1,5B = **43,9 %** je red
+   `Qwen2.5-Coder-1.5B` iz Tabele 5 Qwen2.5-Coder tehničkog izvještaja [6]
+   (cijeli red: 43,9 / 36,6 / 69,2 / 58,6 / 59,2 / 34,6 / 9,5).
+
+   Napomena o toj brojci: **43,9 % nije mjereno u ovom radu.** To je vrijednost
+   koju autori osnovnog modela prijavljuju pod vlastitim protokolom; mjerenje
+   istog modela u ovom radu, pod strožim zero-shot protokolom, iznosi 10,98 %.
+   Razlika između te dvije brojke je glavni argument rada i ne smije se
+   pomiješati.
 2. **Literatura Completusa provjerena je referencu po referencu** (august
    2026) — svih 16 unosa tačno: autori, mjesto objave, volumen, stranice,
    arXiv brojevi i godine. Nije bilo ispravki. Jedina sitnica: [10] koristi
