@@ -211,18 +211,18 @@ na jednoj mašini.
 Korpus je CodeSearchNet~\cite{husain2019}, čiji puni podskupovi sadrže
 412\,178 Python i 317\,832 Go funkcija. Da bi priprema ostala izvodljiva na
 jednoj radnoj stanici, ulaz je ograničen na prvih 50\,000 funkcija po jeziku,
-koje zatim prolaze kroz pet filtera. Bliski duplikati uklanjaju se heširanjem
-osjetljivim na lokalnost nad MinHash sažecima (128 permutacija, šindre od pet
-tokena, Jaccardov prag 0,8). Filter mirisa koda odbacuje linije duže od 120
-znakova, funkcije kraće od 30 tokena i tijela koja ništa ne rade. Filter
+koje zatim prolaze kroz pet filtera. Bliski duplikati uklanjaju se heširanjem osjetljivim
+na lokalnost nad MinHash sažecima (128 permutacija, šindre od pet tokena,
+Jaccardov prag 0,8). Filter mirisa koda odbacuje linije preko 120 znakova,
+funkcije ispod 30 tokena i tijela koja ništa ne rade. Filter
 dokumentacijskih nizova traži najmanje 15 tokena i dvije riječi i odbija
 svaki niz koji nosi oznaku TODO, FIXME ili XXX. Fill-in-the-middle
 transformacija zatim se primjenjuje na 80~\% preživjelih uzoraka, a ostatak
 se skraćuje na 2048 tokena.
 
-Svaki filter cilja dokumentovani način otkaza, a ne opštu urednost. Uklanjanje
-bliskih duplikata primjenjuje se jer dupliran tekst za treniranje povećava
-memorisanje i propušta testni materijal u treniranje~\cite{lee2022}; filter
+Svaki filter cilja dokumentovani način otkaza. Uklanjanje bliskih duplikata
+primjenjuje se jer dupliran tekst povećava memorisanje i propušta testni
+materijal u treniranje~\cite{lee2022}; filter
 mirisa koda jer modeli trenirani nad očišćenim korpusima daju bolji
 kod~\cite{xue2025}; a FIM transformacija jer donosi sposobnost popunjavanja,
 koja je ono što dodatak za editor treba, bez izmjerenog gubitka u generisanju
@@ -474,8 +474,9 @@ evaluirati Go model na HumanEval-X i uvesti benchmark svjestan popunjavanja
 koji odgovara isporučenoj upotrebi.
 
 \section*{Zahvala}
-Rad je nastao kao projekat iz predmeta Data Mining na master studiju odsjeka
-Softversko inženjerstvo Politehničkog fakulteta Univerziteta u Zenici.
+Ovaj rad se dijelom zasniva na istraživanju provedenom tokom tekućih master
+studija Softverskog inženjerstva prvog i drugog autora na Univerzitetu u
+Zenici, s fokusom na data mining.
 
 \balance
 

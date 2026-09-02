@@ -202,16 +202,20 @@ računa paketa, ne iz prelijevanja sadržaja.
 
 ## Zahvala
 
-Oba rada imaju kratku sekciju *Acknowledgment* / *Zahvala* prije literature, s
-jednom rečenicom o predmetu iz kojeg je rad nastao. Predmeti se razlikuju:
+Oba rada imaju kratku sekciju *Acknowledgment* / *Zahvala* prije literature.
+Tekst je **formulacija koju je dao mentor**, prenesena doslovno:
 
-| Rad | Predmet |
-|---|---|
-| HTAP | Optimizacija baza podataka |
-| Completus | Data Mining |
+> HTAP: *This paper is based, in part, on research conducted during the first
+> author's ongoing master's studies in Software Engineering at the University
+> of Zenica, focusing on database optimization.*
 
-Ostatak rečenice je isti u oba: master studij, odsjek Softversko inženjerstvo,
-Politehnički fakultet Univerziteta u Zenici.
+> Completus: *This paper is based, in part, on research conducted during the
+> first and second authors' ongoing master's studies in Software Engineering
+> at the University of Zenica, focusing on data mining.*
+
+Formulacija ovisi o redoslijedu autora: „first author" je Nejra u HTAP-u,
+„first and second authors" su Nejra i Adi u Completusu. **Ako se redoslijed
+autora promijeni, ove rečenice se moraju uskladiti.**
 
 **Napomena o prostoru:** sekcija košta oko sedam redova bez obzira na dužinu
 rečenice, jer naslov i razmaci oko njega troše više od teksta. Da bi stala,

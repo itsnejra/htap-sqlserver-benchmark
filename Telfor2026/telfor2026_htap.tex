@@ -222,11 +222,10 @@ valid runs with 28--30 repetitions per cell.
 
 All runs were executed on one machine with an Intel Core i9-14900HX
 (24 cores / 32 threads), 32\,GB of DDR5-5600 memory and a 1\,TB NVMe SSD,
-under Windows 11 (24H2) and SQL Server 2022 Developer Edition. The benchmark
-driver is a purpose-built .NET 8 application using
-\texttt{Microsoft.Data.SqlClient} with the Dapper micro-ORM; it runs OLTP
-and OLAP workers concurrently, discards a 10\,s warm-up, measures for
-60\,s per run and writes per-operation latencies and outcomes to CSV. Each
+under Windows 11 (24H2) and SQL Server 2022 Developer Edition. The benchmark driver is a purpose-built .NET 8 application using
+\texttt{Microsoft.Data.SqlClient} with Dapper; it runs OLTP and OLAP workers
+concurrently, discards a 10\,s warm-up, measures for 60\,s per run and writes
+per-operation latencies and outcomes to CSV. Each
 session first loads a working context of 20\,000 random post and 5\,000
 random user identifiers, so that access follows the dataset's natural
 distribution.
@@ -234,8 +233,7 @@ distribution.
 The OLTP workload comprises six stored procedures drawn from a weighted
 distribution typical of a write-intensive web application: vote insert
 (35\,\%), post-score update (25\,\%), comment insert (15\,\%), a range scan
-over a user's recent posts (10\,\%) and two point lookups (15\,\%), i.e.
-75\,\% writes and 25\,\% reads. The OLAP workload comprises five full-scan
+(10\,\%) and two point lookups (15\,\%), i.e. 75\,\% writes, 25\,\% reads. The OLAP workload comprises five full-scan
 aggregation queries drawn uniformly at random, including a join of the
 10.1\,M-row \texttt{Votes} and 3.7\,M-row \texttt{Posts} tables and a user
 cohort query with a common table expression and double aggregation.
@@ -439,9 +437,9 @@ are tuned. Future work will measure the cost of continuous synchronization
 and add direct CPU profiling.
 
 \section*{Acknowledgment}
-This work was carried out as a project for the Database Optimization course
-in the Software Engineering master's program at the Polytechnic Faculty,
-University of Zenica.
+This paper is based, in part, on research conducted during the first
+author's ongoing master's studies in Software Engineering at the University
+of Zenica, focusing on database optimization.
 
 \balance
 

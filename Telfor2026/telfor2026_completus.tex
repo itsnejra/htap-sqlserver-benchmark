@@ -202,18 +202,17 @@ one machine.
 The corpus is CodeSearchNet~\cite{husain2019}, whose full splits contain
 412\,178 Python and 317\,832 Go functions. To keep preparation tractable on
 one workstation the input is capped at the first 50\,000 functions per
-language, which are then passed through five filters. Near-duplicates are
-removed by locality-sensitive hashing over MinHash sketches (128
-permutations, five-token shingles, Jaccard threshold 0.8). A code-smell
-filter drops lines longer than 120 characters, functions shorter than 30
-tokens, and bodies that do nothing. A docstring filter requires at least 15
+language, which are then passed through five filters. Near-duplicates are removed by
+locality-sensitive hashing over MinHash sketches (128 permutations,
+five-token shingles, Jaccard threshold 0.8). A code-smell filter drops lines
+over 120 characters, functions under 30 tokens, and bodies that do nothing. A docstring filter requires at least 15
 tokens and two words and rejects any docstring carrying a TODO, FIXME or XXX
 marker. A fill-in-the-middle transform is then applied to 80~\% of the
 surviving samples, and the remainder are truncated to 2048 tokens.
 
-Each filter targets a documented failure mode rather than general
-tidiness. Near-deduplication is applied because duplicated training text
-increases memorization and leaks test material into training~\cite{lee2022};
+Each filter targets a documented failure mode. Near-deduplication is applied
+because duplicated text increases memorization and leaks test material into
+training~\cite{lee2022};
 the code-smell filter because models trained on smell-cleaned corpora produce
 better code~\cite{xue2025}; and the FIM transform because it buys infilling
 ability, which is what an editor plugin needs, at no measured cost to
@@ -467,9 +466,9 @@ Go model on HumanEval-X, and adopt an infilling-aware benchmark matching the
 deployed usage.
 
 \section*{Acknowledgment}
-This work was carried out as a project for the Data Mining course in the
-Software Engineering master's program at the Polytechnic Faculty, University
-of Zenica.
+This paper is based, in part, on research conducted during the first and
+second authors' ongoing master's studies in Software Engineering at the
+University of Zenica, focusing on data mining.
 
 \balance
 
