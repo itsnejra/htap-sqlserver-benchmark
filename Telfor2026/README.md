@@ -56,6 +56,22 @@ manje autora ispisuju se u cijelosti, sa šest i više skraćuju se na prvog aut
 kako IEEE template i traži. Reference se numerišu po redoslijedu prvog citiranja,
 što BibTeX radi automatski.
 
+**O pravopisu.** Oba engleska rada pisana su **britanskim** engleskim
+(`-ise`/`-yse`: *analysed*, *optimisation*, *synchronisation*, *quantisation*,
+*favourable*, *artefact*), radi usklađenosti s ranijim TELFOR radovima koautora.
+IEEE ne propisuje varijantu, ali traži dosljednost unutar rada. Četiri mjesta
+namjerno zadržavaju američki oblik i **ne smiju se mijenjati**:
+
+1. `MEMORY\_OPTIMIZED = ON` — T-SQL ključna riječ, kod a ne proza;
+2. „Quantized LoRA (QLoRA)" — širenje akronima onako kako ga daju autori QLoRA-e;
+3. naslovi citiranih radova u literaturi (npr. Diaconuov *„...memory-optimized
+   OLTP engine"*, Dettmersov *„...finetuning of quantized LLMs"*) — reference se
+   navode doslovno;
+4. `q4\_k\_m` i slični identifikatori formata.
+
+Provjera: `grep -o '[A-Za-z-]*iz\(e\|ed\|ing\|ation\)' *.tex` smije vratiti samo
+gornje slučajeve (plus `size`/`footnotesize`, koji nisu taj sufiks).
+
 Napomena: BibTeX nema komentare u smislu `%` — znak `@` bilo gdje u fajlu započinje
 unos, pa ga u komentarima ne smije biti.
 

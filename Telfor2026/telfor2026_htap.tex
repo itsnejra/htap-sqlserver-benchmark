@@ -70,19 +70,19 @@ instance, for systems that must serve transactional and analytical queries
 over the same data without the staleness and operational complexity of an
 ETL-bridged data warehouse: disk-based tables with B-tree indexes
 (Baseline), disk-based tables with a nonclustered columnstore index (CS),
-memory-optimized tables on the Hekaton engine (IM), and a dual-store hybrid
-configuration combining a memory-optimized transactional layer with a
+memory-optimised tables on the Hekaton engine (IM), and a dual-store hybrid
+configuration combining a memory-optimised transactional layer with a
 columnstore analytical layer (HTAP). The experiment is a full factorial
 design over four configurations, three OLTP/OLAP mixes and three concurrency
 levels, with 30 repetitions per cell on the StackOverflow2010 dataset of
-about 19.2 million rows per schema; 1,070 valid runs were analyzed with the
+about 19.2 million rows per schema; 1,070 valid runs were analysed with the
 Kruskal-Wallis H test, Mann-Whitney U tests with Bonferroni correction,
 Cohen's d and log-linear OLS regression. The dual-store configuration
 dominates every tested scenario: it delivers 3.3 to 6.9 times the OLTP
-throughput of the purely memory-optimized configuration under a
+throughput of the purely memory-optimised configuration under a
 transaction-heavy mix and cuts median analytical latency by a factor of four
 relative to the baseline. Because it separates
-the two layers without paying any synchronization cost during measurement,
+the two layers without paying any synchronisation cost during measurement,
 the reported gains represent an upper bound of the approach.
 \end{abstract}
 
@@ -135,10 +135,10 @@ meaningful quality measure than peak throughput.
 Commercial systems span that space. SAP HANA~\cite{farber2012} and Oracle
 Database In-Memory~\cite{lahiri2015} keep row and column formats inside one
 in-memory engine, whereas TiDB~\cite{huang2020} separates the transactional
-layer from the analytical one and synchronizes them by asynchronous Raft
+layer from the analytical one and synchronises them by asynchronous Raft
 replication, buying isolation at the price of network latency, and Google F1
 Lightning~\cite{yang2020} lets transactional changes flow into delta
-structures that compaction rewrites into an analytical format. SQL Server 2022 realizes an in-process variant of the
+structures that compaction rewrites into an analytical format. SQL Server 2022 realises an in-process variant of the
 same pattern and pays no network latency. Its building blocks are well
 documented: the Hekaton engine~\cite{diaconu2013}, giving 10--30$\times$
 speed-ups for point queries but no batch-mode execution, and columnstore
@@ -161,7 +161,7 @@ synthetic workloads with uniform access. None of it tells an engineer
 choosing a storage layout inside one SQL Server instance what to expect on a
 real, skewed workload.
 
-Three questions organize the study. First, how the analytical latency of
+Three questions organise the study. First, how the analytical latency of
 the disk-based columnstore configuration compares with that of the hybrid
 one, and whether that changes with concurrency. Second, how much
 transactional throughput each configuration gives up when analytical queries
@@ -178,20 +178,20 @@ Server 2022 instance, with identical logical tables and identical data but
 different physical storage and indexing mechanisms. \emph{Baseline}, the
 control group, uses disk-based row-store tables with B-tree indexes and
 row-mode execution; \emph{CS} adds a nonclustered columnstore index to every
-table, so the optimizer selects batch-mode plans for analytical queries while
-OLTP statements keep using the B-tree. \emph{IM} uses memory-optimized
+table, so the optimiser selects batch-mode plans for analytical queries while
+OLTP statements keep using the B-tree. \emph{IM} uses memory-optimised
 storage (\texttt{MEMORY\_OPTIMIZED = ON},
 \texttt{DURABILITY = SCHEMA\_ONLY}) with hash indexes, range indexes and
 natively compiled OLTP procedures, and necessarily executes analytical
-queries in row mode. \emph{HTAP} realizes the dual-store pattern of
+queries in row mode. \emph{HTAP} realises the dual-store pattern of
 TiDB/TiFlash~\cite{huang2020} in the in-process model: writes and point
-reads go to memory-optimized tables in the \texttt{htap} schema, while
+reads go to memory-optimised tables in the \texttt{htap} schema, while
 analytical queries read the columnstore copy in the \texttt{cs} schema. Two
 engine-specific settings were required: \texttt{OPTION (MAXDOP 2)} for
 analytical procedures in CS and HTAP, which removes the
 \texttt{RESOURCE\_SEMAPHORE} waits observed at $C = 32$ with six or more
 simultaneous batch-mode queries, and \texttt{OPTION (MAXDOP 1)} in IM, which
-avoids \texttt{CXSYNC\_PORT} waits in parallel plans over memory-optimized
+avoids \texttt{CXSYNC\_PORT} waits in parallel plans over memory-optimised
 tables (Section~\ref{sec:threats}).
 
 The workload runs over StackOverflow2010, a public dump of the production
@@ -201,7 +201,7 @@ activity~\cite{zhang2024survey}. Each schema holds
 $\approx$\,19.15 million rows: 10.14\,M votes, 3.88\,M comments,
 3.73\,M posts, 1.10\,M badges and 299\,398 users. Data were loaded
 into the disk-based schemas ($>$\,15\,GB) and copied into the
-memory-optimized ones ($\approx$\,8\,GB each), so measured differences reflect
+memory-optimised ones ($\approx$\,8\,GB each), so measured differences reflect
 only the storage architecture.
 
 % =====================================================================
@@ -246,7 +246,7 @@ quantify the contribution of individual factors.
 % =====================================================================
 \section{Results}
 % =====================================================================
-Table~\ref{tab:main} summarizes the central measurements; the
+Table~\ref{tab:main} summarises the central measurements; the
 Kruskal--Wallis test confirms globally significant differences between the
 configurations for every metric at every concurrency level ($p < 0.001$).
 
@@ -281,9 +281,9 @@ ops/s at $C = 32$, against 4\,726, 2\,477 and 2\,432 ops/s for IM, CS and
 Baseline. The disk-based configurations scale nonmonotonically: at 80/20
 their throughput falls between $C = 16$ and $C = 32$ (Baseline
 9\,005 $\rightarrow$ 5\,727 ops/s) once I/O contention and locking saturate
-the storage subsystem, whereas the memory-optimized ones keep scaling.
+the storage subsystem, whereas the memory-optimised ones keep scaling.
 
-Sharing the Hekaton engine does not make the two memory-optimized
+Sharing the Hekaton engine does not make the two memory-optimised
 configurations equivalent under a transaction-heavy mix. At 80/20 the median
 throughput ratio between the hybrid and the purely in-memory configuration
 grows from 3.3$\times$ at $C = 4$ (10\,083 vs. 3\,027 ops/s, $d = -4.38$)
@@ -303,7 +303,7 @@ whose queries exceed the client timeout. Since timed-out
 queries contribute no latency sample, the Baseline latencies in
 Table~\ref{tab:main} are survivor-biased and understate its true cost.
 
-Holding the columnstore layer constant does not equalize analytical latency
+Holding the columnstore layer constant does not equalise analytical latency
 either. Under the 50/50 mix the hybrid configuration is already
 significantly faster than CS at $C = 4$ (median 825 vs. 1\,850\,ms,
 $d = 6.14$, $p < 0.001$), and the gap widens to 1\,807\,ms at $C = 32$
@@ -338,7 +338,7 @@ row-mode analytical scans. The isolation mechanism is explicit: in CS,
 batch-mode scans share the buffer pool and CPU threads with OLTP statements
 on the same disk-based schema, whereas in the dual-store layout analytical
 queries read the \texttt{cs} columnstore while transactions operate on
-memory-optimized tables that never touch the buffer pool. Losing 67.4\,\% of
+memory-optimised tables that never touch the buffer pool. Losing 67.4\,\% of
 transactional capacity is critical under a service-level agreement, and the
 magnitude agrees with the 50--70\,\% range reported for disk-based
 systems~\cite{wu2025}.
@@ -384,7 +384,7 @@ The measurements expose a mechanism not quantified independently before: the
 columnstore layer does not merely accelerate analytical queries, it also
 \emph{indirectly protects transactional resources}. That is why the
 dual-store configuration outperforms not only the disk-based configurations
-but also IM, on the same Hekaton engine. In IM, analytical queries scan memory-optimized tables in row mode,
+but also IM, on the same Hekaton engine. In IM, analytical queries scan memory-optimised tables in row mode,
 spending far more CPU cycles per row and saturating the processor at
 $C = 16$ and $C = 32$; in the dual-store layout they are served in batch mode
 from the columnstore copy, so transactions never compete for CPU. Accelerating analytics is therefore also a means of protecting OLTP
@@ -396,19 +396,19 @@ The practical rule is simple: when the workload mixes transactions and
 analytics the dual-store layout is preferable at any ratio, while CS remains
 the choice for purely analytical workloads and for servers lacking the memory
 or the edition for In-Memory OLTP. Its preconditions are substantial: roughly
-twice the memory, the cost of synchronizing the layers, and tolerance for
+twice the memory, the cost of synchronising the layers, and tolerance for
 analytics over data that is not fresh.
 
 \section{Threats to Validity}
 \label{sec:threats}
 Four limitations bound these results. First, and most importantly, the
 evaluated dual-store configuration separates the two layers but runs no
-synchronization mechanism (change data capture, replication or compaction),
+synchronisation mechanism (change data capture, replication or compaction),
 whereas production systems pay that cost
 continuously~\cite{huang2020, yang2020}; the reported gains are therefore an upper
-bound at zero synchronization cost, quantifying how much interference
+bound at zero synchronisation cost, quantifying how much interference
 physical separation removes rather than the net benefit of a consistent
-system. Second, the memory-optimized configurations use
+system. Second, the memory-optimised configurations use
 \texttt{DURABILITY = SCHEMA\_ONLY} and read from RAM while the disk-based ones
 read from an NVMe SSD, so comparisons across media and durability mix
 the effect of architecture with that of the medium; the cleanest are those
@@ -416,7 +416,7 @@ within one medium (HTAP vs. IM, CS vs. the HTAP analytical layer). Third, the \t
 HTAP--IM comparison, and its contribution was not isolated.
 Fourth, the CPU-saturation explanation is derived from the query execution
 model rather than direct profiling, and all measurements come from one
-instance and dataset, so generalization requires caution.
+instance and dataset, so generalisation requires caution.
 
 % =====================================================================
 \section{Conclusion}
@@ -431,13 +431,13 @@ transactional engine, because row-mode analytical scans saturate the CPU,
 while the disk-based columnstore configuration lost two thirds of its
 transactional capacity once analytical load was added. That protective
 effect, worth a factor of 3.3--6.9 here, deserves attention when HTAP systems
-are tuned. Future work will measure the cost of continuous synchronization
+are tuned. Future work will measure the cost of continuous synchronisation
 and add direct CPU profiling.
 
 \section*{Acknowledgment}
 This paper is based, in part, on research conducted during the first
 author's ongoing master's studies in Software Engineering at the University
-of Zenica, focusing on database optimization.
+of Zenica, focusing on database optimisation.
 
 \balance
 

@@ -73,14 +73,14 @@ Modelfiles and evaluation scripts:
 \bstctlcite{bstctl:completus}
 
 \begin{abstract}
-This paper presents Completus, a reproducible pipeline that specializes a
+This paper presents Completus, a reproducible pipeline that specialises a
 1.5-billion-parameter open code model for local, network-isolated
 autocompletion on a single consumer graphics card. Qwen2.5-Coder-1.5B is
 fine-tuned with a fixed-rank QLoRA adapter on curated Python and Go subsets
 of CodeSearchNet, after a preparation stage combining near-deduplication,
 code-smell filtering, docstring quality checks and a fill-in-the-middle
 transformation. The trained adapter is merged into the base weights,
-exported to a four-bit K-quantized GGUF build and served through Ollama,
+exported to a four-bit K-quantised GGUF build and served through Ollama,
 which makes the model reachable from a standard editor extension without any
 network call. Evaluated on HumanEval under a deployment-faithful zero-shot
 protocol in which the prompt is the bare function signature, the fine-tuned
@@ -88,20 +88,20 @@ Python model solves 42.68 percent of the problems on the first attempt,
 against 10.98 percent for the untuned baseline under the same protocol. The
 gain is therefore a recovery, in the prompt format the local deployment
 actually uses, of capability the base model already reports under its own
-more favorable protocol, and not a net capability increase. The complete
+more favourable protocol, and not a net capability increase. The complete
 workflow runs on an eight-gigabyte laptop graphics card in under two hours
 per language.
 \end{abstract}
 
 \begin{IEEEkeywords}
 code completion, QLoRA, parameter-efficient fine-tuning, Qwen2.5-Coder,
-CodeSearchNet, GGUF quantization, local inference.
+CodeSearchNet, GGUF quantisation, local inference.
 \end{IEEEkeywords}
 
 % =====================================================================
 \section{Introduction}
 % =====================================================================
-\IEEEPARstart{L}{arge} language models (LLMs) specialized for code deliver
+\IEEEPARstart{L}{arge} language models (LLMs) specialised for code deliver
 accurate autocompletion and multi-file contextual awareness, but the
 commercial systems that lead on those metrics are reached through
 cloud-hosted endpoints. That delivery model carries three costs which are
@@ -117,16 +117,16 @@ compact enough to answer within the latency budget of an editor plugin on
 commodity hardware, yet capable enough that its completions are worth
 accepting. Two developments make that trade-off tractable. Parameter-efficient
 fine-tuning (PEFT), and in particular Low-Rank Adaptation
-(LoRA)~\cite{hu2022lora}, specializes a pretrained model at a small fraction
-of the cost of full fine-tuning; quantized weight formats such as GGUF,
-served by optimized runtimes, execute those weights within a few gigabytes
+(LoRA)~\cite{hu2022lora}, specialises a pretrained model at a small fraction
+of the cost of full fine-tuning; quantised weight formats such as GGUF,
+served by optimised runtimes, execute those weights within a few gigabytes
 of video memory.
 
-This paper reports an end-to-end realization of that recipe, named Completus,
+This paper reports an end-to-end realisation of that recipe, named Completus,
 and evaluates it in the conditions under which it is actually served. Two
 gaps motivate the work. First, published studies report either raw model
 capability or adaptation technique in isolation; few carry a single model
-from raw corpus through data curation, adaptation and quantization to a live,
+from raw corpus through data curation, adaptation and quantisation to a live,
 editor-integrated endpoint, and report every stage. Second, code models are
 usually scored under few-shot, chat-formatted protocols that do not resemble
 the bare-signature prompts an editor plugin emits, so a published score does
@@ -141,9 +141,9 @@ determines and which published scores routinely conflate.
 \centering
 \includegraphics[width=\textwidth]{figures/fig_pipeline.pdf}
 \caption{The Completus pipeline. Raw CodeSearchNet functions pass through
-quality filtering and a fill-in-the-middle transform, specialize
+quality filtering and a fill-in-the-middle transform, specialise
 Qwen2.5-Coder-1.5B through QLoRA, and are merged and exported to a four-bit
-K-quantized GGUF build that Ollama serves to an editor plugin over the
+K-quantised GGUF build that Ollama serves to an editor plugin over the
 local loopback interface.}
 \label{fig:pipeline}
 \end{figure*}
@@ -160,13 +160,13 @@ support; DeepSeek-Coder~\cite{guo2024} trains on a project-level corpus with
 an infilling objective; and Qwen2.5-Coder~\cite{hui2024} reports the leading
 scores among open models at the 1.5-billion-parameter scale adopted here.
 Completus differs in goal rather than in technique: it does not pretrain a
-new model but specializes an existing small one for a narrow,
+new model but specialises an existing small one for a narrow,
 latency-sensitive task.
 
 On the adaptation side, LoRA~\cite{hu2022lora} freezes the pretrained
 weights and injects trainable rank-decomposition matrices, cutting trainable
 parameters by orders of magnitude. Quantized LoRA (QLoRA)~\cite{dettmers2023}
-quantizes the frozen base to four-bit NormalFloat (NF4), which brings
+quantises the frozen base to four-bit NormalFloat (NF4), which brings
 fine-tuning within the memory budget of a single consumer card.
 AdaLoRA~\cite{zhang2023adalora} refines the allocation of rank by importance.
 Weyssow \emph{et al.}~\cite{weyssow2025} evaluate PEFT specifically for code
@@ -176,11 +176,11 @@ al.}~\cite{han2024} situates LoRA within the wider PEFT family.
 
 A third line concerns the training data. Xue \emph{et al.}~\cite{xue2025}
 show that removing code smells from the training set improves model quality;
-Lee \emph{et al.}~\cite{lee2022} that near-deduplication reduces memorization
+Lee \emph{et al.}~\cite{lee2022} that near-deduplication reduces memorisation
 and test-set leakage; Bavarian \emph{et al.}~\cite{bavarian2022} that models
 acquire infilling ability at no cost to left-to-right generation; and
 WizardCoder~\cite{luo2024} that instruction-style tuning lifts code quality
-further. The quantization build follows the unified evaluation of llama.cpp
+further. The quantisation build follows the unified evaluation of llama.cpp
 formats by Kurt~\cite{kurt2026}. What these works share is that each is
 developed and reported in a research or cloud-serving setting, under a
 protocol chosen by its own authors. None delivers a recipe that carries a
@@ -193,7 +193,7 @@ hardware, and reports its quality in the prompt format that endpoint receives.
 % =====================================================================
 The pipeline has five stages, shown in Fig.~\ref{fig:pipeline}: data
 preparation, QLoRA fine-tuning, adapter merging, GGUF export and local
-registration for serving. Each stage is scripted and parameterized, so that
+registration for serving. Each stage is scripted and parameterised, so that
 the whole path from public corpus to running endpoint can be re-executed on
 one machine.
 
@@ -211,7 +211,7 @@ marker. A fill-in-the-middle transform is then applied to 80~\% of the
 surviving samples, and the remainder are truncated to 2048 tokens.
 
 Each filter targets a documented failure mode. Near-deduplication is applied
-because duplicated text increases memorization and leaks test material into
+because duplicated text increases memorisation and leaks test material into
 training~\cite{lee2022};
 the code-smell filter because models trained on smell-cleaned corpora produce
 better code~\cite{xue2025}; and the FIM transform because it buys infilling
@@ -243,7 +243,7 @@ Total  & 100\,000 & 53\,250 & 53.3~\%\\
 \end{table}
 
 \subsection{QLoRA Fine-Tuning}
-Qwen2.5-Coder-1.5B~\cite{hui2024} is loaded in four-bit NF4 quantization and
+Qwen2.5-Coder-1.5B~\cite{hui2024} is loaded in four-bit NF4 quantisation and
 adapted with QLoRA~\cite{dettmers2023} through the Unsloth runtime. Adapters
 are attached to all seven linear projection matrices, at a fixed rank rather
 than an adaptively allocated one, so that the memory ceiling is known in
@@ -260,12 +260,12 @@ configuration.
 \textbf{Parameter} & \textbf{Value}\\
 \midrule
 Base model                & Qwen2.5-Coder-1.5B\\
-Quantization              & four-bit NF4\\
+Quantisation              & four-bit NF4\\
 LoRA rank / scaling       & 16 / 32\\
 Target modules            & q, k, v, o, gate, up, down\\
 Batch size / accumulation & 2 / 8 (effective 16)\\
 Learning rate / schedule  & 0.0002 / cosine\\
-Optimizer                 & AdamW, eight-bit\\
+Optimiser                 & AdamW, eight-bit\\
 Epochs / max.\ seq.\ length & 1 / 2048\\
 Random seed               & 3407\\
 Hardware                  & NVIDIA RTX 4060 Laptop (8\,GB)\\
@@ -280,15 +280,15 @@ single-precision master copy and the two AdamW moments are all resident,
 which is roughly 24\,GB, or three times what the card offers. QLoRA removes
 almost all of it: the frozen base held in four-bit NF4 occupies under a
 gigabyte, and since only the injected low-rank matrices are trained,
-gradients and optimizer state exist for a small fraction of the parameters,
-halved again by the eight-bit optimizer. What remains of the budget is spent
+gradients and optimiser state exist for a small fraction of the parameters,
+halved again by the eight-bit optimiser. What remains of the budget is spent
 on activations, whose peak is set by the 2048-token sequence length and the
 micro-batch. That is why the batch is split into two samples with eightfold
 gradient accumulation rather than sixteen at once: the split leaves the
 effective batch size unchanged while keeping the activation peak inside the
 card, and it is the setting that decides whether the run fits at all.
 
-Each language is trained for a single epoch: 1998 optimizer steps for Python
+Each language is trained for a single epoch: 1998 optimiser steps for Python
 and 1331 for Go at an effective batch size of 16. The Go run completed in
 3713~s (62~min) and the Python run in approximately 2.2~h, so a full
 language fits inside a working session on a laptop. Training loss falls from
@@ -297,15 +297,15 @@ loss of 1.111.
 
 \subsection{Merging, Export and Local Serving}
 After training, the LoRA weights are merged into the base checkpoint and
-exported as a quantized GGUF binary in the \texttt{q4\_k\_m}
+exported as a quantised GGUF binary in the \texttt{q4\_k\_m}
 scheme, which the unified evaluation of llama.cpp
-formats~\cite{kurt2026} identifies as a favorable size-quality compromise,
+formats~\cite{kurt2026} identifies as a favourable size-quality compromise,
 although that evaluation covers an eight-billion-parameter model, so its
 conclusions are carried to a smaller one unverified. The K-quant schemes are not uniform four-bit formats: \texttt{q4\_k\_m}
 keeps part of the attention value and feed-forward projections at six bits
 and rounds the remainder to four, spending the extra bits where the accuracy
 cost of rounding is highest. That non-uniformity, rather than the nominal bit
-width, is what makes it the usual choice at this quantization level.
+width, is what makes it the usual choice at this quantisation level.
 
 Each binary is
 registered with Ollama through a Modelfile that fixes the FIM prompt
@@ -315,7 +315,7 @@ loopback interface, consumed directly by the Continue.dev editor extension;
 no request leaves the machine.
 
 \subsection{Hardware Constraints on Local Serving}
-Quantization matters for serving, not only for fitting, and the reason lies
+Quantisation matters for serving, not only for fitting, and the reason lies
 in the device rather than in the model. Autoregressive decoding at a batch
 size of one reduces every weight matrix to a matrix-vector product in which
 each weight is read once and used once. No reuse remains for the tensor units
@@ -333,16 +333,16 @@ bandwidth effect, not a reduction in the number of operations performed.
 Two terms qualify that bound in opposite directions. The key-value cache is
 read alongside the weights, some 28\,kB per token for this architecture, so a
 full 2048-token window adds about 60\,MB per step, under a tenth of the
-weight traffic. Against that, K-quantized blocks must be unpacked before they
+weight traffic. Against that, K-quantised blocks must be unpacked before they
 can be multiplied, spending arithmetic the half-precision path does not, so
-the realized speed-up is smaller than the traffic ratio suggests. Prefill
+the realised speed-up is smaller than the traffic ratio suggests. Prefill
 differs again: the prompt is consumed in one pass, which restores reuse and
 makes that phase compute-bound, so time to a first suggestion and the
 interval between tokens are limited by different parts of the device.
 
 All of the above are bounds derived from published device and model
 parameters, not measurements; Section~\ref{sec:limits} records that the
-realized figures were not collected.
+realised figures were not collected.
 
 % =====================================================================
 \section{Evaluation}
@@ -380,7 +380,7 @@ The interpretation of that difference depends entirely on what the baseline
 number measures. Under its own few-shot protocol, the same base model is
 reported at 43.9~\%~\cite{hui2024} --- almost exactly what the fine-tuned
 model reaches here. The 10.98~\% baseline therefore does not describe a weak
-model; it describes a capable model penalized by a prompt format it was not
+model; it describes a capable model penalised by a prompt format it was not
 prepared for. One QLoRA epoch teaches it to emit a function body directly
 from a signature, which recovers that latent capability in the format the
 deployment uses. Table~\ref{tab:humaneval} places both numbers next to
@@ -422,7 +422,7 @@ publishers report, with no network dependency and no per-token cost. What the
 fine-tuning buys is not intelligence but format alignment, and that
 distinction is the paper's main methodological point: a benchmark score is a
 property of a model and a prompt protocol jointly, so a score obtained under a
-favorable protocol does not transfer to a deployment that prompts
+favourable protocol does not transfer to a deployment that prompts
 differently. That argues for evaluating under the protocol a system will
 actually receive.
 
@@ -444,9 +444,9 @@ language and the filter thresholds are fixed, so the retention rates are a
 single operating point rather than a tuned optimum. Fourth, one training run
 per language was executed under a fixed seed, so run-to-run variance is not
 quantified. Fifth, and most relevant to the stated motivation, the deployed
-artifact is bounded analytically in Section~III-D but never measured: no
+artefact is bounded analytically in Section~III-D but never measured: no
 completion latency, throughput or inference memory footprint is reported, and
-the effect of four-bit quantization on answer quality is not separated from
+the effect of four-bit quantisation on answer quality is not separated from
 that of the fine-tuning.
 
 % =====================================================================
@@ -457,7 +457,7 @@ corpus to an editor-integrated endpoint that runs entirely on an
 eight-gigabyte consumer card, and reports every stage of that path. A single
 QLoRA epoch raises HumanEval pass@1 from 10.98~\% to 42.68~\% under a
 bare-signature zero-shot protocol, approaching the 43.9~\% the base model
-reports under its own more favorable protocol. That result is best read as
+reports under its own more favourable protocol. That result is best read as
 recovery rather than gain: the fine-tuning aligns the model with the prompt
 format the deployment emits, and the size of the effect is a measure of how
 much a protocol mismatch can suppress an otherwise capable model. Future work will
