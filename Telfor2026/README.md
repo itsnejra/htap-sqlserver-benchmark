@@ -161,6 +161,32 @@ pa bi svako „širenje" bilo nagađanje.
    Xplore-kompatibilnosti (ugrađivanje fontova i sl.).
 7. **Obje verzije.** Svaka izmjena teksta mora se unijeti u oba `.tex` fajla,
    jer engleska i bosanska verzija nisu automatski povezane.
+8b. **Ponovna provjera literature (septembar 2026).** Svih 33 unosa provjereno
+   je iznova na izvorima. Potvrđeni su autori, naslov, mjesto objave, volumen,
+   broj, stranice i godina za 30 unosa. Ispravljena su tri:
+
+   | Unos | Bilo | Sada | Izvor |
+   |---|---|---|---|
+   | HTAP [4] Zhang, *HTAP databases: A survey* | bez vol./br./str. | vol. 36, no. 11, pp. 6410–6429 | IEEE TKDE / IEEE Xplore |
+   | Completus [11] Xue, *Clean code, better models* | 2025 | 2026, `in press` | ACM DL: još „Just Accepted", online 5. 2. 2026, bez vol./br./str. |
+   | Completus [16] Husain, *CodeSearchNet* | `MSR-TR-2019-45` | `arXiv:1909.09436` | broj tehničkog izvještaja ne postoji ni na stranici Microsoft Researcha |
+
+   Uz to su ispravljena **dva pogrešna pripisivanja** u tekstu (referenca je
+   bila tačna, ali tvrdnja uz nju nije bila ono što izvor kaže):
+
+   * StackOverflow2010 i njegova Pareto raspodjela bili su pripisani HTAP
+     survey-u [4]; taj rad ne govori o tom skupu podataka. Citat uklonjen —
+     raspodjela je svojstvo samog skupa i ne treba referencu.
+   * Čekanje `RESOURCE_SEMAPHORE` bilo je pripisano Zengu i drugima [17]; taj
+     rad mjeri Parquet i ORC i ne može potkrijepiti tvrdnju o wait tipu
+     specifičnom za SQL Server. Rečenica je preformulisana tako da referenca
+     stoji uz ono što Zeng zaista pokazuje.
+
+   Napomena o metodi: DBLP, CrossRef, OpenAlex i arXiv nisu dostupni kroz
+   mrežni proxy ovog okruženja (HTTP 403), pa je provjera rađena pretragom uz
+   potvrdu na stranicama izdavača (VLDB, ACM, IEEE, ACL Anthology, ScienceDirect,
+   EDP Sciences, Microsoft Research).
+
 8. **Literatura je provjerena referencu po referencu na izvorima** (august
    2026). Svih 17 referenci provjereno; osim ranije ispravljenih autora,
    ispravljeni su i: [2] str. 1159--1168 (bilo 1170), [5] str. 3313--3325

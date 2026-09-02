@@ -196,8 +196,7 @@ tables (Section~\ref{sec:threats}).
 
 The workload runs over StackOverflow2010, a public dump of the production
 Stack Overflow database covering 2008--2010, preferred to synthetic
-alternatives for its natural Pareto distribution of
-activity~\cite{zhang2024survey}. Each schema holds
+alternatives for its natural Pareto distribution of activity. Each schema holds
 $\approx$\,19.15 million rows: 10.14\,M votes, 3.88\,M comments,
 3.73\,M posts, 1.10\,M badges and 299\,398 users. Data were loaded
 into the disk-based schemas ($>$\,15\,GB) and copied into the
@@ -313,7 +312,8 @@ columnstore still pays, and the difference grows with load. IM also
 surpasses CS in analytical throughput at
 $C = 32$ despite having no columnstore index, since memory-grant waits
 (\texttt{RESOURCE\_SEMAPHORE}) beyond six concurrent batch-mode queries cost
-more than batch mode saves~\cite{zeng2023}.
+more than batch mode saves; columnar gains are conditional on the execution
+environment~\cite{zeng2023}.
 
 \begin{figure}[b]
 \centering

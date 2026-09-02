@@ -208,7 +208,7 @@ procedure u CS i HTAP, čime se uklanjaju \texttt{RESOURCE\_SEMAPHORE}
 Opterećenje se izvršava nad skupom podataka StackOverflow2010, javnim dumpom
 produkcijske baze platforme Stack Overflow za razdoblje 2008--2010, odabranim
 umjesto sintetičkih alternativa zbog prirodne Pareto raspodjele
-aktivnosti~\cite{zhang2024survey}.
+aktivnosti.
 Svaka shema sadrži $\approx$\,19,15 miliona zapisa: 10,14\,M glasova,
 3,88\,M komentara, 3,73\,M postova, 1,10\,M bedževa i 299\,398 korisnika. Podaci su učitani u disk-zasnovane sheme ($>$\,15\,GB) i kopirani
 u memorijsko-optimizirane ($\approx$\,8\,GB po shemi), tako da izmjerene razlike
@@ -328,7 +328,8 @@ radne memorije uklanja ulazno-izlaznu latenciju koju disk-zasnovani
 columnstore i dalje plaća, a razlika raste s opterećenjem. IM nadmašuje CS u analitičkoj
 propusnosti pri $C = 32$ uprkos tome što nema columnstore indeks, jer čekanje
 na dodjelu memorije (\texttt{RESOURCE\_SEMAPHORE}) iznad šest istovremenih
-upita košta više nego što batch-mode donosi~\cite{zeng2023}.
+upita košta više nego što batch-mode donosi; prednosti stupčaste pohrane
+uslovljene su okruženjem izvršavanja~\cite{zeng2023}.
 
 \begin{figure}[b]
 \centering
