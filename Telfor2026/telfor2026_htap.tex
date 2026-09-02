@@ -110,11 +110,7 @@ intermediary~\cite{ozcan2017}.
 Microsoft SQL Server 2022 provides two built-in mechanisms for this purpose:
 the Hekaton in-memory OLTP engine~\cite{diaconu2013} and columnstore
 indexes~\cite{larson2013}. How they should be combined under mixed workloads
-has not been systematically evaluated outside the vendor's own publications:
-available HTAP benchmarking studies target distributed NewSQL systems or
-rely on synthetic datasets (TPC-C, TPC-H) whose uniform access distributions
-do not reproduce the Pareto-shaped activity of real web
-applications~\cite{zhang2024hybench}.
+has not been systematically evaluated outside the vendor's own publications.
 
 This paper addresses that gap with a full-factorial benchmark of four
 storage configurations inside a single SQL Server 2022 instance over a real
@@ -233,7 +229,8 @@ distribution.
 The OLTP workload comprises six stored procedures drawn from a weighted
 distribution typical of a write-intensive web application: vote insert
 (35\,\%), post-score update (25\,\%), comment insert (15\,\%), a range scan
-(10\,\%) and two point lookups (15\,\%), i.e. 75\,\% writes, 25\,\% reads. The OLAP workload comprises five full-scan
+over a user's recent posts (10\,\%) and two point lookups (15\,\%), i.e.
+75\,\% writes and 25\,\% reads. The OLAP workload comprises five full-scan
 aggregation queries drawn uniformly at random, including a join of the
 10.1\,M-row \texttt{Votes} and 3.7\,M-row \texttt{Posts} tables and a user
 cohort query with a common table expression and double aggregation.
@@ -412,9 +409,9 @@ bound at zero synchronization cost, quantifying how much interference
 physical separation removes rather than the net benefit of a consistent
 system. Second, the memory-optimized configurations use
 \texttt{DURABILITY = SCHEMA\_ONLY} and read from RAM while the disk-based ones
-read from an NVMe SSD, so comparisons across media mix the effect of
-architecture with that of the medium; the cleanest are those within one
-medium (HTAP vs. IM, CS vs. the HTAP analytical layer). Third, the \texttt{MAXDOP} asymmetry the engines require confounds the
+read from an NVMe SSD, so comparisons across media and durability mix
+the effect of architecture with that of the medium; the cleanest are those
+within one medium (HTAP vs. IM, CS vs. the HTAP analytical layer). Third, the \texttt{MAXDOP} asymmetry the engines require confounds the
 HTAP--IM comparison, and its contribution was not isolated.
 Fourth, the CPU-saturation explanation is derived from the query execution
 model rather than direct profiling, and all measurements come from one
