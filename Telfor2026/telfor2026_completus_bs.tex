@@ -59,24 +59,24 @@
 1,5 milijardi parametara na potrošačkom GPU-u}
 
 \author{\IEEEauthorblockN{Nejra Smajlović}
-\IEEEauthorblockA{\textit{Politehnički fakultet}\\
-\textit{Univerzitet u Zenici}\\
+\IEEEauthorblockA{\textit{Univerzitet u Zenici}\\
+\textit{Politehnički fakultet}\\
 Zenica, Bosna i Hercegovina\\
 nejra.smajlovic.22@size.ba}
 \and
 \IEEEauthorblockN{Adi Kadušić}
-\IEEEauthorblockA{\textit{Politehnički fakultet}\\
-\textit{Univerzitet u Zenici}\\
+\IEEEauthorblockA{\textit{Univerzitet u Zenici}\\
+\textit{Politehnički fakultet}\\
 Zenica, Bosna i Hercegovina\\
 adi.kadusic.22@size.ba}
 \and
 \IEEEauthorblockN{Alen Begović}
-\IEEEauthorblockA{\textit{Elektrotehnički fakultet}\\
-\textit{Univerzitet u Sarajevu}\\
+\IEEEauthorblockA{\textit{Univerzitet u Sarajevu}\\
+\textit{Elektrotehnički fakultet}\\
 Sarajevo, Bosna i Hercegovina\\
 alen.begovic@etf.unsa.ba}%
-\thanks{N. Smajlović i A. Kadušić su s Politehničkog fakulteta Univerziteta u
-Zenici, a A. Begović s Elektrotehničkog fakulteta Univerziteta u Sarajevu,
+\thanks{N. Smajlović i A. Kadušić su s Univerziteta u Zenici, Politehnički
+fakultet, a A. Begović s Univerziteta u Sarajevu, Elektrotehnički fakultet,
 Bosna i Hercegovina. Kod za treniranje, Modelfile datoteke i skripte za
 evaluaciju: \url{https://github.com/kadusic1/completus}.}}
 
@@ -129,8 +129,8 @@ razvoja čine taj kompromis izvodljivim. Parametarski efikasno fino
 podešavanje (PEFT), posebno adaptacija niskog ranga
 (LoRA)~\cite{hu2022lora}, specijalizuje prethodno istrenirani model uz mali
 dio troška potpunog podešavanja; kvantizovani formati težina poput GGUF-a,
-servirani optimizovanim izvršnim okruženjima, izvršavaju te težine unutar
-nekoliko gigabajta video memorije.
+jednodatotečnog kontejnera modela izvršnog okruženja llama.cpp, izvršavaju te
+težine unutar nekoliko gigabajta video memorije.
 
 Ovaj rad iznosi cjelovitu realizaciju tog recepta, nazvanu Completus, i
 evaluira je u uslovima u kojima se zaista servira. Dvije praznine motivišu

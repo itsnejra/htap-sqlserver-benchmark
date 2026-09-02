@@ -94,7 +94,7 @@ unos, pa ga u komentarima ne smije biti.
 | Svi autori navedeni kad ih je manje od šest | provjereno na izvorima za svih 17 referenci |
 | Predaja u PDF formatu kroz TELFOR sistem | PDF se generiše `pdflatex`-om |
 | Bosanska verzija | **ne može se predati** (TELFOR prima samo engleski ili srpski) — služi za čitanje |
-| Blok autora: **odsjek pa ustanova**, pa grad, pa e-mail | ispravljeno — bilo je obrnuto u sva četiri fajla |
+| Blok autora: grad/država i e-mail ispod ustanove | ispunjeno; za redoslijed ustanova/fakultet v. napomenu ispod |
 | arXiv preprinti: `..., GODINA, arXiv:ID.` (uspravno) | ispravljeno — bili su kurzivirani kao naziv časopisa |
 | Naslov i sažetak bez matematike, simbola, fusnota i citata | provjereno programski, 0 pojavljivanja |
 | „data" je množina | 0 pojavljivanja „data is/was" |
@@ -115,14 +115,24 @@ Rezultat je bajt-identičan onome iz sistemske v1.14 (razlikuje se samo komentar
 s brojem verzije) i BibTeX ne prijavljuje nijedno upozorenje. `IEEEtran.cls` iz
 priloženog template-a identičan je sistemskom (V1.8b, 2015/08/26).
 
-**Svjesno odstupanje.** Template u referenci [8] uz arXiv navodi i
+**Svjesno odstupanje 1 — redoslijed ustanove i fakulteta.** Zvanični template
+u bloku autora navodi prvo odsjek pa ustanovu (`dept. name of organization`,
+zatim `name of organization`). Ovdje je namjerno obrnuto — **ustanova pa
+fakultet** — na izričit zahtjev autorice, i isti redoslijed prati fusnota na
+prvoj stranici. Ovo je stilska, ne tehnička stavka; ne utiče ni na PDF eXpress
+ni na indeksiranje u Xploreu. Ako se ikad vraća na template-ov redoslijed,
+mijenjaju se dvije `\textit` linije po autoru **i** rečenica u `\thanks`.
+
+**Svjesno odstupanje 2 — arXiv URL.** Template u referenci [8] uz arXiv navodi i
 `[Online]. Available: <url>`. URL je izostavljen jer je oznaka `arXiv:ID` sama
 po sebi razrješiva, a šest URL-ova dodaje ~8 redova i probija limit od 4
 stranice. Redoslijed polja (godina prije oznake, uspravno) prati template.
 
-**Otvoreno, tvoja odluka.** `GGUF` se nigdje ne širi. To je naziv formata koji
-se u literaturi tretira kao vlastito ime (kao PDF), pa širenje vjerovatno ne bi
-pomoglo, ali IEEE pravilo o akronimima strogo gledano traži definiciju.
+**GGUF.** Format se pri prvom pojavljivanju u tijelu rada objašnjava kao
+„the llama.cpp model container" (bs: „jednodatotečni kontejner modela izvršnog
+okruženja llama.cpp"). Namjerno se **ne** navodi širenje slova GGUF: llama.cpp
+ga u vlastitoj specifikaciji tretira kao ime formata i ne razrješava akronim,
+pa bi svako „širenje" bilo nagađanje.
 
 ### ⚠️ Prije predaje obavezno provjeriti
 

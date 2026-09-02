@@ -47,25 +47,25 @@
 of a 1.5B Code Model for Local Autocompletion}
 
 \author{\IEEEauthorblockN{Nejra Smajlovi\'c}
-\IEEEauthorblockA{\textit{Polytechnic Faculty}\\
-\textit{University of Zenica}\\
+\IEEEauthorblockA{\textit{University of Zenica}\\
+\textit{Polytechnic Faculty}\\
 Zenica, Bosnia and Herzegovina\\
 nejra.smajlovic.22@size.ba}
 \and
 \IEEEauthorblockN{Adi Kadu\v{s}i\'c}
-\IEEEauthorblockA{\textit{Polytechnic Faculty}\\
-\textit{University of Zenica}\\
+\IEEEauthorblockA{\textit{University of Zenica}\\
+\textit{Polytechnic Faculty}\\
 Zenica, Bosnia and Herzegovina\\
 adi.kadusic.22@size.ba}
 \and
 \IEEEauthorblockN{Alen Begovi\'c}
-\IEEEauthorblockA{\textit{Faculty of Electrical Engineering}\\
-\textit{University of Sarajevo}\\
+\IEEEauthorblockA{\textit{University of Sarajevo}\\
+\textit{Faculty of Electrical Engineering}\\
 Sarajevo, Bosnia and Herzegovina\\
 alen.begovic@etf.unsa.ba}%
-\thanks{N. Smajlovi\'c and A. Kadu\v{s}i\'c are with the Polytechnic Faculty,
-University of Zenica, and A. Begovi\'c with the Faculty of Electrical
-Engineering, University of Sarajevo, Bosnia and Herzegovina. Training code,
+\thanks{N. Smajlovi\'c and A. Kadu\v{s}i\'c are with the University of Zenica,
+Polytechnic Faculty, and A. Begovi\'c with the University of Sarajevo,
+Faculty of Electrical Engineering, Bosnia and Herzegovina. Training code,
 Modelfiles and evaluation scripts:
 \url{https://github.com/kadusic1/completus}.}}
 
@@ -118,9 +118,9 @@ commodity hardware, yet capable enough that its completions are worth
 accepting. Two developments make that trade-off tractable. Parameter-efficient
 fine-tuning (PEFT), and in particular Low-Rank Adaptation
 (LoRA)~\cite{hu2022lora}, specialises a pretrained model at a small fraction
-of the cost of full fine-tuning; quantised weight formats such as GGUF,
-served by optimised runtimes, execute those weights within a few gigabytes
-of video memory.
+of the cost of full fine-tuning; quantised weight formats such as GGUF, the
+llama.cpp model container, execute those weights within a few gigabytes of
+video memory.
 
 This paper reports an end-to-end realisation of that recipe, named Completus,
 and evaluates it in the conditions under which it is actually served. Two
