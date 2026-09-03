@@ -115,15 +115,13 @@ Rezultat je bajt-identičan onome iz sistemske v1.14 (razlikuje se samo komentar
 s brojem verzije) i BibTeX ne prijavljuje nijedno upozorenje. `IEEEtran.cls` iz
 priloženog template-a identičan je sistemskom (V1.8b, 2015/08/26).
 
-**Svjesno odstupanje 1 — redoslijed ustanove i fakulteta.** Zvanični template
-u bloku autora navodi prvo odsjek pa ustanovu (`dept. name of organization`,
-zatim `name of organization`). Ovdje je namjerno obrnuto — **ustanova pa
-fakultet** — na izričit zahtjev autorice, i isti redoslijed prati fusnota na
-prvoj stranici. Ovo je stilska, ne tehnička stavka; ne utiče ni na PDF eXpress
-ni na indeksiranje u Xploreu. Ako se ikad vraća na template-ov redoslijed,
-mijenjaju se dvije `\textit` linije po autoru **i** rečenica u `\thanks`.
+**Blok autora i fusnota.** Blok autora prati redoslijed iz zvaničnog
+template-a: **odsjek, ustanova, grad/država, e-mail** (`dept. name of
+organization`, zatim `name of organization`). Fusnota na prvoj stranici više
+ne ponavlja afilijacije — one već stoje iznad, u bloku autora — nego sadrži
+samo poveznicu na repozitorij.
 
-**Svjesno odstupanje 2 — arXiv URL.** Template u referenci [8] uz arXiv navodi i
+**Svjesno odstupanje — arXiv URL.** Template u referenci [8] uz arXiv navodi i
 `[Online]. Available: <url>`. URL je izostavljen jer je oznaka `arXiv:ID` sama
 po sebi razrješiva, a šest URL-ova dodaje ~8 redova i probija limit od 4
 stranice. Redoslijed polja (godina prije oznake, uspravno) prati template.
