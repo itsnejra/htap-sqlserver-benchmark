@@ -130,35 +130,6 @@ dio troška potpunog podešavanja; kvantizovani formati težina poput GGUF-a,
 jednodatotečnog kontejnera modela izvršnog okruženja llama.cpp, izvršavaju te
 težine unutar nekoliko gigabajta video memorije.
 
-Ovaj rad iznosi cjelovitu realizaciju tog recepta, nazvanu Completus, i
-evaluira je u uslovima u kojima se zaista servira. Dvije praznine motivišu
-rad. Prvo, objavljene studije iznose ili sirovu sposobnost modela ili
-tehniku adaptacije, izolovano; malo ih vodi jedan model od sirovog korpusa
-kroz kuriranje podataka, adaptaciju i kvantizaciju do žive tačke pristupa
-integrisane u editor, uz izvještaj o svakoj fazi. Drugo, modeli za kod
-obično se ocjenjuju pod few-shot protokolima u formatu razgovora, koji ne
-liče na gole potpise funkcija kakve šalje dodatak za editor, pa objavljena
-ocjena ne predviđa ono što će programer doživjeti. Doprinosi rada su
-cjelovit pipeline sa Slike~\ref{fig:pipeline}, iznesen s parametrima
-potrebnim za reprodukciju; kvantifikacija efekta jedne QLoRA epohe izmjerena
-u formatu upita kakav isporuka koristi; i izričito razdvajanje oporavka
-sposobnosti od prirasta sposobnosti, što određuje protokol evaluacije, a što
-objavljene ocjene redovno miješaju.
-
-\begin{figure*}[!t]
-\centering
-\includegraphics[width=\textwidth]{figures/fig_pipeline_bs.pdf}
-\caption{Completus pipeline. Sirove CodeSearchNet funkcije prolaze kroz
-filtriranje kvaliteta i fill-in-the-middle transformaciju, specijalizuju
-Qwen2.5-Coder-1.5B kroz QLoRA, te se spajaju i izvoze u četverobitni
-K-kvantizovani GGUF oblik koji Ollama servira dodatku za editor preko lokalne
-loopback petlje.}
-\label{fig:pipeline}
-\end{figure*}
-
-% =====================================================================
-\section{Dosadašnja istraživanja}
-% =====================================================================
 Oslanjajući se na Transformer arhitekturu s isključivo dekoderskim
 slojevima~\cite{vaswani2017}, niz otvorenih modela za kod smanjio je zaostatak
 za vlasničkim sistemima. StarCoder~\cite{li2023starcoder} trenira se nad
@@ -195,6 +166,32 @@ i prikazan u istraživačkom ili cloud okruženju, pod protokolom koji su
 odabrali njihovi autori. Nijedan ne daje recept koji mali otvoreni model vodi
 sve do tačke pristupa integrisane u editor na uobičajenom hardveru, uz
 izvještaj o kvalitetu u formatu upita koji ta tačka prima.
+
+Ovaj rad iznosi cjelovitu realizaciju tog recepta, nazvanu Completus, i
+evaluira je u uslovima u kojima se zaista servira. Dvije praznine motivišu
+rad. Prvo, objavljene studije iznose ili sirovu sposobnost modela ili
+tehniku adaptacije, izolovano; malo ih vodi jedan model od sirovog korpusa
+kroz kuriranje podataka, adaptaciju i kvantizaciju do žive tačke pristupa
+integrisane u editor, uz izvještaj o svakoj fazi. Drugo, modeli za kod
+obično se ocjenjuju pod few-shot protokolima u formatu razgovora, koji ne
+liče na gole potpise funkcija kakve šalje dodatak za editor, pa objavljena
+ocjena ne predviđa ono što će programer doživjeti. Doprinosi rada su
+cjelovit pipeline sa Slike~\ref{fig:pipeline}, iznesen s parametrima
+potrebnim za reprodukciju; kvantifikacija efekta jedne QLoRA epohe izmjerena
+u formatu upita kakav isporuka koristi; i izričito razdvajanje oporavka
+sposobnosti od prirasta sposobnosti, što određuje protokol evaluacije, a što
+objavljene ocjene redovno miješaju.
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_pipeline_bs.pdf}
+\caption{Completus pipeline. Sirove CodeSearchNet funkcije prolaze kroz
+filtriranje kvaliteta i fill-in-the-middle transformaciju, specijalizuju
+Qwen2.5-Coder-1.5B kroz QLoRA, te se spajaju i izvoze u četverobitni
+K-kvantizovani GGUF oblik koji Ollama servira dodatku za editor preko lokalne
+loopback petlje.}
+\label{fig:pipeline}
+\end{figure*}
 
 % =====================================================================
 \section{Completus pipeline}

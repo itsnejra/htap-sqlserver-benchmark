@@ -119,35 +119,6 @@ of the cost of full fine-tuning; quantised weight formats such as GGUF, the
 llama.cpp model container, execute those weights within a few gigabytes of
 video memory.
 
-This paper reports an end-to-end realisation of that recipe, named Completus,
-and evaluates it in the conditions under which it is actually served. Two
-gaps motivate the work. First, published studies report either raw model
-capability or adaptation technique in isolation; few carry a single model
-from raw corpus through data curation, adaptation and quantisation to a live,
-editor-integrated endpoint, and report every stage. Second, code models are
-usually scored under few-shot, chat-formatted protocols that do not resemble
-the bare-signature prompts an editor plugin emits, so a published score does
-not predict what a developer will experience. The contributions are the
-complete pipeline of Fig.~\ref{fig:pipeline}, reported with the parameters
-needed to reproduce it; a quantification of the effect of a single QLoRA
-epoch measured in the deployment prompt format; and an explicit separation of
-capability recovery from capability gain, which the evaluation protocol
-determines and which published scores routinely conflate.
-
-\begin{figure*}[!t]
-\centering
-\includegraphics[width=\textwidth]{figures/fig_pipeline.pdf}
-\caption{The Completus pipeline. Raw CodeSearchNet functions pass through
-quality filtering and a fill-in-the-middle transform, specialise
-Qwen2.5-Coder-1.5B through QLoRA, and are merged and exported to a four-bit
-K-quantised GGUF build that Ollama serves to an editor plugin over the
-local loopback interface.}
-\label{fig:pipeline}
-\end{figure*}
-
-% =====================================================================
-\section{Related Work}
-% =====================================================================
 Building on the decoder-only Transformer~\cite{vaswani2017}, a succession of
 open code models has narrowed the gap to proprietary systems.
 StarCoder~\cite{li2023starcoder} trains on the permissively licensed Stack
@@ -184,6 +155,31 @@ protocol chosen by its own authors. None delivers a recipe that carries a
 small open model all the way to an editor-integrated endpoint on commodity
 hardware, and reports its quality in the prompt format that endpoint receives.
 
+This paper reports an end-to-end realisation of that recipe, named Completus,
+and evaluates it in the conditions under which it is actually served. Two
+gaps motivate the work. First, published studies report either raw model
+capability or adaptation technique in isolation; few carry a single model
+from raw corpus through data curation, adaptation and quantisation to a live,
+editor-integrated endpoint, and report every stage. Second, code models are
+usually scored under few-shot, chat-formatted protocols that do not resemble
+the bare-signature prompts an editor plugin emits, so a published score does
+not predict what a developer will experience. The contributions are the
+complete pipeline of Fig.~\ref{fig:pipeline}, reported with the parameters
+needed to reproduce it; a quantification of the effect of a single QLoRA
+epoch measured in the deployment prompt format; and an explicit separation of
+capability recovery from capability gain, which the evaluation protocol
+determines and which published scores routinely conflate.
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_pipeline.pdf}
+\caption{The Completus pipeline. Raw CodeSearchNet functions pass through
+quality filtering and a fill-in-the-middle transform, specialise
+Qwen2.5-Coder-1.5B through QLoRA, and are merged and exported to a four-bit
+K-quantised GGUF build that Ollama serves to an editor plugin over the
+local loopback interface.}
+\label{fig:pipeline}
+\end{figure*}
 
 % =====================================================================
 \section{The Completus Pipeline}

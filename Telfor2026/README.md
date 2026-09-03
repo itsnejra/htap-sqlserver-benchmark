@@ -86,6 +86,8 @@ unos, pa ga u komentarima ne smije biti.
 | Fontovi i prored nepromijenjeni u odnosu na IEEEtran | popis literature vraćen na propisanih 8 pt |
 | Jedinice u zaglavljima tabela i na osama slika u zagradama | `(op/s)`, `(ms)`, `(%)` |
 | Oznake na slikama 8 pt | `make_figures.py`, `font.size = 8` |
+| Struktura: `Dosadašnja istraživanja` uklopljena u `Uvod` | oba rada — na zahtjev mentora; u HTAP-u odmah iza pasusa o mehanizmima SQL Servera, u Completusu iza rečenice o „gigabytes of video memory"; pasus s doprinosima ostaje posljednji u oba |
+| HTAP: `Rezultati` + `Diskusija` → `Rezultati i diskusija` | diskusija je sada podnaslov E („Mehanizam i praktično pravilo") |
 | Podnaslovi samo ako ih ima najmanje dva | "Ograničenja validnosti" promovirano u zasebnu sekciju |
 | Slike i tabele umetnute nakon prvog spominjanja | Slika 1 pomjerena na dno kolone (`[b]`) |
 | Akronimi definisani pri prvom pojavljivanju u tekstu | ETL, OLS, CTE dopunjeni |

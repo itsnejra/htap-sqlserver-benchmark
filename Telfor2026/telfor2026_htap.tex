@@ -110,18 +110,6 @@ the Hekaton in-memory OLTP engine~\cite{diaconu2013} and columnstore
 indexes~\cite{larson2013}. How they should be combined under mixed workloads
 has not been systematically evaluated outside the vendor's own publications.
 
-This paper addresses that gap with a full-factorial benchmark of four
-storage configurations inside a single SQL Server 2022 instance over a real
-dataset. Its contributions are an independent, statistically rigorous
-comparison of the four configurations across three workload mixes and three
-concurrency levels (1\,070 valid runs); a per-configuration quantification of
-the OLTP throughput loss caused by concurrent analytical load, with the
-mechanism behind it; and a configuration recommendation, bounded by the
-preconditions under which it holds.
-
-% =====================================================================
-\section{Related Work}
-% =====================================================================
 Zhang \emph{et al.}~\cite{zhang2024survey} classify HTAP systems by storage
 architecture into four families, from a primary row store with an in-memory
 column index to a primary column store with a row-oriented delta layer. Song
@@ -166,6 +154,16 @@ transactional throughput each configuration gives up when analytical queries
 run alongside it. Third, whether the hybrid configuration outperforms the
 purely in-memory one under a transaction-heavy mix, given that both rest on
 the same Hekaton engine.
+
+This paper addresses that gap with a full-factorial benchmark of four
+storage configurations inside a single SQL Server 2022 instance over a real
+dataset. Its contributions are an independent, statistically rigorous
+comparison of the four configurations across three workload mixes and three
+concurrency levels (1\,070 valid runs); a per-configuration quantification of
+the OLTP throughput loss caused by concurrent analytical load, with the
+mechanism behind it; and a configuration recommendation, bounded by the
+preconditions under which it holds.
+
 
 % =====================================================================
 \section{System Under Test}
@@ -241,7 +239,7 @@ relevant. Two log-linear ordinary least squares (OLS) models
 quantify the contribution of individual factors.
 
 % =====================================================================
-\section{Results}
+\section{Results and Discussion}
 % =====================================================================
 Table~\ref{tab:main} summarises the central measurements; the
 Kruskal--Wallis test confirms globally significant differences between the
@@ -351,6 +349,26 @@ $e^{1.382} \approx 4.0\times$ reduction of analytical latency. The CS
 coefficient in the throughput model is not significant ($p = 0.600$): adding
 a columnstore index alone does not improve transactional throughput.
 
+\subsection{Mechanism and Practical Rule}
+The measurements expose a mechanism not quantified independently before: the
+columnstore layer does not merely accelerate analytical queries, it also
+\emph{indirectly protects transactional resources}. That is why the
+dual-store configuration outperforms not only the disk-based configurations
+but also IM, on the same Hekaton engine. In IM, analytical queries scan memory-optimised tables in row mode,
+spending far more CPU cycles per row and saturating the processor at
+$C = 16$ and $C = 32$; in the dual-store layout they are served in batch mode
+from the columnstore copy, so transactions never compete for CPU. Accelerating analytics is therefore also a means of protecting OLTP
+throughput --- a lever complementing the isolation-first perspective
+of~\cite{kang2023} and the decoupled architectures of~\cite{huang2020,
+yang2020}, here without network latency.
+
+The practical rule is simple: when the workload mixes transactions and
+analytics the dual-store layout is preferable at any ratio, while CS remains
+the choice for purely analytical workloads and for servers lacking the memory
+or the edition for In-Memory OLTP. Its preconditions are substantial: roughly
+twice the memory, the cost of synchronising the layers, and tolerance for
+analytics over data that is not fresh.
+
 \begin{table}[t]
 \caption{OLS regression coefficients ($N = 1\,065$: five runs completed no
 analytical query, so the log models exclude them)}
@@ -374,28 +392,6 @@ $R^2$ & \multicolumn{2}{c}{0.881} & \multicolumn{2}{c}{0.854}\\
 \bottomrule
 \end{tabular}
 \end{table}
-
-% =====================================================================
-\section{Discussion}
-% =====================================================================
-The measurements expose a mechanism not quantified independently before: the
-columnstore layer does not merely accelerate analytical queries, it also
-\emph{indirectly protects transactional resources}. That is why the
-dual-store configuration outperforms not only the disk-based configurations
-but also IM, on the same Hekaton engine. In IM, analytical queries scan memory-optimised tables in row mode,
-spending far more CPU cycles per row and saturating the processor at
-$C = 16$ and $C = 32$; in the dual-store layout they are served in batch mode
-from the columnstore copy, so transactions never compete for CPU. Accelerating analytics is therefore also a means of protecting OLTP
-throughput --- a lever complementing the isolation-first perspective
-of~\cite{kang2023} and the decoupled architectures of~\cite{huang2020,
-yang2020}, here without network latency.
-
-The practical rule is simple: when the workload mixes transactions and
-analytics the dual-store layout is preferable at any ratio, while CS remains
-the choice for purely analytical workloads and for servers lacking the memory
-or the edition for In-Memory OLTP. Its preconditions are substantial: roughly
-twice the memory, the cost of synchronising the layers, and tolerance for
-analytics over data that is not fresh.
 
 \section{Threats to Validity}
 \label{sec:threats}

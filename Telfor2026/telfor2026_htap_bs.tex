@@ -122,18 +122,6 @@ in-memory OLTP engine~\cite{diaconu2013} i columnstore
 indekse~\cite{larson2013}. Kako ih treba kombinovati pod mješovitim
 opterećenjima nije sistematski ispitano izvan publikacija samog proizvođača.
 
-Ovaj rad adresira tu prazninu punim faktorijalnim benchmarkom četiri
-konfiguracije pohrane unutar jedne instance SQL Servera 2022 nad stvarnim
-skupom podataka. Doprinosi su: nezavisna, statistički rigorozna usporedba
-četiri konfiguracije kroz tri omjera opterećenja i tri razine konkurentnosti
-(1\,070 valjanih serija); kvantifikacija gubitka OLTP propusnosti koji svaka
-konfiguracija trpi zbog istovremene analitike, s mehanizmom koji stoji iza
-toga; te preporuka za odabir konfiguracije, s jasno navedenim
-preduslovima pod kojima vrijedi.
-
-% =====================================================================
-\section{Dosadašnja istraživanja}
-% =====================================================================
 Zhang i drugi~\cite{zhang2024survey} klasifikuju HTAP sisteme prema
 arhitekturi pohrane u četiri porodice, od redne pohrane s in-memory stupčastim
 indeksom do stupčaste pohrane s rednim delta slojem.
@@ -177,6 +165,16 @@ svaka konfiguracija ustupa kada analitički upiti rade uporedo s njom. Treće,
 dobija li hibridna konfiguracija na propusnosti u odnosu na čisto
 memorijsko-optimiziranu pri transakcijski intenzivnom opterećenju, s obzirom
 da obje počivaju na istom Hekaton engineu.
+
+Ovaj rad adresira tu prazninu punim faktorijalnim benchmarkom četiri
+konfiguracije pohrane unutar jedne instance SQL Servera 2022 nad stvarnim
+skupom podataka. Doprinosi su: nezavisna, statistički rigorozna usporedba
+četiri konfiguracije kroz tri omjera opterećenja i tri razine konkurentnosti
+(1\,070 valjanih serija); kvantifikacija gubitka OLTP propusnosti koji svaka
+konfiguracija trpi zbog istovremene analitike, s mehanizmom koji stoji iza
+toga; te preporuka za odabir konfiguracije, s jasno navedenim
+preduslovima pod kojima vrijedi.
+
 
 % =====================================================================
 \section{Posmatrani sistem}
@@ -256,7 +254,7 @@ praktično relevantnim. Dva log-linearna OLS (ordinary least
 squares) modela kvantifikuju doprinos pojedinih faktora.
 
 % =====================================================================
-\section{Rezultati}
+\section{Rezultati i diskusija}
 % =====================================================================
 Tabela~\ref{tab:main} sažima središnja mjerenja; Kruskal--Wallisov test
 potvrđuje globalno značajne razlike među konfiguracijama za svaku metriku na
@@ -366,6 +364,26 @@ smanjenju analitičke latencije za $e^{1{,}382} \approx 4{,}0\times$.
 Koeficijent CS u modelu propusnosti nije značajan ($p = 0{,}600$): samo
 dodavanje columnstore indeksa ne poboljšava transakcijsku propusnost.
 
+\subsection{Mehanizam i praktično pravilo}
+Mjerenja otkrivaju mehanizam koji dosad nije nezavisno kvantifikovan:
+columnstore sloj ne samo da ubrzava analitičke upite, nego i \emph{posredno
+štiti transakcijske resurse}. Zato dual-store konfiguracija nadmašuje i disk-zasnovane konfiguracije i IM,
+koja radi na istom Hekaton engineu. U IM konfiguraciji analitički upiti skeniraju
+memorijsko-optimizirane tabele u row-modu, trošeći znatno više procesorskih
+ciklusa po redu i zasićujući procesor pri $C = 16$ i $C = 32$; u dual-store
+rasporedu opslužuju se u batch-modu iz columnstore kopije, pa se transakcije
+nikada ne natječu za procesor. Ubrzanje analitike je stoga i
+sredstvo zaštite OLTP propusnosti --- poluga koja dopunjuje pristup
+usmjeren na izolaciju iz~\cite{kang2023} i razdvojene arhitekture
+iz~\cite{huang2020, yang2020}, ovdje ostvarena bez mrežne latencije.
+
+Praktično pravilo je jednostavno: kad god opterećenje spaja transakcije i
+analitiku, dual-store raspored je poželjniji bez obzira na omjer, dok CS
+ostaje pragmatičan izbor za isključivo analitička opterećenja, servere s
+ograničenom memorijom i izdanja bez In-Memory OLTP-a. Preduslovi nisu mali:
+otprilike dvostruka potrošnja memorije, trošak sinhronizacije slojeva i
+tolerancija na analitiku nad podacima koji nisu svježi.
+
 \begin{table}[t]
 \caption{Koeficijenti OLS regresije ($N = 1\,065$: u pet runova nije dovršen
 nijedan analitički upit, pa ih log-modeli izostavljaju)}
@@ -389,28 +407,6 @@ $R^2$ & \multicolumn{2}{c}{0,881} & \multicolumn{2}{c}{0,854}\\
 \bottomrule
 \end{tabular}
 \end{table}
-
-% =====================================================================
-\section{Diskusija}
-% =====================================================================
-Mjerenja otkrivaju mehanizam koji dosad nije nezavisno kvantifikovan:
-columnstore sloj ne samo da ubrzava analitičke upite, nego i \emph{posredno
-štiti transakcijske resurse}. Zato dual-store konfiguracija nadmašuje i disk-zasnovane konfiguracije i IM,
-koja radi na istom Hekaton engineu. U IM konfiguraciji analitički upiti skeniraju
-memorijsko-optimizirane tabele u row-modu, trošeći znatno više procesorskih
-ciklusa po redu i zasićujući procesor pri $C = 16$ i $C = 32$; u dual-store
-rasporedu opslužuju se u batch-modu iz columnstore kopije, pa se transakcije
-nikada ne natječu za procesor. Ubrzanje analitike je stoga i
-sredstvo zaštite OLTP propusnosti --- poluga koja dopunjuje pristup
-usmjeren na izolaciju iz~\cite{kang2023} i razdvojene arhitekture
-iz~\cite{huang2020, yang2020}, ovdje ostvarena bez mrežne latencije.
-
-Praktično pravilo je jednostavno: kad god opterećenje spaja transakcije i
-analitiku, dual-store raspored je poželjniji bez obzira na omjer, dok CS
-ostaje pragmatičan izbor za isključivo analitička opterećenja, servere s
-ograničenom memorijom i izdanja bez In-Memory OLTP-a. Preduslovi nisu mali:
-otprilike dvostruka potrošnja memorije, trošak sinhronizacije slojeva i
-tolerancija na analitiku nad podacima koji nisu svježi.
 
 \section{Ograničenja validnosti}
 \label{sec:threats}
