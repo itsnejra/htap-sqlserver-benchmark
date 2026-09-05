@@ -166,6 +166,23 @@ pa bi svako „širenje" bilo nagađanje.
    Xplore-kompatibilnosti (ugrađivanje fontova i sl.).
 7. **Obje verzije.** Svaka izmjena teksta mora se unijeti u oba `.tex` fajla,
    jer engleska i bosanska verzija nisu automatski povezane.
+8c. **Provjera tabela u finalnim PDF-ovima (septembar 2026).** Vrijednosti su
+   čitane iz gotovih PDF-ova, ne iz izvora, i računate iznova:
+
+   | Tabela | Provjereno | Ishod |
+   |---|---|---|
+   | HTAP I | svih 72 ćelije naspram `Results/summary.csv` (srednje OLTP propusnosti, medijani OLAP $P_{50}$) | sve tačno |
+   | HTAP II | 12 koeficijenata, 12 $p$-vrijednosti, oba $R^2$, $N$ naspram `Results/regression_*.csv` | sve tačno |
+   | Completus I | 31 966/50 000 = 63,93 %, 21 284/50 000 = 42,57 %, zbirovi 100 000 i 53 250 | aritmetika se zatvara |
+   | Completus II | 7 ciljnih modula naspram „all seven linear projection matrices"; 1 998 i 1 331 koraka = broj primjera / efektivni batch 16 | dosljedno tekstu |
+   | Completus III | 10,98 % = 18/164, 42,68 % = 70/164; Wilsonovi 95 % intervali preračunati | [7,1; 16,7] i [35,4; 50,3] izlaze u dlaku |
+
+   Sve tabele u bosanskim verzijama nose identične vrijednosti (72/72 u HTAP-u).
+
+   Jedina sitnica: 53 250/100 000 = 53,25 %, u tabeli zaokruženo na **53,3 %**
+   (pola naviše). Banker's rounding dao bi 53,2 %. Oba su branjiva; zaokruženje
+   je dosljedno s vrijednošću navedenom u zaključku.
+
 8b. **Ponovna provjera literature (septembar 2026).** Svih 33 unosa provjereno
    je iznova na izvorima. Potvrđeni su autori, naslov, mjesto objave, volumen,
    broj, stranice i godina za 30 unosa. Ispravljena su tri:
