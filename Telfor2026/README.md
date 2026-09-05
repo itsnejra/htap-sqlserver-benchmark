@@ -87,7 +87,8 @@ unos, pa ga u komentarima ne smije biti.
 | Jedinice u zaglavljima tabela i na osama slika u zagradama | `(op/s)`, `(ms)`, `(%)` |
 | Oznake na slikama 8 pt | `make_figures.py`, `font.size = 8` |
 | Struktura: `Dosadašnja istraživanja` uklopljena u `Uvod` | oba rada — na zahtjev mentora; u HTAP-u odmah iza pasusa o mehanizmima SQL Servera, u Completusu iza rečenice o „gigabytes of video memory"; pasus s doprinosima ostaje posljednji u oba |
-| HTAP: sekcija II preimenovana u `Description of the Observed System` | bs: `Opis posmatranog sistema`, kao poglavlje 2 projektnog izvještaja |
+| HTAP: sekcije II i III preimenovane paralelno | `Description of the Observed System` i `Description of the Experiment and Environment` (bs: `Opis posmatranog sistema`, `Opis eksperimenta i okruženja`) — kao poglavlja 2 i 3 projektnog izvještaja |
+| Naslovi sekcija bez člana „A"/„The" na početku | IEEE naslovi ne uzimaju neodređeni član; `A Description of…` bi bilo neispravno |
 | Uvodna rečenica: „This paper **presents**", ne „reports" | oba rada, sažetak i uvod |
 | Completus: zaključak proširen na tri pasusa | šta je izgrađeno i zadržavanje podataka → rezultat i metodološka poenta → šta nije izmjereno i budući rad |
 | HTAP: `Rezultati` + `Diskusija` → `Rezultati i diskusija` | diskusija je sada podnaslov E („Mehanizam i praktično pravilo") |
