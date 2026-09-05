@@ -88,6 +88,7 @@ unos, pa ga u komentarima ne smije biti.
 | Oznake na slikama 8 pt | `make_figures.py`, `font.size = 8` |
 | Struktura: `Dosadašnja istraživanja` uklopljena u `Uvod` | oba rada — na zahtjev mentora; u HTAP-u odmah iza pasusa o mehanizmima SQL Servera, u Completusu iza rečenice o „gigabytes of video memory"; pasus s doprinosima ostaje posljednji u oba |
 | HTAP: sekcije II i III preimenovane paralelno | `Description of the Observed System` i `Description of the Experiment and Environment` (bs: `Opis posmatranog sistema`, `Opis eksperimenta i okruženja`) — kao poglavlja 2 i 3 projektnog izvještaja |
+| Duge crte (em dash): engleski **spojeno** (`riječ---riječ`), bosanski **s razmacima** (`riječ --- riječ`) | template u vlastitoj prozi piše `heads—LATEX will do that`, bez razmaka; naša tipografija crtu odvaja razmacima. Izuzetak: naslov reference [5] u Completusu zadržava razmake jer se naslovi citiraju doslovno |
 | Naslovi sekcija bez člana „A"/„The" na početku | IEEE naslovi ne uzimaju neodređeni član; `A Description of…` bi bilo neispravno |
 | Uvodna rečenica: „This paper **presents**", ne „reports" | oba rada, sažetak i uvod |
 | Completus: zaključak proširen na tri pasusa | šta je izgrađeno i zadržavanje podataka → rezultat i metodološka poenta → šta nije izmjereno i budući rad |

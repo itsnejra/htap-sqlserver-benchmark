@@ -370,7 +370,7 @@ distinguishable from sampling noise under this protocol.
 \subsection{Reading the Result Against Published Scores}
 The interpretation of that difference depends entirely on what the baseline
 number measures. Under its own few-shot protocol, the same base model is
-reported at 43.9~\%~\cite{hui2024} --- almost exactly what the fine-tuned
+reported at 43.9~\%~\cite{hui2024}---almost exactly what the fine-tuned
 model reaches here. The 10.98~\% baseline therefore does not describe a weak
 model; it describes a capable model penalised by a prompt format it was not
 prepared for. One QLoRA epoch teaches it to emit a function body directly
@@ -455,10 +455,10 @@ protocol mismatch can suppress an otherwise capable model. A benchmark score
 is therefore a joint property of a model and the protocol that produced it,
 and does not transfer to a deployment that prompts differently.
 
-The served experience itself remains unestablished:
-Section~\ref{sec:hw} bounds it analytically --- batch-one decoding is
-memory-bandwidth bound, capping the four-bit build near 250 tokens per second
-on this card --- but nothing was measured. Future work will close that gap,
+Section~\ref{sec:hw} bounds the served experience
+analytically---batch-one decoding is memory-bandwidth bound, capping the
+four-bit build near 250 tokens per second on this card---but that bound has
+not been measured. Future work will close that gap,
 evaluate the Go model on HumanEval-X, and adopt an infilling-aware benchmark
 matching the deployed usage.
 

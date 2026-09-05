@@ -230,8 +230,8 @@ aggregation queries drawn uniformly at random, including a join of the
 10.1\,M-row \texttt{Votes} and 3.7\,M-row \texttt{Posts} tables and a user
 cohort query with a common table expression and double aggregation.
 
-Because latency distributions are strongly right-skewed --- Shapiro--Wilk
-$p < 0.001$ for every metric --- the analysis is nonparametric: the Kruskal--Wallis $H$ test per metric and concurrency
+Because latency distributions are strongly right-skewed---Shapiro--Wilk
+$p < 0.001$ for every metric---the analysis is nonparametric: the Kruskal--Wallis $H$ test per metric and concurrency
 level ($\upalpha = 0.05$), pairwise Mann--Whitney $U$ tests with Bonferroni
 correction for the $C(4,2) = 6$ pairs ($\upalpha' \approx 0.0083$), and
 Cohen's $d$ as effect size, with $|d| > 0.8$ treated as practically
@@ -289,8 +289,8 @@ is 11.9\,ms in IM against 4.3\,ms in HTAP.
 
 \subsection{Analytical Performance}
 The dual-store configuration also attains the lowest analytical latency in
-every mix --- a mean $P_{50}$ of 924\,ms under 80/20 against 3\,128\,ms
-for Baseline, and 1\,530\,ms against 7\,351\,ms under 20/80 --- and the
+every mix---a mean $P_{50}$ of 924\,ms under 80/20 against 3\,128\,ms
+for Baseline, and 1\,530\,ms against 7\,351\,ms under 20/80---and the
 highest analytical throughput, 6.84 q/s at $C = 32$ versus 3.13 (IM), 2.80
 (CS) and 0.85 q/s (Baseline), an 8.0$\times$ improvement. Robustness follows the same order: the OLAP success rate at $C = 32$
 is 99.4\,\% for HTAP and 97.8\,\% for CS, but only 83.6\,\% for Baseline,
@@ -358,7 +358,7 @@ but also IM, on the same Hekaton engine. In IM, analytical queries scan memory-o
 spending far more CPU cycles per row and saturating the processor at
 $C = 16$ and $C = 32$; in the dual-store layout they are served in batch mode
 from the columnstore copy, so transactions never compete for CPU. Accelerating analytics is therefore also a means of protecting OLTP
-throughput --- a lever complementing the isolation-first perspective
+throughput---a lever complementing the isolation-first perspective
 of~\cite{kang2023} and the decoupled architectures of~\cite{huang2020,
 yang2020}, here without network latency.
 
@@ -417,8 +417,8 @@ instance and dataset, so generalisation requires caution.
 % =====================================================================
 Across 1\,070 valid runs over a 19.2-million-row real dataset, the dual-store
 configuration of SQL Server 2022 dominated every tested mixed-workload
-scenario, reaching 21\,920 ops/s at $C = 32$ --- 4.6$\times$ the in-memory
-configuration and 9.0$\times$ the baseline --- at the lowest analytical
+scenario, reaching 21\,920 ops/s at $C = 32$---4.6$\times$ the in-memory
+configuration and 9.0$\times$ the baseline---at the lowest analytical
 latency ($P_{50} = 924$\,ms under 80/20). The purely in-memory
 configuration proved unexpectedly weak under mixed load despite the same
 transactional engine, because row-mode analytical scans saturate the CPU,
