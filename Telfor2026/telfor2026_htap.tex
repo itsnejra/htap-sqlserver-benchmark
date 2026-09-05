@@ -419,14 +419,22 @@ Across 1\,070 valid runs over a 19.2-million-row real dataset, the dual-store
 configuration of SQL Server 2022 dominated every tested mixed-workload
 scenario. At $C = 32$ it reached 21\,920 ops/s, 4.6$\times$ the in-memory
 configuration and 9.0$\times$ the baseline, at the lowest analytical latency
-($P_{50} = 924$\,ms under 80/20). The purely in-memory
-configuration proved unexpectedly weak under mixed load despite the same
-transactional engine, because row-mode analytical scans saturate the CPU,
-while the disk-based columnstore configuration lost two thirds of its
-transactional capacity once analytical load was added. That protective
-effect, worth a factor of 3.3--6.9 here, deserves attention when HTAP systems
-are tuned. Future work will measure the cost of continuous synchronisation
-and add direct CPU profiling.
+($P_{50} = 924$\,ms under 80/20).
+
+The purely in-memory configuration proved unexpectedly weak under mixed load
+despite the same transactional engine, while the disk-based columnstore
+configuration lost two thirds of its transactional capacity once analytical
+load was added. The paper's principal finding follows: a columnstore layer
+does not only accelerate analytical queries but protects transactional
+throughput as well, by a factor of 3.3 to 6.9, by freeing the processor from
+row-mode scanning. That makes a dual-store layout preferable wherever
+transactions and analytics mix.
+
+Those gains are an upper bound: the configuration evaluated here runs no
+synchronisation mechanism, so it measures the interference physical
+separation removes, not the net benefit of a consistent system. Future work
+will measure the cost of continuous synchronisation and add direct CPU
+profiling.
 
 \section*{Acknowledgment}
 This paper is based, in part, on research conducted during the first

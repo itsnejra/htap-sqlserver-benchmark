@@ -436,12 +436,21 @@ dual-store konfiguracija SQL Servera 2022 dominirala je u svakom ispitanom
 scenariju mješovitog opterećenja. Pri $C = 32$ dostigla je 21\,920 op/s,
 4,6$\times$ više od memorijsko-optimizirane i 9,0$\times$ više od Baseline
 konfiguracije, uz najnižu analitičku latenciju ($P_{50} = 924$\,ms pri
-80/20). Čisto memorijsko-optimizirana konfiguracija pokazala se neočekivano
-slabom pod mješovitim opterećenjem uprkos istom transakcijskom engineu, jer
-row-mode skeniranja zasićuju procesor; disk-zasnovana columnstore
-konfiguracija izgubila je dvije trećine kapaciteta čim je dodana analitika. Taj zaštitni efekt, vrijedan faktora 3,3--6,9,
-zaslužuje pažnju pri podešavanju HTAP sistema. Buduća istraživanja
-mjerit će cijenu sinhronizacije i dodati profilisanje procesora.
+80/20).
+
+Čisto memorijsko-optimizirana konfiguracija pokazala se neočekivano slabom pod
+mješovitim opterećenjem uprkos istom transakcijskom engineu, dok je
+disk-zasnovana columnstore konfiguracija izgubila dvije trećine transakcijskog
+kapaciteta čim je dodana analitika. Odatle slijedi glavni nalaz rada:
+columnstore sloj ne samo da ubrzava analitičke upite nego i štiti transakcijsku
+propusnost, za faktor 3,3 do 6,9, oslobađajući procesor od row-mode
+skeniranja. To dual-store raspored čini poželjnim svuda gdje se miješaju
+transakcije i analitika.
+
+Te prednosti su gornja granica: ispitana konfiguracija ne radi nikakvu
+sinhronizaciju, pa mjeri koliko interferencije uklanja fizičko odvajanje, a ne
+neto dobit konzistentnog sistema. Buduća istraživanja mjerit će cijenu
+kontinuirane sinhronizacije i dodati profilisanje procesora.
 
 \section*{Zahvala}
 Ovaj rad se dijelom zasniva na istraživanju provedenom tokom tekućih master
