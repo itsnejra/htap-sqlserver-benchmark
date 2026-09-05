@@ -163,11 +163,9 @@ WizardCoder~\cite{luo2024} da podešavanje u stilu instrukcija dalje podiže
 kvalitet koda. Izbor kvantizacije slijedi objedinjenu evaluaciju llama.cpp
 formata koju daje Kurt~\cite{kurt2026}. Ovim radovima zajedničko je to da je svaki razvijen
 i prikazan u istraživačkom ili cloud okruženju, pod protokolom koji su
-odabrali njihovi autori. Nijedan ne daje recept koji mali otvoreni model vodi
-sve do tačke pristupa integrisane u editor na uobičajenom hardveru, uz
-izvještaj o kvalitetu u formatu upita koji ta tačka prima.
+odabrali njihovi autori.
 
-Ovaj rad iznosi cjelovitu realizaciju tog recepta, nazvanu Completus, i
+Ovaj rad predstavlja cjelovitu realizaciju tog recepta, nazvanu Completus, i
 evaluira je u uslovima u kojima se zaista servira. Dvije praznine motivišu
 rad. Prvo, objavljene studije iznose ili sirovu sposobnost modela ili
 tehniku adaptacije, izolovano; malo ih vodi jedan model od sirovog korpusa
@@ -318,6 +316,7 @@ loopback petlji, koju direktno koristi Continue.dev dodatak za editor; nijedan
 zahtjev ne napušta mašinu.
 
 \subsection{Hardverska ograničenja lokalnog serviranja}
+\label{sec:hw}
 Kvantizacija je bitna i za serviranje, ne samo da bi model stao, a razlog leži
 u uređaju, a ne u modelu. Autoregresivno dekodiranje pri seriji od jednog
 uzorka svodi svako množenje matricom na proizvod matrice i vektora, u kojem
@@ -421,16 +420,12 @@ Qwen2.5-Coder osnovni~\cite{hui2024} & 1,5B & 43,9~\% & ---\\
 Praktično čitanje jeste da kompaktan otvoren model, adaptiran dva sata na
 laptop kartici, servira autokompletaciju kvaliteta bliskog onome što
 prijavljuju njegovi autori, bez mrežne ovisnosti i bez troška po tokenu. Ono
-što fino podešavanje donosi nije inteligencija nego usklađivanje formata, i ta
-razlika je glavna metodološka poenta rada: ocjena na benchmarku je zajedničko
-svojstvo modela i protokola upita, pa se ocjena dobijena pod povoljnim
-protokolom ne prenosi na isporuku koja pita drugačije. To je u skladu s
+što fino podešavanje donosi nije inteligencija nego usklađivanje formata. To je u skladu s
 nalazom Weyssowa i drugih~\cite{weyssow2025} da LoRA vraća najveći dio
 kvaliteta potpunog podešavanja, i govori u prilog evaluaciji pod protokolom
 koji će sistem zaista primati.
 
-Za tim koji vaga hostovanu naspram lokalne tačke pristupa, cijena prelaska je
-jedna kartica laptop klase i dva sata treniranja po jeziku.
+Za tim koji vaga hostovanu naspram lokalne tačke pristupa,
 Tabela~\ref{tab:humaneval} pokazuje i da veličina modela nije cijela priča na
 ovoj skali: adaptirani model od 1,5 milijardi parametara dostiže ocjenu
 usporedivu s objavljenim brojevima za modele četiri do deset puta veće, mada
@@ -456,16 +451,26 @@ odvojen od efekta finog podešavanja.
 % =====================================================================
 Completus vodi otvoreni model za kod od 1,5 milijardi parametara od javnog
 korpusa do tačke pristupa integrisane u editor koja radi u cijelosti na
-potrošačkoj kartici od osam gigabajta, i izvještava o svakoj fazi tog puta.
-Jedna QLoRA epoha podiže HumanEval pass@1 s 10,98~\% na 42,68~\% pod
-protokolom s golim potpisom, približavajući se vrijednosti od 43,9~\% koju
-osnovni model prijavljuje pod vlastitim, povoljnijim protokolom. Taj rezultat
-najbolje je čitati kao oporavak, a ne kao prirast: fino podešavanje usklađuje
-model s formatom upita koji isporuka šalje, a veličina efekta mjeri koliko
-neusklađenost protokola može prigušiti inače sposoban model. Buduća istraživanja
-izmjerit će servisiranu tačku pristupa naspram granica iz odjeljka~III-D,
-evaluirati Go model na HumanEval-X i uvesti benchmark svjestan popunjavanja
-koji odgovara isporučenoj upotrebi.
+potrošačkoj kartici od osam gigabajta, i izvještava o svakoj fazi tog puta:
+filter kvaliteta i fill-in-the-middle transformacija koji zadržavaju
+53,3~\% od 100\,000 kandidatnih funkcija, jedna QLoRA epoha po jeziku te
+spojeni četverobitni build serviran kroz Ollamu.
+
+Ta jedna epoha podiže HumanEval pass@1 s 10,98~\% na 42,68~\% pod protokolom
+s golim potpisom, približavajući se vrijednosti od 43,9~\% koju osnovni model
+prijavljuje pod vlastitim, povoljnijim protokolom. Rezultat je najbolje čitati
+kao oporavak, a ne kao prirast: fino podešavanje usklađuje model s formatom
+upita koji isporuka šalje, a veličina efekta mjeri koliko neusklađenost
+protokola može prigušiti inače sposoban model. Ocjena na benchmarku je stoga
+zajedničko svojstvo modela i protokola koji ju je proizveo i ne prenosi se na
+isporuku koja pita drugačije.
+
+Sama servisirana upotreba ostaje neutvrđena: odjeljak~\ref{sec:hw} omeđuje je
+analitički --- dekodiranje pri seriji od jednog uzorka ograničeno je
+propusnošću memorije, što četverobitni build zaustavlja oko 250 tokena u
+sekundi na ovoj kartici --- ali ništa nije izmjereno. Buduća istraživanja
+zatvorit će taj jaz, evaluirati Go model na HumanEval-X i uvesti benchmark
+svjestan popunjavanja koji odgovara isporučenoj upotrebi.
 
 \section*{Zahvala}
 Ovaj rad se dijelom zasniva na istraživanju provedenom tokom tekućih master

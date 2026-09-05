@@ -151,11 +151,9 @@ WizardCoder~\cite{luo2024} that instruction-style tuning lifts code quality
 further. The quantisation build follows the unified evaluation of llama.cpp
 formats by Kurt~\cite{kurt2026}. What these works share is that each is
 developed and reported in a research or cloud-serving setting, under a
-protocol chosen by its own authors. None delivers a recipe that carries a
-small open model all the way to an editor-integrated endpoint on commodity
-hardware, and reports its quality in the prompt format that endpoint receives.
+protocol chosen by its own authors.
 
-This paper reports an end-to-end realisation of that recipe, named Completus,
+This paper presents an end-to-end realisation of that recipe, named Completus,
 and evaluates it in the conditions under which it is actually served. Two
 gaps motivate the work. First, published studies report either raw model
 capability or adaptation technique in isolation; few carry a single model
@@ -308,6 +306,7 @@ loopback interface, consumed directly by the Continue.dev editor extension;
 no request leaves the machine.
 
 \subsection{Hardware Constraints on Local Serving}
+\label{sec:hw}
 Quantisation matters for serving, not only for fitting, and the reason lies
 in the device rather than in the model. Autoregressive decoding at a batch
 size of one reduces every weight matrix to a matrix-vector product in which
@@ -412,15 +411,10 @@ Qwen2.5-Coder base~\cite{hui2024}   & 1.5B  & 43.9~\% & ---\\
 The practical reading is that a compact open model, adapted for two hours
 on a laptop card, serves autocompletion at a quality close to what its
 publishers report, with no network dependency and no per-token cost. What the
-fine-tuning buys is not intelligence but format alignment, and that
-distinction is the paper's main methodological point: a benchmark score is a
-property of a model and a prompt protocol jointly, so a score obtained under a
-favourable protocol does not transfer to a deployment that prompts
-differently. That argues for evaluating under the protocol a system will
-actually receive.
+fine-tuning buys is not intelligence but format alignment, which argues for
+evaluating under the protocol a system will actually receive.
 
-For a team weighing a hosted endpoint against a local one, the cost of
-going local is one laptop-class card and two hours of training per language.
+For a team weighing a hosted endpoint against a local one,
 Table~\ref{tab:humaneval} also shows that model size is not the whole story
 at this scale: the adapted 1.5-billion-parameter model reaches a score
 comparable to published figures for models four to ten times larger, though
@@ -447,16 +441,26 @@ that of the fine-tuning.
 % =====================================================================
 Completus carries a 1.5-billion-parameter open code model from a public
 corpus to an editor-integrated endpoint that runs entirely on an
-eight-gigabyte consumer card, and reports every stage of that path. A single
-QLoRA epoch raises HumanEval pass@1 from 10.98~\% to 42.68~\% under a
+eight-gigabyte consumer card, and reports every stage of that path: a quality
+filter and fill-in-the-middle transform that retain 53.3~\% of 100\,000
+candidate functions, one QLoRA epoch per language, and a merged four-bit
+build served through Ollama.
+
+That single epoch raises HumanEval pass@1 from 10.98~\% to 42.68~\% under a
 bare-signature zero-shot protocol, approaching the 43.9~\% the base model
-reports under its own more favourable protocol. That result is best read as
+reports under its own more favourable protocol. The result is best read as
 recovery rather than gain: the fine-tuning aligns the model with the prompt
-format the deployment emits, and the size of the effect is a measure of how
-much a protocol mismatch can suppress an otherwise capable model. Future work will
-measure the served endpoint against the bounds of Section~III-D, evaluate the
-Go model on HumanEval-X, and adopt an infilling-aware benchmark matching the
-deployed usage.
+format the deployment emits, and the size of the effect measures how much a
+protocol mismatch can suppress an otherwise capable model. A benchmark score
+is therefore a joint property of a model and the protocol that produced it,
+and does not transfer to a deployment that prompts differently.
+
+The served experience itself remains unestablished:
+Section~\ref{sec:hw} bounds it analytically --- batch-one decoding is
+memory-bandwidth bound, capping the four-bit build near 250 tokens per second
+on this card --- but nothing was measured. Future work will close that gap,
+evaluate the Go model on HumanEval-X, and adopt an infilling-aware benchmark
+matching the deployed usage.
 
 \section*{Acknowledgment}
 This paper is based, in part, on research conducted during the first and
