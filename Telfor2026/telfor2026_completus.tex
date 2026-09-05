@@ -455,12 +455,11 @@ protocol mismatch can suppress an otherwise capable model. A benchmark score
 is therefore a joint property of a model and the protocol that produced it,
 and does not transfer to a deployment that prompts differently.
 
-Section~\ref{sec:hw} bounds the served experience
-analytically---batch-one decoding is memory-bandwidth bound, capping the
-four-bit build near 250 tokens per second on this card---but that bound has
-not been measured. Future work will close that gap,
-evaluate the Go model on HumanEval-X, and adopt an infilling-aware benchmark
-matching the deployed usage.
+Section~\ref{sec:hw} bounds the served experience analytically. Batch-one
+decoding is memory-bandwidth bound, which caps the four-bit build near 250
+tokens per second on this card, but that bound has not been measured. Future
+work will close that gap, evaluate the Go model on HumanEval-X, and adopt an
+infilling-aware benchmark matching the deployed usage.
 
 \section*{Acknowledgment}
 This paper is based, in part, on research conducted during the first and

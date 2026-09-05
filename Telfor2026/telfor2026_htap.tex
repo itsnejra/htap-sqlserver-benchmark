@@ -417,9 +417,9 @@ instance and dataset, so generalisation requires caution.
 % =====================================================================
 Across 1\,070 valid runs over a 19.2-million-row real dataset, the dual-store
 configuration of SQL Server 2022 dominated every tested mixed-workload
-scenario, reaching 21\,920 ops/s at $C = 32$---4.6$\times$ the in-memory
-configuration and 9.0$\times$ the baseline---at the lowest analytical
-latency ($P_{50} = 924$\,ms under 80/20). The purely in-memory
+scenario. At $C = 32$ it reached 21\,920 ops/s, 4.6$\times$ the in-memory
+configuration and 9.0$\times$ the baseline, at the lowest analytical latency
+($P_{50} = 924$\,ms under 80/20). The purely in-memory
 configuration proved unexpectedly weak under mixed load despite the same
 transactional engine, because row-mode analytical scans saturate the CPU,
 while the disk-based columnstore configuration lost two thirds of its

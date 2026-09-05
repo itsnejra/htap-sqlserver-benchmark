@@ -433,9 +433,9 @@ zahtijeva opreznost.
 % =====================================================================
 Kroz 1\,070 valjanih serija nad stvarnim skupom od 19,2 miliona zapisa,
 dual-store konfiguracija SQL Servera 2022 dominirala je u svakom ispitanom
-scenariju mješovitog opterećenja, dostigavši 21\,920 op/s pri $C = 32$ ---
+scenariju mješovitog opterećenja. Pri $C = 32$ dostigla je 21\,920 op/s,
 4,6$\times$ više od memorijsko-optimizirane i 9,0$\times$ više od Baseline
-konfiguracije --- uz najnižu analitičku latenciju ($P_{50} = 924$\,ms pri
+konfiguracije, uz najnižu analitičku latenciju ($P_{50} = 924$\,ms pri
 80/20). Čisto memorijsko-optimizirana konfiguracija pokazala se neočekivano
 slabom pod mješovitim opterećenjem uprkos istom transakcijskom engineu, jer
 row-mode skeniranja zasićuju procesor; disk-zasnovana columnstore
