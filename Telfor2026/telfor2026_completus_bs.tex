@@ -98,8 +98,8 @@ pokušaja, naspram 10,98 posto koliko postiže nepodešena osnovna verzija pod
 istim protokolom. Dobitak je stoga oporavak sposobnosti koju osnovni model
 već prijavljuje pod vlastitim, povoljnijim protokolom, ostvaren u formatu
 upita koji lokalna isporuka zaista koristi, a ne neto prirast sposobnosti.
-Cijeli tok izvršava se na laptop grafičkoj kartici od osam gigabajta za manje
-od dva sata po jeziku.
+Fino podešavanje izvršava se na laptop grafičkoj kartici od osam gigabajta za
+62 minute kod Go-a i 2,2 sata kod Pythona.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -139,9 +139,8 @@ Llamu~2 popunjavanjem i podrškom za dug kontekst;
 DeepSeek-Coder~\cite{guo2024} trenira se nad korpusom na nivou projekta uz
 cilj popunjavanja; a Qwen2.5-Coder~\cite{hui2024} prijavljuje vodeće rezultate
 među otvorenim modelima na skali od 1,5 milijardi parametara koja se ovdje
-koristi. Completus se razlikuje po cilju, a ne po tehnici: ne trenira novi
-model, nego specijalizuje postojeći mali za uzak zadatak osjetljiv na
-kašnjenje.
+koristi. Completus se razlikuje po cilju: specijalizuje postojeći mali
+model umjesto da trenira novi.
 
 Na strani adaptacije, LoRA~\cite{hu2022lora} zamrzava prethodno istrenirane
 težine i ubacuje matrice niskorangovane dekompozicije, smanjujući broj
@@ -201,6 +200,7 @@ da se cijeli put od javnog korpusa do žive tačke pristupa može ponovo izvesti
 na jednoj mašini.
 
 \subsection{Priprema podataka}
+\label{sec:data}
 Korpus je CodeSearchNet~\cite{husain2019}, čiji puni podskupovi sadrže
 412\,178 Python i 317\,832 Go funkcija. Da bi priprema ostala izvodljiva na
 jednoj radnoj stanici, ulaz je ograničen na prvih 50\,000 funkcija po jeziku,
@@ -293,8 +293,8 @@ kartice, i to je postavka koja odlučuje hoće li izvođenje uopšte stati.
 
 Svaki jezik trenira se jednu epohu: 1998 koraka optimizatora za Python i 1331
 za Go, pri efektivnoj veličini serije od 16. Go izvođenje završilo je za
-3713~s (62~min), a Python za približno 2,2~h, pa cijeli jezik staje unutar
-jedne radne sesije na laptopu. Gubitak pri treniranju pada s 1,674 na početku
+3713~s (62~min), a Python za približno 2,2~h, ne računajući pripremu podataka
+i izvoz. Gubitak pri treniranju pada s 1,674 na početku
 Python izvođenja, a Go izvođenje završava sa srednjim gubitkom od 1,111.
 
 \subsection{Spajanje, izvoz i lokalno serviranje}
@@ -351,7 +351,7 @@ prikupljene.
 \section{Evaluacija}
 % =====================================================================
 \subsection{Protokol}
-Evaluacija koristi HumanEval, čijih 164 Python problema svaki uparuje potpis
+Evaluacija koristi HumanEval~\cite{chen2021humaneval}, čijih 164 Python problema svaki uparuje potpis
 funkcije sa skrivenim jediničnim testovima. Generisanje je pohlepno, jedan
 determinističan uzorak po problemu i najviše 512 novih tokena, a prikazana
 metrika je pass@1: udio problema čije generisano tijelo prolazi sve testove.
@@ -417,7 +417,7 @@ Qwen2.5-Coder osnovni~\cite{hui2024} & 1,5B & 43,9~\% & ---\\
 \section{Diskusija i ograničenja validnosti}
 \label{sec:limits}
 % =====================================================================
-Praktično čitanje jeste da kompaktan otvoren model, adaptiran dva sata na
+Praktično čitanje jeste da kompaktan otvoren model, adaptiran u jednoj epohi na
 laptop kartici, servira autokompletaciju kvaliteta bliskog onome što
 prijavljuju njegovi autori, bez mrežne ovisnosti i bez troška po tokenu. Ono
 što fino podešavanje donosi nije inteligencija nego usklađivanje formata. To je u skladu s
@@ -425,7 +425,6 @@ nalazom Weyssowa i drugih~\cite{weyssow2025} da LoRA vraća najveći dio
 kvaliteta potpunog podešavanja, i govori u prilog evaluaciji pod protokolom
 koji će sistem zaista primati.
 
-Za tim koji vaga hostovanu naspram lokalne tačke pristupa,
 Tabela~\ref{tab:humaneval} pokazuje i da veličina modela nije cijela priča na
 ovoj skali: adaptirani model od 1,5 milijardi parametara dostiže ocjenu
 usporedivu s objavljenim brojevima za modele četiri do deset puta veće, mada
@@ -433,7 +432,7 @@ pod protokolima koji se razlikuju, pa samo kao naznaka.
 
 Pet ograničenja omeđuje ove rezultate. Prvo, samo je Python model evaluiran
 kvantitativno; Go model ocijenjen je kvalitativno, pa jaz u zadržavanju iz
-odjeljka~III-A nije vezan za izmjerenu razliku u kvalitetu. Drugo, HumanEval
+odjeljka~\ref{sec:data} nije vezan za izmjerenu razliku u kvalitetu. Drugo, HumanEval
 ocjenjuje sintezu samostalnih funkcija, a ne popunjavanje svjesno položaja
 kursora, koje FIM cilj trenira i koje dodatak za editor zaista traži, pa
 prikazani broj ne mjeri isporučeni zadatak direktno. Treće, ulaz u pipeline
@@ -441,7 +440,7 @@ ograničen je na 50\,000 funkcija po jeziku, a pragovi filtera su fiksni, pa su
 stope zadržavanja jedna radna tačka, a ne podešeni optimum. Četvrto, po jednom
 jeziku izvedeno je jedno treniranje uz fiksno sjeme, pa varijansa između
 izvođenja nije kvantifikovana. Peto, i najvažnije za navedenu motivaciju,
-isporučeni artefakt je analitički omeđen u odjeljku~III-D, ali nikad izmjeren:
+isporučeni artefakt je analitički omeđen u odjeljku~\ref{sec:hw}, ali nikad izmjeren:
 nisu prikazani ni kašnjenje dopune, ni propusnost, ni zauzeće memorije pri
 inferenciji, a efekat četverobitne kvantizacije na kvalitet odgovora nije
 odvojen od efekta finog podešavanja.

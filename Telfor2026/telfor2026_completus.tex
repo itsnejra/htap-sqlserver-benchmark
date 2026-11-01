@@ -85,9 +85,8 @@ Python model solves 42.68 percent of the problems on the first attempt,
 against 10.98 percent for the untuned baseline under the same protocol. The
 gain is therefore a recovery, in the prompt format the local deployment
 actually uses, of capability the base model already reports under its own
-more favourable protocol, and not a net capability increase. The complete
-workflow runs on an eight-gigabyte laptop graphics card in under two hours
-per language.
+more favourable protocol, and not a net capability increase. Fine-tuning runs on an
+eight-gigabyte laptop card in 62 minutes for Go and 2.2 hours for Python.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -127,9 +126,8 @@ Code Llama~\cite{roziere2023} extends Llama~2 with infilling and long-context
 support; DeepSeek-Coder~\cite{guo2024} trains on a project-level corpus with
 an infilling objective; and Qwen2.5-Coder~\cite{hui2024} reports the leading
 scores among open models at the 1.5-billion-parameter scale adopted here.
-Completus differs in goal rather than in technique: it does not pretrain a
-new model but specialises an existing small one for a narrow,
-latency-sensitive task.
+Completus differs in goal: it specialises an existing small model rather
+than pretraining a new one.
 
 On the adaptation side, LoRA~\cite{hu2022lora} freezes the pretrained
 weights and injects trainable rank-decomposition matrices, cutting trainable
@@ -190,6 +188,7 @@ one machine.
 
 
 \subsection{Data Preparation}
+\label{sec:data}
 The corpus is CodeSearchNet~\cite{husain2019}, whose full splits contain
 412\,178 Python and 317\,832 Go functions. To keep preparation tractable on
 one workstation the input is capped at the first 50\,000 functions per
@@ -280,9 +279,9 @@ effective batch size unchanged while keeping the activation peak inside the
 card, and it is the setting that decides whether the run fits at all.
 
 Each language is trained for a single epoch: 1998 optimiser steps for Python
-and 1331 for Go at an effective batch size of 16. The Go run completed in
-3713~s (62~min) and the Python run in approximately 2.2~h, so a full
-language fits inside a working session on a laptop. Training loss falls from
+and 1331 for Go at an effective batch size of 16. The Go training run
+completed in 3713~s (62~min) and the Python one in approximately 2.2~h,
+exclusive of data preparation and export. Training loss falls from
 1.674 at the start of the Python run, and the Go run ends at a mean training
 loss of 1.111.
 
@@ -340,8 +339,8 @@ realised figures were not collected.
 \section{Evaluation}
 % =====================================================================
 \subsection{Protocol}
-Evaluation uses HumanEval, whose 164 Python problems each pair a function
-signature with hidden unit tests. Generation is greedy, one deterministic
+Evaluation uses HumanEval~\cite{chen2021humaneval}, whose 164 Python problems
+each pair a function signature with hidden unit tests. Generation is greedy, one deterministic
 sample per problem and at most 512 new tokens, and the reported metric is
 pass@1: the fraction of problems whose generated body passes every test.
 
@@ -408,21 +407,20 @@ Qwen2.5-Coder base~\cite{hui2024}   & 1.5B  & 43.9~\% & ---\\
 \section{Discussion and Threats to Validity}
 \label{sec:limits}
 % =====================================================================
-The practical reading is that a compact open model, adapted for two hours
-on a laptop card, serves autocompletion at a quality close to what its
+The practical reading is that a compact open model, adapted in a single
+epoch on a laptop card, serves autocompletion at a quality close to what its
 publishers report, with no network dependency and no per-token cost. What the
 fine-tuning buys is not intelligence but format alignment, which argues for
 evaluating under the protocol a system will actually receive.
 
-For a team weighing a hosted endpoint against a local one,
 Table~\ref{tab:humaneval} also shows that model size is not the whole story
 at this scale: the adapted 1.5-billion-parameter model reaches a score
 comparable to published figures for models four to ten times larger, though
-under protocols that differ and therefore only as an indication.
+under protocols that differ, so only as an indication.
 
 Five limitations bound these results. First, only the Python model is
 evaluated quantitatively; the Go model is assessed qualitatively, so the
-retention gap reported in Section~III-A is not tied to a measured quality
+retention gap reported in Section~\ref{sec:data} is not tied to a measured quality
 difference. Second, HumanEval scores self-contained function synthesis, not
 the cursor-aware infilling that the FIM objective trains and that the editor
 plugin actually issues, so the reported figure does not measure the deployed
@@ -431,7 +429,7 @@ language and the filter thresholds are fixed, so the retention rates are a
 single operating point rather than a tuned optimum. Fourth, one training run
 per language was executed under a fixed seed, so run-to-run variance is not
 quantified. Fifth, and most relevant to the stated motivation, the deployed
-artefact is bounded analytically in Section~III-D but never measured: no
+artefact is bounded analytically in Section~\ref{sec:hw} but never measured: no
 completion latency, throughput or inference memory footprint is reported, and
 the effect of four-bit quantisation on answer quality is not separated from
 that of the fine-tuning.
