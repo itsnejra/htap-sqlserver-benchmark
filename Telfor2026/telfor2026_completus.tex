@@ -331,24 +331,25 @@ differs again: the prompt is consumed in one pass, which restores reuse and
 makes that phase compute-bound, so time to a first suggestion and the
 interval between tokens are limited by different parts of the device.
 
-All of the above are bounds derived from published device and model
-parameters, not measurements; Section~\ref{sec:limits} records that the
-realised figures were not collected.
+These are bounds derived from published parameters, not measurements.
 
 % =====================================================================
 \section{Evaluation}
 % =====================================================================
 \subsection{Protocol}
 Evaluation uses HumanEval~\cite{chen2021humaneval}, whose 164 Python problems
-each pair a function signature with hidden unit tests. Generation is greedy, one deterministic
-sample per problem and at most 512 new tokens, and the reported metric is
-pass@1: the fraction of problems whose generated body passes every test.
+each pair a function signature with hidden unit tests. Generation is greedy,
+one deterministic sample per problem and at most 512 new tokens, and the
+reported metric is pass@1: the fraction of problems whose generated body
+passes every test. No stop sequence is imposed and the decoded continuation
+is scored unmodified, so a completion that implements the function but then
+continues with further top-level code can fail on that account alone. Both
+checkpoints are evaluated in half precision through the Transformers runtime;
+the four-bit build that Ollama serves is not.
 
-Only pass@1 is reported. Counting a problem solved if any of several
-sampled completions passes measures a property no editor plugin exposes: the
-developer sees one suggestion and accepts it or does not. Greedy pass@1
-therefore measures what the deployment delivers, at the cost of a wider
-confidence interval.
+Only pass@1 is reported: an editor plugin shows one suggestion, not several,
+so counting a problem solved if any of many samples passes would measure a
+property the deployment never exposes.
 
 The prompt matters more than the decoding here. Rather than the few-shot,
 chat-formatted prompt used in the base model's own report, the prompt is the
@@ -367,17 +368,15 @@ The intervals do not overlap, so the difference of 31.7 percentage points is
 distinguishable from sampling noise under this protocol.
 
 \subsection{Reading the Result Against Published Scores}
-The interpretation of that difference depends entirely on what the baseline
-number measures. Under its own few-shot protocol, the same base model is
-reported at 43.9~\%~\cite{hui2024}---almost exactly what the fine-tuned
-model reaches here. The 10.98~\% baseline therefore does not describe a weak
-model; it describes a capable model penalised by a prompt format it was not
-prepared for. One QLoRA epoch teaches it to emit a function body directly
-from a signature, which recovers that latent capability in the format the
+Under its own few-shot protocol the same base model is reported at
+43.9~\%~\cite{hui2024}, almost exactly what the fine-tuned model reaches
+here. The 10.98~\% baseline therefore does not describe a weak model but a
+capable one penalised by a prompt format and a stopping rule it was not
+prepared for. One QLoRA epoch teaches it to emit a function body from a
+signature and stop, which recovers that capability in the format the
 deployment uses. Table~\ref{tab:humaneval} places both numbers next to
-published scores for comparable models; those scores were obtained under
-protocols set by their own authors and are context, not a controlled
-comparison.
+published scores for models four to ten times larger, obtained under
+protocols set by their own authors: context, not a controlled comparison.
 
 \begin{table}[b]
 \caption{HumanEval pass@1. The upper block is measured here under a single
@@ -410,13 +409,9 @@ Qwen2.5-Coder base~\cite{hui2024}   & 1.5B  & 43.9~\% & ---\\
 The practical reading is that a compact open model, adapted in a single
 epoch on a laptop card, serves autocompletion at a quality close to what its
 publishers report, with no network dependency and no per-token cost. What the
-fine-tuning buys is not intelligence but format alignment, which argues for
-evaluating under the protocol a system will actually receive.
-
-Table~\ref{tab:humaneval} also shows that model size is not the whole story
-at this scale: the adapted 1.5-billion-parameter model reaches a score
-comparable to published figures for models four to ten times larger, though
-under protocols that differ, so only as an indication.
+fine-tuning buys is not intelligence but alignment to what the protocol
+scores, which argues for evaluating under the protocol a system will
+actually receive.
 
 Five limitations bound these results. First, only the Python model is
 evaluated quantitatively; the Go model is assessed qualitatively, so the
@@ -430,9 +425,8 @@ single operating point rather than a tuned optimum. Fourth, one training run
 per language was executed under a fixed seed, so run-to-run variance is not
 quantified. Fifth, and most relevant to the stated motivation, the deployed
 artefact is bounded analytically in Section~\ref{sec:hw} but never measured: no
-completion latency, throughput or inference memory footprint is reported, and
-the effect of four-bit quantisation on answer quality is not separated from
-that of the fine-tuning.
+completion latency, throughput or inference memory footprint is reported, and the quality figures come from the half-precision checkpoint rather than
+the four-bit build actually served.
 
 % =====================================================================
 \section{Conclusion}
@@ -448,7 +442,7 @@ That single epoch raises HumanEval pass@1 from 10.98~\% to 42.68~\% under a
 bare-signature zero-shot protocol, approaching the 43.9~\% the base model
 reports under its own more favourable protocol. The result is best read as
 recovery rather than gain: the fine-tuning aligns the model with the prompt
-format the deployment emits, and the size of the effect measures how much a
+format and the stopping behaviour this protocol requires, and the size of the effect measures how much a
 protocol mismatch can suppress an otherwise capable model. A benchmark score
 is therefore a joint property of a model and the protocol that produced it,
 and does not transfer to a deployment that prompts differently.

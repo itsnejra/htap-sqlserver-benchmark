@@ -355,11 +355,14 @@ Evaluacija koristi HumanEval~\cite{chen2021humaneval}, čijih 164 Python problem
 funkcije sa skrivenim jediničnim testovima. Generisanje je pohlepno, jedan
 determinističan uzorak po problemu i najviše 512 novih tokena, a prikazana
 metrika je pass@1: udio problema čije generisano tijelo prolazi sve testove.
+Ne nameće se nijedna stop sekvenca i dekodirani nastavak ocjenjuje se
+neizmijenjen, pa potpuna implementacija funkcije koja zatim nastavi dodatnim
+kodom na nultoj razini može pasti već zbog toga. Oba checkpointa evaluiraju se
+u poluprecizji kroz Transformers; četverobitni build koji Ollama servira ne.
 
-Prikazuje se samo pass@1. Brojanje problema riješenim ako prođe bilo koja od
-više uzorkovanih dopuna mjeri svojstvo koje nijedan dodatak za editor ne
-izlaže: programer vidi jedan prijedlog i prihvata ga ili ne. Pohlepni pass@1
-stoga mjeri ono što isporuka daje, po cijenu šireg intervala povjerenja.
+Prikazuje se samo pass@1: dodatak za editor nudi jedan prijedlog, a ne više,
+pa bi brojanje problema riješenim kad prođe bilo koji od uzoraka mjerilo
+svojstvo koje isporuka nikad ne izlaže.
 
 Format upita ovdje je važniji od dekodiranja. Umjesto few-shot upita u formatu
 razgovora, kakav koristi izvještaj samog osnovnog modela, upit je goli potpis
@@ -378,16 +381,15 @@ Intervali se ne preklapaju, pa je razlika od 31,7 procentnih poena
 razlučiva od šuma uzorkovanja pod ovim protokolom.
 
 \subsection{Čitanje rezultata naspram objavljenih ocjena}
-Tumačenje te razlike u potpunosti ovisi o tome šta mjeri broj osnovne
-verzije. Pod vlastitim few-shot protokolom, isti osnovni model prijavljen je
-na 43,9~\%~\cite{hui2024} --- gotovo tačno ono što fino podešeni model ovdje
-dostiže. Osnovnih 10,98~\% stoga ne opisuje slab model; opisuje sposoban
-model kažnjen formatom upita za koji nije bio pripremljen. Jedna QLoRA epoha
-uči ga da tijelo funkcije generiše direktno iz potpisa, čime se ta latentna
-sposobnost vraća u formatu koji isporuka koristi. Tabela~\ref{tab:humaneval}
-stavlja oba broja uz objavljene ocjene za usporedive modele; te ocjene
-dobijene su pod protokolima koje su odredili njihovi autori i predstavljaju
-kontekst, a ne kontrolisano poređenje.
+Pod vlastitim few-shot protokolom isti osnovni model prijavljen je na
+43,9~\%~\cite{hui2024}, gotovo tačno ono što fino podešeni model ovdje
+dostiže. Osnovnih 10,98~\% stoga ne opisuje slab model nego sposoban, kažnjen
+formatom upita i pravilom zaustavljanja za koje nije bio pripremljen. Jedna
+QLoRA epoha uči ga da tijelo funkcije generiše iz potpisa i da stane, čime se
+ta sposobnost vraća u formatu koji isporuka koristi. Tabela~\ref{tab:humaneval}
+stavlja oba broja uz objavljene ocjene za modele četiri do deset puta veće,
+dobijene pod protokolima koje su odredili njihovi autori: kontekst, a ne
+kontrolisano poređenje.
 
 \begin{table}[b]
 \caption{HumanEval pass@1. Gornji blok mjeren je ovdje pod jednim protokolom;
@@ -425,11 +427,6 @@ nalazom Weyssowa i drugih~\cite{weyssow2025} da LoRA vraća najveći dio
 kvaliteta potpunog podešavanja, i govori u prilog evaluaciji pod protokolom
 koji će sistem zaista primati.
 
-Tabela~\ref{tab:humaneval} pokazuje i da veličina modela nije cijela priča na
-ovoj skali: adaptirani model od 1,5 milijardi parametara dostiže ocjenu
-usporedivu s objavljenim brojevima za modele četiri do deset puta veće, mada
-pod protokolima koji se razlikuju, pa samo kao naznaka.
-
 Pet ograničenja omeđuje ove rezultate. Prvo, samo je Python model evaluiran
 kvantitativno; Go model ocijenjen je kvalitativno, pa jaz u zadržavanju iz
 odjeljka~\ref{sec:data} nije vezan za izmjerenu razliku u kvalitetu. Drugo, HumanEval
@@ -442,8 +439,8 @@ jeziku izvedeno je jedno treniranje uz fiksno sjeme, pa varijansa između
 izvođenja nije kvantifikovana. Peto, i najvažnije za navedenu motivaciju,
 isporučeni artefakt je analitički omeđen u odjeljku~\ref{sec:hw}, ali nikad izmjeren:
 nisu prikazani ni kašnjenje dopune, ni propusnost, ni zauzeće memorije pri
-inferenciji, a efekat četverobitne kvantizacije na kvalitet odgovora nije
-odvojen od efekta finog podešavanja.
+inferenciji, a vrijednosti kvaliteta dolaze s poluprecizijskog checkpointa, a ne s
+četverobitnog builda koji se zaista servira.
 
 % =====================================================================
 \section{Zaključak}
