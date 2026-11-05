@@ -41,8 +41,8 @@
 
 \begin{document}
 
-\title{On HTAP Storage Configurations in\\
-SQL Server 2022: An Empirical Evaluation}
+\title{On HTAP Storage Configurations in SQL\\
+Server 2022: An Empirical Evaluation}
 
 \author{\IEEEauthorblockN{Nejra Smajlovi\'c}
 \IEEEauthorblockA{\textit{Polytechnic Faculty}\\
@@ -79,9 +79,9 @@ Cohen's d and log-linear OLS regression. The dual-store configuration
 dominates every tested scenario: it delivers 3.3 to 6.9 times the OLTP
 throughput of the purely memory-optimised configuration under a
 transaction-heavy mix and cuts median analytical latency by a factor of four
-relative to the baseline. Because it separates
-the two layers without paying any synchronisation cost during measurement,
-the reported gains represent an upper bound of the approach.
+relative to the baseline. The reported gains represent an upper bound of the approach, because it
+separates the two layers without paying any synchronisation cost during
+measurement.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -427,8 +427,8 @@ configuration lost two thirds of its transactional capacity once analytical
 load was added. The paper's principal finding follows: a columnstore layer
 does not only accelerate analytical queries but protects transactional
 throughput as well, by a factor of 3.3 to 6.9, by freeing the processor from
-row-mode scanning. That makes a dual-store layout preferable wherever
-transactions and analytics mix.
+row-mode scanning. Wherever transactions and analytics mix, that makes a dual-store layout
+preferable.
 
 Those gains are an upper bound: the configuration evaluated here runs no
 synchronisation mechanism, so it measures the interference physical
